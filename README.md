@@ -14,13 +14,13 @@ Each control object <img src="https://render.githubusercontent.com/render/math?m
 <img src="https://render.githubusercontent.com/render/math?math=x_i \in \mathbb{R}^n \ : \ \forall 1 \leq i \leq m">.
 It is assumed that each controlled object <img src="https://render.githubusercontent.com/render/math?math=x_i"> adheres to the following model:
 
-<img src="https://render.githubusercontent.com/render/math?math=\dot{x_i} = A_i x_i %2B B_i u_i \ : \ A_i, B_i \in \mathbb{R}^{n \times n}, u_i \in  \mathbb{R}^n">
+<img src="https://render.githubusercontent.com/render/math?math=\dot{x_i} = A x_i %2B B_i u_i \ : \ A, B_i \in \mathbb{R}^{n \times n}, u_i \in  \mathbb{R}^n">
 
 and has a corresponding cost function:
 
-<img src="https://render.githubusercontent.com/render/math?math=J_i = \int_0^{T_{i}} (x_i^TQ_ix_i %2B u_i^TR_iu_i)dt \ : \ Q_i, R_i \in \mathbb{R}^{n \times n}">
+<img src="https://render.githubusercontent.com/render/math?math=J_i = \int_0^{T_f} (x_i^TQ_ix_i %2B u_i^TR_iu_i)dt \ : \ Q_i, R_i \in \mathbb{R}^{n \times n}">
 
-Thus the input includes <img src="https://render.githubusercontent.com/render/math?math=\{ A_i \}_{i=1}^m, \{ B_i \}_{i=1}^m, \{ Q_i \}_{i=1}^m, \{ R_i \}_{i=1}^m">
+Thus the input includes <img src="https://render.githubusercontent.com/render/math?math=n, m, A, \{ B_i \}_{i=1}^m, \{ Q_i \}_{i=1}^m, \{ R_i \}_{i=1}^m, T_f, \{ P_i(T_f) \}_{i=1}^m, \{ x_i(0) \}_{i=1}^m">
 ### Open Loop Finite Horizon
 
 In such cases the follwing Riccati equation arise:
