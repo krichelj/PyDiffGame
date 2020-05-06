@@ -42,4 +42,8 @@ In such cases the follwing Riccati equation arise:
 <img src="https://render.githubusercontent.com/render/math?math=0 = P_i A_c %2B A_c^T P_i %2B Q_i %2B \sum_{j=1}^m P_jB_j R_{jj}^{-T}R_{ij}R_{jj}^{-1}B_j^TP_j \ : \ \forall 1 \leq i \leq m">
 <img src="https://render.githubusercontent.com/render/math?math=A_c = A - \sum_{i=1}^m S_iP_i \ , \ S_i = B_i R_{ii}^{-1}B_i^T">
 
-The package will include Open Loop Infinite Horizon in the future.
+The package is still in working progress will include Open Loop Infinite Horizon in the future.
+
+# References
+- A Differential Game Approach to Formation Control, Dongbing Gu, IEEE Transactions on Control Systems Technology, 2008
+- Optimal Control - Third Edition, Frank L. Lewis, Draguna L. Vrabie, Vassilis L. Syrmos, 2012 by John Wiley & Sons, 2012
