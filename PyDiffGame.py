@@ -1,168 +1,124 @@
 import numpy as np
-from scipy.integrate import odeint
+from numpy.linalg import inv
 import matplotlib.pyplot as plt
 
 
-def get_ranges(n, m):
-    U = range(1, n + 1)
-    V = range(1, m + 1)
-
-    return U, V
-
-
-def solve_m_coupled_riccati(P_f, A, B, R, Q, m, s, n, N):
+def get_S_matrices(R, B, m):
     S_matrices = []
 
-    def get_parameters(P):
-        nonlocal S_matrices
+    for i in range(0, m):
+        R_i = R[i]
+        R_i_inv = inv(R_i)
 
-        P_matrices = []
+        B_i = B[i]
+        B_i_t = B[i].transpose()
 
-        M = np.zeros((n, n))
+        S_i = B_i @ R_i_inv @ B_i_t
+        S_matrices.append(S_i)
 
-        for i in range(0, m):
-            R_i = R[i]
-            R_i_inv = np.linalg.inv(R_i)
-
-            B_i = B[i]
-            B_i_t = B[i].transpose()
-
-            S_i = B_i @ R_i_inv @ B_i_t
-
-            S_matrices.append(S_i)
-
-            P_i = np.array(P[N * i:N * (i + 1)]).reshape(n, n)
-            P_matrices.append(P_i)
-
-            M = M + S_i @ P_i
-
-        return P_matrices, M
-
-    def coupled_riccati_ode_solver(P, t):
-        P_matrices, M = get_parameters(P)
-        A_t = A.transpose()
-        dPdt = np.zeros((n, n))
-
-        for i in range(m):
-
-            P_i = P_matrices[i]
-            Q_i = Q[i]
-
-            dP_idt = P_i @ M - P_i @ A - A_t @ P_i - Q_i
-            dP_idt = np.array(dP_idt).reshape(N)
-
-            if i == 0:
-                dPdt = dP_idt
-            else:
-                dPdt = np.concatenate((dPdt, dP_idt), axis=None)
-
-        return dPdt
-
-    return_P = odeint(coupled_riccati_ode_solver, P_f, s)
-
-    return return_P, S_matrices
+    return S_matrices
 
 
-def plot_riccati(s, P, m, n):
-    plt.figure(dpi=130)
-    plt.plot(s, P)
-    plt.xlabel('Time')
+def get_M_sum(P_matrices, S_matrices, m, n):
+    M = np.zeros((n, n))
 
-    U, V = get_ranges(n, m)
+    for i in range(0, m):
+        S_i = S_matrices[i]
+        P_i = P_matrices[i]
 
-    P_legend = tuple(['${P' + str(i) + '}_{' + str(j) + str(k) + '}$' for i in V for j in U for k in U])
+        M = M + S_i @ P_i
 
-    plt.legend(P_legend, loc='best', ncol=int(m / 2), prop={'size': int(30 * 1 / m)})
-    plt.grid()
-    plt.show()
+    return M
 
 
-def get_P_f(m):
-    P_f = 0
+def get_P_matrices(P, m, n, N):
+    P_matrices = [np.array(P[N * i:N * (i + 1)]).reshape(n, n) for i in range(0, m)]
+
+    return P_matrices
+
+
+def get_parameters(P, A, B, R, m, n, N):
+    A_t = A.transpose()
+    P_matrices = get_P_matrices(P, m, n, N)
+    S_matrices = get_S_matrices(R, B, m)
+    M = get_M_sum(P_matrices, S_matrices, m, n)
+
+    return A_t, P_matrices, S_matrices, M
+
+
+def get_P_f(m, N):
+    P_f = np.zeros((m * N,))
 
     for i in range(0, m):
         if i == 0:
-            P_f = np.array([0, 0, 0, 0])
+            P_f = np.array([0] * N)
         else:
-            k = i * 10
-            P_f = np.concatenate((P_f, [k, k, k, k]), axis=None)
-
+            P_f_i = i * 10
+            P_f = np.concatenate((P_f, [P_f_i] * N), axis=None)
     return P_f
 
 
-def simStateSpace(P, A, n, N, m, S_matrices, T_f, iterations):
-    j = len(P)
+def get_W_i(P_matrices, S_matrices, m, n, i):
+    W_i = np.zeros((n, n))
 
-    def stateDiffEqn(X, t):
+    for j in range(0, m):
+        if j != i:
+            S_j = S_matrices[j]
+            P_j = P_matrices[j]
 
-        nonlocal j
+            W_i = W_i + P_j @ S_j
 
-        X = np.array(X).reshape(n, m)
+    return W_i
 
-        A_cl = A
-        P_j = P[j - 1]
 
-        for k in range(0, m):
-            S_k = S_matrices[k]
-            P_j_k = np.array(P_j[N * k:N * (k + 1)]).reshape(n, n)
-
-            A_cl = A_cl - S_k @ P_j_k
-
-        dXdt = np.dot(A_cl, X)
-        dXdt = np.array(dXdt).reshape(n * m)
-
-        j -= 1
-        return dXdt
-
-    X0 = 0
+def solve_riccati(P, A, B, Q, R, m, n, N, is_closed_loop):
+    A_t, P_matrices, S_matrices, M = get_parameters(P, A, B, R, m, n, N)
+    dPdt = np.zeros((N * m,))
 
     for i in range(0, m):
+
+        P_i = P_matrices[i]
+        Q_i = Q[i]
+
+        dP_idt = - A_t @ P_i - P_i @ A - Q_i + P_i @ M
+
+        if is_closed_loop:
+            W_i = get_W_i(P_matrices, S_matrices, m, n, i)
+            dP_idt = dP_idt + W_i @ P_i
+
+        dP_idt = np.array(dP_idt).reshape(N)
+
         if i == 0:
-            X0 = np.array([1] * n)
+            dPdt = dP_idt
         else:
-            e = i * 10
-            X0 = np.concatenate((X0, [e] * n), axis=None)
+            dPdt = np.concatenate((dPdt, dP_idt), axis=None)
 
-    t = np.linspace(0, T_f, iterations)
+    return dPdt
 
-    X = odeint(stateDiffEqn, X0, t)
+
+def solve_m_coupled_riccati(P, _, A, B, Q, R, m, n, N):
+    is_closed_loop = False
+    dPdt = solve_riccati(P, A, B, Q, R, m, n, N, is_closed_loop)
+
+    return dPdt
+
+
+def solve_m_coupled_riccati_cl(P, _, A, B, Q, R, m, n, N):
+    is_closed_loop = True
+    dPdt = solve_riccati(P, A, B, Q, R, m, n, N, is_closed_loop)
+
+    return dPdt
+
+
+def plot(s, P_or_X, m, n, is_P):
+    V = range(1, m + 1)
+    U = range(1, n + 1)
+    legend = tuple(['${P' + str(i) + '}_{' + str(j) + str(k) + '}$' for i in V for j in U for k in U] if is_P else
+                   ['${X' + str(i) + '}_{' + str(j) + '}$' for i in V for j in U])
+
     plt.figure(dpi=130)
-    plt.plot(t, X)
+    plt.plot(s, P_or_X)
     plt.xlabel('Time')
-
-    U, V = get_ranges(n, m)
-    X_legend = ['${X' + str(i) + '}_{' + str(j) + '}$'
-                for i in V for j in U]
-
-    plt.legend(tuple(X_legend), ncol=int(m / 2), loc='best',
-               prop={'size': int(50 / m)})
+    plt.legend(legend, loc='best', ncol=int(m / 2), prop={'size': int(30 * 1 / m)})
     plt.grid()
     plt.show()
-
-
-if __name__ == '__main__':
-    input_m = 3
-    input_n = 2
-    input_N = input_n ** 2
-
-    input_A = np.array([[2, 0],
-                        [0, 2]])
-
-    input_B = [np.array([[1, 0],
-                         [0, 1]])] * input_m
-    input_R = [np.array([[100, 0],
-                         [0, 300]])] * input_m
-    input_Q = [np.array([[5, 0],
-                         [0, 6]])] * input_m
-
-    input_P_f = get_P_f(input_m)
-    input_T_f = 5
-    input_iterations = 5000
-    input_s = np.linspace(input_T_f, 0, input_iterations)
-
-    output_P, S_matrices = solve_m_coupled_riccati(input_P_f, input_A, input_B, input_R, input_Q, input_m, input_s,
-                                                   input_n, input_N)
-
-    plot_riccati(input_s, output_P, input_m, input_n)
-
-    simStateSpace(output_P, input_A, input_n, input_N, input_m, S_matrices, input_T_f, input_iterations)
