@@ -45,5 +45,6 @@ In such cases the follwing Riccati equation arise:
 The package is still in working progress will include Open Loop Infinite Horizon in the future.
 
 # References
-- A Differential Game Approach to Formation Control, Dongbing Gu, IEEE Transactions on Control Systems Technology, 2008
-- Optimal Control - Third Edition, Frank L. Lewis, Draguna L. Vrabie, Vassilis L. Syrmos, 2012 by John Wiley & Sons, 2012
+- **A Differential Game Approach to Formation Control**, Dongbing Gu, IEEE Transactions on Control Systems Technology, 2008
+- **Optimal Control - Third Edition**, Frank L. Lewis, Draguna L. Vrabie, Vassilis L. Syrmos, 2012 by John Wiley & Sons, 2012
+- **A Survey of Nonsymmetric Riccati Equations**, Gerhard Freiling, Linear Algebra and its Applications, 2002
