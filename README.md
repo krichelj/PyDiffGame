@@ -14,7 +14,7 @@ Each control object <img src="https://render.githubusercontent.com/render/math?m
 <img src="https://render.githubusercontent.com/render/math?math=x_i \in \mathbb{R}^n \ : \ \forall 1 \leq i \leq m">.
 It is assumed that each controlled object <img src="https://render.githubusercontent.com/render/math?math=x_i"> adheres to the following model:
 
-<img src="https://render.githubusercontent.com/render/math?math=\dot{x_i} = A x_i %2B B_i u_i \ : \ A, B_i \in \mathbb{R}^{n \times n}, u_i \in  \mathbb{R}^n">
+<img src="https://render.githubusercontent.com/render/math?math=\dot{x_i} = A x %2B B_i u_i \ : \ A, B_i \in \mathbb{R}^{n \times n}, u_i \in  \mathbb{R}^n">
 
 and has a corresponding cost function:
 
