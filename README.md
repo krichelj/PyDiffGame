@@ -4,11 +4,7 @@
 This package allows to solve equations arising in models that involve the use of differential games
 for finding optimal controllers of a multi-objective system with multiple controlled objects.
 
-## Supported Scenarios
-`PyDiffGame` supports several scenarios that can arise based on the designated control law 
-of the input system  and the required horizon to solve the system for. 
-
-## Required Input
+## Mathematical Description and Required Input
 This package receives control parameters for <img src="https://render.githubusercontent.com/render/math?math=N \in \mathbb{N}"> control agendas acting upon <img src="https://render.githubusercontent.com/render/math?math=n \in \mathbb{N}"> controlled objects. Let us denote each controlled object as a state variable of the form:
 
 <img src="https://render.githubusercontent.com/render/math?math=x_i \in \mathbb{R}^{m_i}">
@@ -20,7 +16,7 @@ where:
 
 Let us define the augmented state variable for all of these objects:
 
-<img src="https://render.githubusercontent.com/render/math?math=x = [x_1, ..., x_n]">
+<img src="https://render.githubusercontent.com/render/math?math=x = [x_1, ..., x_n]^T">
 
 where:
 
@@ -28,11 +24,11 @@ where:
 
 Using this definition, let us assume the objects adhere to the following continuous-time model:
 
-<img src="https://render.githubusercontent.com/render/math?math=\dot{x} = A x %2B \sum_{j=1}^NB_{jj} u_j \ : \ x(0) = x_0">
+<img src="https://render.githubusercontent.com/render/math?math=\dot{x} = A x %2B \sum_{j=1}^NB_{j} u_j \ : \ x(0) = x_0">
 
 where:
 
-<img src="https://render.githubusercontent.com/render/math?math=A \in \mathbb{R}^{M \times M}, B_{jj} \in \mathbb{R}^{M \times k_j} , u_j \in  \mathbb{R}^{k_j}, k_j \in  \mathbb{N} \ : \ \forall 1 \leq j \leq N">
+<img src="https://render.githubusercontent.com/render/math?math=A \in \mathbb{R}^{M \times M}, B_{j} \in \mathbb{R}^{M \times k_j} , u_j \in  \mathbb{R}^{k_j}, k_j \in  \mathbb{N} \ : \ \forall 1 \leq j \leq N">
 
 Let us define for each control agenda a weighted cost function to be minimized:
 
@@ -40,9 +36,18 @@ Let us define for each control agenda a weighted cost function to be minimized:
 
 where:
 
-<img src="https://render.githubusercontent.com/render/math?math=Q_i, R_i \in \mathbb{R}^{M \times M} \ : \ \forall 1 \leq i \leq j \leq N">
+<img src="https://render.githubusercontent.com/render/math?math=Q_i \in \mathbb{R}^{M \times M}, R_{ij} \in \mathbb{R}^{k_j \times k_j} \ : \ \forall 1 \leq i \leq j \leq N">
 
-Thus the input includes <img src="https://render.githubusercontent.com/render/math?math=\{ m_i \}_{i=1}^n, A, \{ \{ B_i \}_{i=1}^N\}_{j=1}^N, \{ Q_i \}_{i=1}^N, \{ R_i \}_{i=1}^N, T_f, x_0">
+Thus the input includes <img src="https://render.githubusercontent.com/render/math?math=A, \{ B_i \}_{i=1}^N, \{ Q_i \}_{i=1}^N, \{ \{ R_{ij} \}_{i=1}^N\}_{j=1}^N, T_f, x_0">
+
+## Supported Scenarios
+`PyDiffGame` supports several scenarios that can arise based on the designated control law 
+of the input system  and the required horizon to solve the system for.
+
+The following scenarios assume no coupling weighting for the inputs of the agendas in the cost function, i.e.:
+
+<img src="https://render.githubusercontent.com/render/math?math=R_{ij}=0_{k_i \times k_j} \ : \ \forall 1 \leq i \neq j \leq N">
+
 ### Open Loop Finite Horizon
 
 In such cases the following Riccati equation arise:
