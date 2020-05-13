@@ -42,7 +42,7 @@ and for the horizon <img src="https://render.githubusercontent.com/render/math?m
 
 <img src="https://render.githubusercontent.com/render/math?math=T_f \in \mathbb{R} \cup \{ \infty \}">
 
-Thus the input includes <img src="https://render.githubusercontent.com/render/math?math=A, \{ B_i \}_{i=1}^N, \{ Q_i \}_{i=1}^N, \{ \{ R_{ij} \}_{i=1}^N\}_{j=1}^N, T_f, x_0">
+Thus the input includes <img src="https://render.githubusercontent.com/render/math?math=\{ m_i \}_{i=1}^N, A, \{ B_i \}_{i=1}^N, \{ Q_i \}_{i=1}^N, \{ \{ R_{ij} \}_{i=1}^N\}_{j=1}^N, T_f, x_0">
 
 ## Supported Scenarios
 `PyDiffGame` supports several scenarios that can arise based on the designated control law 
