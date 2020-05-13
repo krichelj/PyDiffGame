@@ -50,7 +50,7 @@ of the input system  and the required horizon to solve the system for.
 
 The following scenarios assume no coupling weighting for the inputs of the agendas in the cost function, i.e.:
 
-<img src="https://render.githubusercontent.com/render/math?math=R_{ij}=0_{k_i \times k_j} \ : \ \forall 1 \leq i \neq j \leq N">
+<img src="https://render.githubusercontent.com/render/math?math=R_{ij}=0_{k_i \times k_i} \ : \ \forall 1 \leq i \neq j \leq N">
 
 ### Open Loop Finite Horizon
 
