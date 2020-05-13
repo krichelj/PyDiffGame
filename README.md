@@ -38,6 +38,10 @@ where:
 
 <img src="https://render.githubusercontent.com/render/math?math=Q_i \in \mathbb{R}^{M \times M}, R_{ij} \in \mathbb{R}^{k_j \times k_j} \ : \ \forall 1 \leq i \leq j \leq N">
 
+and for the horizon <img src="https://render.githubusercontent.com/render/math?math=T_f">:
+
+<img src="https://render.githubusercontent.com/render/math?math=T_f \in \mathbb{R} \cup \{ \infty \}">
+
 Thus the input includes <img src="https://render.githubusercontent.com/render/math?math=A, \{ B_i \}_{i=1}^N, \{ Q_i \}_{i=1}^N, \{ \{ R_{ij} \}_{i=1}^N\}_{j=1}^N, T_f, x_0">
 
 ## Supported Scenarios
