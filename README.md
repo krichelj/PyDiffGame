@@ -57,14 +57,14 @@ The following scenarios assume no coupling weighting for the inputs of the agend
 In such cases the following Riccati equation arise:
 
 <img src="https://render.githubusercontent.com/render/math?math=\frac{dP_i}{dt} = - A^T P_i - P_i A - Q_i %2B P_i \sum_{j=1}^N S_j P_j  \ : \ \forall 1 \leq i \leq N">
-<img src="https://render.githubusercontent.com/render/math?math=S_j = B_j R_j^{-1} B_j^T \ : \ \forall 1 \leq i \leq N">
+<img src="https://render.githubusercontent.com/render/math?math=S_j = B_j R_{jj}^{-1} B_j^T \ : \ \forall 1 \leq i \leq N">
 
 ### Closed Loop Finite Horizon
 
 In such cases the follwing Riccati equation arise:
 
 <img src="https://render.githubusercontent.com/render/math?math=\frac{dP_i}{dt} = - A^T P_i - P_i A - Q_i %2B P_i \big(\sum_{j=1}^N S_j P_j\big)  %2B \big(\sum_{\substack{j=1 \\ j \neq i}}^NP_jS_j\big)  P_i\ : \ \forall 1 \leq i \leq N">
-<img src="https://render.githubusercontent.com/render/math?math=S_j = B_j R_j^{-1} B_j^T \ : \ \forall 1 \leq i \leq N">
+<img src="https://render.githubusercontent.com/render/math?math=S_j = B_j R_{jj}^{-1} B_j^T \ : \ \forall 1 \leq i \leq N">
 
 ### Closed Loop Infinite Horizon
 
