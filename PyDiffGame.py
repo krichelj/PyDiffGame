@@ -48,19 +48,21 @@ def get_parameters(P, A, B, R, m, N):
     return A_t, P_matrices, S_matrices, M
 
 
-def get_P_f(m):
+def get_P_f(m, N):
     M = sum(m)
     P_size = M ** 2
-    N = len(m)
 
-    P_f = np.zeros((len(m)*P_size,))
+    P_f = np.zeros((N*P_size,))
 
-    for i in range(0, N):
+    for i in range(N):
+        random_matrix = np.random.rand(M, M)
+        P_f_i = random_matrix.transpose() @ random_matrix
+        P_f_i = P_f_i.reshape((P_size,))
+
         if i == 0:
-            P_f = np.array([0] * P_size)
+            P_f = P_f_i
         else:
-            P_f_i = i * 1000
-            P_f = np.concatenate((P_f, [P_f_i] * P_size), axis=None)
+            P_f = np.concatenate((P_f, P_f_i), axis=None)
     return P_f
 
 

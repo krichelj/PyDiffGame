@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.integrate import odeint
-from numpy.linalg import inv
+from numpy.linalg import inv, eigvals
 import matplotlib.pyplot as plt
 
 from PyDiffGame import get_P_f
@@ -68,19 +68,42 @@ def plot(s, P, M, N):
     plt.show()
 
 
+def check_input(m, Q, R, T_f, P_f, N):
+    M = sum(m)
+    P_size = M ** 2
+
+    if not all([m_i > 0 for m_i in m]):
+        raise ValueError('The state variables dimensions must all be positive')
+    if T_f <= 0:
+        raise ValueError('The horizon must be positive')
+    if not all([np.all(eigvals(Q_i) >= 0) for Q_i in Q]):
+        raise ValueError('The weight matrices Q_i must all be positive semi-definite')
+    if not all([eig >= 0 for eig_set in [eigvals(P_f[i*P_size:(i+1)*P_size].reshape(M, M)) for i in range(N)]
+                for eig in eig_set]):
+        raise ValueError('Final matrices P_f must all be positive semi-definite')
+    if not all([np.all(eigvals(R_i) > 0) for R_i in R]):
+        raise ValueError('The weight matrices R_i must all be positive definite')
+
+
+def run(m, A, B, Q, R, T_f):
+    M = sum(m)
+    N = len(B)
+    P_f = get_P_f(m, N)
+
+    check_input(m, Q, R, T_f, P_f, N)
+
+    iterations = 5000
+    s = np.linspace(T_f, 0, iterations)
+
+    cl = True
+    P_cl = odeint(solve_N_coupled_riccati_cl, P_f, s, args=(M, A, B, Q, R, N, cl))
+    plot(s, P_cl, M, N)
+    cl = False
+    P_ol = odeint(solve_N_coupled_riccati_cl, P_f, s, args=(M, A, B, Q, R, N, cl))
+    plot(s, P_ol, M, N)
+
+
 if __name__ == '__main__':
-
-    def run(m, A, B, Q, R, T_f, P_f, iterations):
-        M = sum(m)
-        N = len(B)
-        s = np.linspace(T_f, 0, iterations)
-        cl = True
-        P_cl = odeint(solve_N_coupled_riccati_cl, P_f, s, args=(M, A, B, Q, R, N, cl))
-        plot(s, P_cl, M, N)
-        cl = False
-        P_ol = odeint(solve_N_coupled_riccati_cl, P_f, s, args=(M, A, B, Q, R, N, cl))
-        plot(s, P_ol, M, N)
-
     m = [2, 2]
 
     A = np.diag([2, 1, 1, 4])
@@ -97,7 +120,6 @@ if __name__ == '__main__':
     coupled_R = [np.diag([100, 200, 100, 200]),
                  np.diag([100, 300, 200, 400])]
 
-    P_f = get_P_f(m)
     T_f = 5
-    iterations = 5000
-    run(m, A, B, Q, R, T_f, P_f, iterations)
+
+    run(m, A, B, Q, R, T_f)
