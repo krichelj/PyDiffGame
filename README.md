@@ -38,7 +38,11 @@ where:
 
 <img src="https://render.githubusercontent.com/render/math?math=Q_i \in \mathbb{R}^{M \times M}, R_{ij} \in \mathbb{R}^{k_j \times k_j} \ : \ \forall 1 \leq i \leq j \leq N">
 
-Thus the input includes <img src="https://render.githubusercontent.com/render/math?math=A, \{ B_i \}_{i=1}^N, \{ Q_i \}_{i=1}^N, \{ \{ R_{ij} \}_{i=1}^N\}_{j=1}^N, T_f, x_0">
+and for the horizon <img src="https://render.githubusercontent.com/render/math?math=T_f">:
+
+<img src="https://render.githubusercontent.com/render/math?math=T_f \in \mathbb{R} \cup \{ \infty \}">
+
+Thus the input includes <img src="https://render.githubusercontent.com/render/math?math=\{ m_i \}_{i=1}^N, A, \{ B_i \}_{i=1}^N, \{ Q_i \}_{i=1}^N, \{ \{ R_{ij} \}_{i=1}^N\}_{j=1}^N, T_f, x_0">
 
 ## Supported Scenarios
 `PyDiffGame` supports several scenarios that can arise based on the designated control law 
@@ -46,28 +50,28 @@ of the input system  and the required horizon to solve the system for.
 
 The following scenarios assume no coupling weighting for the inputs of the agendas in the cost function, i.e.:
 
-<img src="https://render.githubusercontent.com/render/math?math=R_{ij}=0_{k_i \times k_j} \ : \ \forall 1 \leq i \neq j \leq N">
+<img src="https://render.githubusercontent.com/render/math?math=R_{ij}=0_{k_i \times k_i} \ : \ \forall 1 \leq i \neq j \leq N">
 
 ### Open Loop Finite Horizon
 
 In such cases the following Riccati equation arise:
 
-<img src="https://render.githubusercontent.com/render/math?math=\frac{dP_i}{dt} = - A^T P_i - P_i A - Q_i %2B P_i \sum_{j=1}^m S_j P_j  \ : \ \forall 1 \leq i \leq m">
-<img src="https://render.githubusercontent.com/render/math?math=S_j = B_j R_j^{-1} B_j^T">
+<img src="https://render.githubusercontent.com/render/math?math=\frac{dP_i}{dt} = - A^T P_i - P_i A - Q_i %2B P_i \sum_{j=1}^N S_j P_j  \ : \ \forall 1 \leq i \leq N">
+<img src="https://render.githubusercontent.com/render/math?math=S_j = B_j R_{jj}^{-1} B_j^T \ : \ \forall 1 \leq i \leq N">
 
 ### Closed Loop Finite Horizon
 
 In such cases the follwing Riccati equation arise:
 
-<img src="https://render.githubusercontent.com/render/math?math=\frac{dP_i}{dt} = - A^T P_i - P_i A - Q_i %2B P_i \big(\sum_{j=1}^m S_j P_j\big)  %2B \big(\sum_{\substack{j=1 \\ j \neq i}}^mP_jS_j\big)  P_i\ : \ \forall 1 \leq i \leq m">
-<img src="https://render.githubusercontent.com/render/math?math=S_j = B_j R_j^{-1} B_j^T">
+<img src="https://render.githubusercontent.com/render/math?math=\frac{dP_i}{dt} = - A^T P_i - P_i A - Q_i %2B P_i \big(\sum_{j=1}^N S_j P_j\big)  %2B \big(\sum_{\substack{j=1 \\ j \neq i}}^NP_jS_j\big)  P_i\ : \ \forall 1 \leq i \leq N">
+<img src="https://render.githubusercontent.com/render/math?math=S_j = B_j R_{jj}^{-1} B_j^T \ : \ \forall 1 \leq i \leq N">
 
 ### Closed Loop Infinite Horizon
 
 In such cases the follwing Riccati equation arise:
 
-<img src="https://render.githubusercontent.com/render/math?math=0 = P_i A_c %2B A_c^T P_i %2B Q_i %2B \sum_{j=1}^m P_jB_j R_{jj}^{-T}R_{ij}R_{jj}^{-1}B_j^TP_j \ : \ \forall 1 \leq i \leq m">
-<img src="https://render.githubusercontent.com/render/math?math=A_c = A - \sum_{i=1}^m S_iP_i \ , \ S_i = B_i R_{ii}^{-1}B_i^T">
+<img src="https://render.githubusercontent.com/render/math?math=0 = P_i A_c %2B A_c^T P_i %2B Q_i %2B \sum_{j=1}^N P_jB_j R_{jj}^{-T}R_{ij}R_{jj}^{-1}B_j^TP_j \ : \ \forall 1 \leq i \leq N">
+<img src="https://render.githubusercontent.com/render/math?math=A_c = A - \sum_{i=1}^N S_iP_i \ , \ S_i = B_i R_{ii}^{-1}B_i^T">
 
 The package is still in working progress will include Open Loop Infinite Horizon in the future.
 
