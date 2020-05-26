@@ -15,7 +15,7 @@ def get_A_cl(P_matrices, A, B, R, m):
         R_i = R[i]
         R_i_inv = inv(R_i)
 
-        S_i = B_i @ R_i_inv @ B_i_t @ P_i
+        S_i = 0.5 * B_i @ R_i_inv @ B_i_t @ P_i
         A_cl = A_cl - S_i
 
     A_cl_t = A_cl.transpose()
@@ -45,7 +45,7 @@ def get_curr_sum(P_matrices, B, R, coupled_R, n, m, i):
 def solve_algebraic_riccati(P, *data):
     A, B, Q, R, coupled_R, m, n, N = data
 
-    P_matrices = get_P_matrices(P, m, n, N)
+    P_matrices = get_P_matrices(P, n, N)
     A_cl, A_cl_t = get_A_cl(P_matrices, A, B, R, m)
 
     solution_matrices = []
