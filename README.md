@@ -4,26 +4,53 @@
 This package allows to solve equations arising in models that involve the use of differential games
 for finding optimal controllers of a multi-objective system with multiple controlled objects.
 
+## Mathematical Description and Required Input
+This package receives control parameters for <img src="https://render.githubusercontent.com/render/math?math=N \in \mathbb{N}"> control agendas acting upon <img src="https://render.githubusercontent.com/render/math?math=n \in \mathbb{N}"> controlled objects. Let us denote each controlled object as a state variable of the form:
+
+<img src="https://render.githubusercontent.com/render/math?math=x_i \in \mathbb{R}^{m_i}">
+
+where: 
+
+<img src="https://render.githubusercontent.com/render/math?math=m_i \in \mathbb{N} \ : \ \forall 1 \leq i \leq n">
+
+
+Let us define the augmented state variable for all of these objects:
+
+<img src="https://render.githubusercontent.com/render/math?math=x = [x_1, ..., x_n]^T">
+
+where:
+
+<img src="https://render.githubusercontent.com/render/math?math=x \in \mathbb{R}^{M}, M = \sum_{i=1}^n m_i">
+
+Using this definition, let us assume the objects adhere to the following continuous-time model:
+
+<img src="https://render.githubusercontent.com/render/math?math=\dot{x} = A x %2B \sum_{j=1}^NB_{j} u_j \ : \ x(0) = x_0">
+
+where:
+
+<img src="https://render.githubusercontent.com/render/math?math=A \in \mathbb{R}^{M \times M}, B_{j} \in \mathbb{R}^{M \times k_j} , u_j \in  \mathbb{R}^{k_j}, k_j \in  \mathbb{N} \ : \ \forall 1 \leq j \leq N">
+
+Let us define for each control agenda a weighted cost function to be minimized:
+
+<img src="https://render.githubusercontent.com/render/math?math=J_i = \int_0^{T_f} (x^TQ_ix %2B \sum_{j=1}^N u_j^TR_{ij}u_j)dt, \ : \ \forall 1 \leq j \leq N">
+
+where:
+
+<img src="https://render.githubusercontent.com/render/math?math=Q_i \in \mathbb{R}^{M \times M}, R_{ij} \in \mathbb{R}^{k_j \times k_j} \ : \ \forall 1 \leq i \leq j \leq N">
+
+Thus the input includes <img src="https://render.githubusercontent.com/render/math?math=A, \{ B_i \}_{i=1}^N, \{ Q_i \}_{i=1}^N, \{ \{ R_{ij} \}_{i=1}^N\}_{j=1}^N, T_f, x_0">
+
 ## Supported Scenarios
 `PyDiffGame` supports several scenarios that can arise based on the designated control law 
-of the input system  and the reqired horizon to solve the system for. 
+of the input system  and the required horizon to solve the system for.
 
-## Required Input
-This package receives control parameters for <img src="https://render.githubusercontent.com/render/math?math=m"> control agendas that correspond to <img src="https://render.githubusercontent.com/render/math?math=m"> controlled objects.
-Each control object <img src="https://render.githubusercontent.com/render/math?math=x_i"> has <img src="https://render.githubusercontent.com/render/math?math=n"> controlled coordinates, meaning:
-<img src="https://render.githubusercontent.com/render/math?math=x_i \in \mathbb{R}^n \ : \ \forall 1 \leq i \leq m">.
-It is assumed that each controlled object <img src="https://render.githubusercontent.com/render/math?math=x_i"> adheres to the following model:
+The following scenarios assume no coupling weighting for the inputs of the agendas in the cost function, i.e.:
 
-<img src="https://render.githubusercontent.com/render/math?math=\dot{x_i} = A_i x_i %2B B_i u_i \ : \ A_i, B_i \in \mathbb{R}^{n \times n}, u_i \in  \mathbb{R}^n">
+<img src="https://render.githubusercontent.com/render/math?math=R_{ij}=0_{k_i \times k_j} \ : \ \forall 1 \leq i \neq j \leq N">
 
-and has a corresponding cost function:
-
-<img src="https://render.githubusercontent.com/render/math?math=J_i = \int_0^{T_{i}} (x_i^TQ_ix_i %2B u_i^TR_iu_i)dt \ : \ Q_i, R_i \in \mathbb{R}^{n \times n}">
-
-Thus the input includes <img src="https://render.githubusercontent.com/render/math?math=\{ A_i \}_{i=1}^m, \{ B_i \}_{i=1}^m, \{ Q_i \}_{i=1}^m, \{ R_i \}_{i=1}^m">
 ### Open Loop Finite Horizon
 
-In such cases the follwing Riccati equation arise:
+In such cases the following Riccati equation arise:
 
 <img src="https://render.githubusercontent.com/render/math?math=\frac{dP_i}{dt} = - A^T P_i - P_i A - Q_i %2B P_i \sum_{j=1}^m S_j P_j  \ : \ \forall 1 \leq i \leq m">
 <img src="https://render.githubusercontent.com/render/math?math=S_j = B_j R_j^{-1} B_j^T">

@@ -31,30 +31,36 @@ def get_M_sum(P_matrices, S_matrices, m, n):
     return M
 
 
-def get_P_matrices(P, m, n, N):
-    P_matrices = [np.array(P[N * i:N * (i + 1)]).reshape(n, n) for i in range(0, m)]
+def get_P_matrices(P, N, M):
+    P_matrices = [np.array(P[M * i:M * (i + 1)]).reshape(n, n) for i in range(0, N)]
 
     return P_matrices
 
 
-def get_parameters(P, A, B, R, m, n, N):
+def get_parameters(P, A, B, R, m, N):
     A_t = A.transpose()
-    P_matrices = get_P_matrices(P, m, n, N)
+
+    M = sum(m)
+    P_matrices = get_P_matrices(P, m, N, M)
     S_matrices = get_S_matrices(R, B, m)
-    M = get_M_sum(P_matrices, S_matrices, m, n)
+    SP_sum = get_M_sum(P_matrices, S_matrices, m, n)
 
     return A_t, P_matrices, S_matrices, M
 
 
-def get_P_f(m, N):
-    P_f = np.zeros((m * N,))
+def get_P_f(m):
+    M = sum(m)
+    P_size = M ** 2
+    N = len(m)
 
-    for i in range(0, m):
+    P_f = np.zeros((len(m)*P_size,))
+
+    for i in range(0, N):
         if i == 0:
-            P_f = np.array([0] * N)
+            P_f = np.array([0] * P_size)
         else:
-            P_f_i = i * 10
-            P_f = np.concatenate((P_f, [P_f_i] * N), axis=None)
+            P_f_i = i * 1000
+            P_f = np.concatenate((P_f, [P_f_i] * P_size), axis=None)
     return P_f
 
 
@@ -71,8 +77,9 @@ def get_W_i(P_matrices, S_matrices, m, n, i):
     return W_i
 
 
-def solve_riccati(P, A, B, Q, R, m, n, N, is_closed_loop):
-    A_t, P_matrices, S_matrices, M = get_parameters(P, A, B, R, m, n, N)
+def solve_riccati(P, A, B, Q, R, m, N, is_closed_loop):
+    M = sum(m)
+    A_t, P_matrices, S_matrices, SP_sum = get_parameters(P, A, B, R, m, N)
     dPdt = np.zeros((N * m,))
 
     for i in range(0, m):
@@ -96,9 +103,9 @@ def solve_riccati(P, A, B, Q, R, m, n, N, is_closed_loop):
     return dPdt
 
 
-def solve_m_coupled_riccati(P, _, A, B, Q, R, m, n, N):
+def solve_m_coupled_riccati(P, _, A, B, Q, R, m, N):
     is_closed_loop = False
-    dPdt = solve_riccati(P, A, B, Q, R, m, n, N, is_closed_loop)
+    dPdt = solve_riccati(P, A, B, Q, R, m, N, is_closed_loop)
 
     return dPdt
 
@@ -119,6 +126,6 @@ def plot(s, P_or_X, m, n, is_P):
     plt.figure(dpi=130)
     plt.plot(s, P_or_X)
     plt.xlabel('Time')
-    plt.legend(legend, loc='best', ncol=int(m / 2), prop={'size': int(30 * 1 / m)})
+    plt.legend(legend, loc='best', ncol=int(m / 2), prop={'size': int(20 / m)})
     plt.grid()
     plt.show()
