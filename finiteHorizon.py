@@ -1,8 +1,9 @@
 import numpy as np
 from scipy.integrate import odeint
-from numpy.linalg import inv
+from numpy.linalg import inv, norm
 
-from PyDiffGame import get_P_f, check_input, plot
+
+from PyDiffGame import check_input, plot, get_care_P_f
 
 
 def get_SP_sum(S_matrices, P_matrices, M, N):
@@ -56,19 +57,19 @@ def solve_N_coupled_riccati(P, _, M, A, B, Q, R, N, cl):
 def run(m, A, B, Q, R, T_f):
     M = sum(m)
     N = len(B)
-    P_f = get_P_f(m, N)
 
-    check_input(m, Q, R, T_f, P_f, N)
+    P_f = get_care_P_f(M, N, A, B, Q, R)
+    check_input(m, A, B, Q, R, T_f, P_f, N)
 
-    iterations = 5000
+    iterations = 300
     s = np.linspace(T_f, 0, iterations)
 
     cl = True
     P_cl = odeint(solve_N_coupled_riccati, P_f, s, args=(M, A, B, Q, R, N, cl))
     plot(m, s, P_cl)
-    cl = False
-    P_ol = odeint(solve_N_coupled_riccati, P_f, s, args=(M, A, B, Q, R, N, cl))
-    plot(m, s, P_ol)
+    # cl = False
+    # P_ol = odeint(solve_N_coupled_riccati, P_f, s, args=(M, A, B, Q, R, N, cl))
+    # plot(m, s, P_ol)
 
 
 if __name__ == '__main__':

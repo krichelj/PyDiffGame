@@ -21,7 +21,7 @@ def get_Ss(B, R):
     return S11, S22
 
 
-def solve_two_coupled_riccati_cl(P, _, M, A, B, Q, R, cl):
+def solve_two_coupled_riccati(P, _, M, A, B, Q, R, cl):
     P_size = M ** 2
 
     P1 = P[0:P_size].reshape(M, M)
@@ -56,10 +56,10 @@ def run(m, A, B, Q, R, T_f):
     s = np.linspace(T_f, 0, iterations)
 
     cl = True
-    P_cl = odeint(solve_two_coupled_riccati_cl, P_f, s, args=(M, A, B, Q, R, cl))
+    P_cl = odeint(solve_two_coupled_riccati, P_f, s, args=(M, A, B, Q, R, cl))
     plot(m, s, P_cl)
     cl = False
-    P_ol = odeint(solve_two_coupled_riccati_cl, P_f, s, args=(M, A, B, Q, R, cl))
+    P_ol = odeint(solve_two_coupled_riccati, P_f, s, args=(M, A, B, Q, R, cl))
     plot(m, s, P_ol)
 
 
