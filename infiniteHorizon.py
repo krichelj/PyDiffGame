@@ -2,6 +2,7 @@ from scipy.optimize import fsolve
 import math
 from numpy.linalg import inv
 
+
 def equations(p):
     x, y = p
     return x + y ** 2 - 4, math.exp(x) + x * y - 3
