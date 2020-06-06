@@ -4,8 +4,9 @@ import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are
 
 
-def get_P_f(m, N):
+def get_P_f(m, B):
     M = sum(m)
+    N = len(B)
     P_size = M ** 2
     P_f = np.zeros((N * P_size,))
 
@@ -21,7 +22,9 @@ def get_P_f(m, N):
     return P_f
 
 
-def get_care_P_f(M, N, A, B, Q, R):
+def get_care_P_f(A, B, Q, R):
+    M = A.shape[0]
+    N = len(B)
     P_size = M ** 2
     P_f = np.zeros((N * P_size,))
 
@@ -36,8 +39,9 @@ def get_care_P_f(M, N, A, B, Q, R):
     return P_f
 
 
-def check_input(m, A, B, Q, R, T_f, P_f, N):
+def check_input(m, A, B, Q, R, T_f, P_f):
     M = sum(m)
+    N = len(B)
     P_size = M ** 2
 
     if not all([m_i > 0 for m_i in m]):
