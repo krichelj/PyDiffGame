@@ -48,7 +48,7 @@ The horizon <img src="https://render.githubusercontent.com/render/math?math=T_f"
 
 <img src="https://render.githubusercontent.com/render/math?math=T_f \in \mathbb{R} \cup \{ \infty \}">
 
-For the finite horizon case, minimizing the aforementioned cost functions result in solving a set of <img src="https://render.githubusercontent.com/render/math?math=N"> coupled differential Riccati equations for the matrix <img src="https://render.githubusercontent.com/render/math?math=P_i"> backwards in time using <img src="https://render.githubusercontent.com/render/math?math=\psi"> iterations and with the final condition:
+For the finite horizon case, minimizing the aforementioned cost functions result in solving a set of <img src="https://render.githubusercontent.com/render/math?math=N"> coupled differential Riccati equations for the matrix <img src="https://render.githubusercontent.com/render/math?math=P_i"> backwards in time using <img src="https://render.githubusercontent.com/render/math?math=\psi"> data points between 0 and <img src="https://render.githubusercontent.com/render/math?math=T_f">, and with the final condition:
 
 <img src="https://render.githubusercontent.com/render/math?math=P_i(T_f) = P_{f_i} \ : \ \forall 1 \leq i \leq N">
 
