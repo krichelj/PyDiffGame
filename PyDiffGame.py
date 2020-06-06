@@ -1,7 +1,8 @@
 import numpy as np
-from numpy.linalg import eigvals
+from numpy.linalg import eigvals, inv
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are
+import sys
 
 
 def get_P_f(m, B):
@@ -39,7 +40,7 @@ def get_care_P_f(A, B, Q, R):
     return P_f
 
 
-def check_input(m, A, B, Q, R, T_f, P_f):
+def check_input(m, A, B, Q, R, T_f, P_f, data_points):
     M = sum(m)
     N = len(B)
     P_size = M ** 2
@@ -52,15 +53,54 @@ def check_input(m, A, B, Q, R, T_f, P_f):
         raise ValueError('The matrices B_i must all have M rows')
     if not all([B_i.shape[1] == R_i.shape[0] == R_i.shape[1] for B_i, R_i in zip(B, R)]):
         raise ValueError('The matrices B_i, R_i must have corresponding dimensions')
-    if T_f <= 0:
-        raise ValueError('The horizon must be positive')
     if not all([np.all(eigvals(Q_i) >= 0) for Q_i in Q]):
         raise ValueError('The weight matrices Q_i must all be positive semi-definite')
-    if not all([eig >= 0 for eig_set in [eigvals(P_f[i * P_size:(i + 1) * P_size].reshape(M, M)) for i in range(N)]
-                for eig in eig_set]):
-        raise ValueError('Final matrices P_f must all be positive semi-definite')
     if not all([np.all(eigvals(R_i) > 0) for R_i in R]):
         raise ValueError('The weight matrices R_i must all be positive definite')
+
+    valid_T_f = T_f < 5
+    valid_P_f = P_f is not None
+    valid_data_points = data_points < 5000
+    finite_horizon = [valid_T_f, valid_P_f, valid_data_points]
+
+    if any(finite_horizon) and not all(finite_horizon):
+        raise ValueError('For finite horizon - T_f, P_f and the number of data points must all be defined')
+    if valid_T_f and T_f <= 0:
+        raise ValueError('The horizon must be positive')
+    if valid_P_f and not all([eig >= 0 for eig_set in
+                        [eigvals(P_f[i * P_size:(i + 1) * P_size].reshape(M, M)) for i in range(N)]
+                        for eig in eig_set]):
+        raise ValueError('Final matrices P_f must all be positive semi-definite')
+    if data_points and data_points <= 0:
+        raise ValueError('There has to be a positive number of data points')
+
+
+def solve_N_coupled_riccati(_, P, M, N, A, B, Q, R, cl):
+    P_size = M ** 2
+
+    P_matrices = [(P[i * P_size:(i + 1) * P_size]).reshape(M, M) for i in range(N)]
+    S_matrices = [B[i] @ inv(R[i]) @ B[i].transpose() for i in range(N)]
+    SP_sum = sum(a @ b for a, b in zip(S_matrices, P_matrices))
+    A_t = A.transpose()
+    dPdt = np.zeros((M, M))
+
+    for i in range(N):
+        P_i = P_matrices[i]
+        Q_i = Q[i]
+
+        dPidt = - A_t @ P_i - P_i @ A - Q_i + P_i @ SP_sum
+
+        if cl:
+            PS_sum = (SP_sum - S_matrices[i] @ P_matrices[i]).transpose()
+            dPidt = dPidt + PS_sum @ P_i
+
+        dPidt = dPidt.reshape(P_size)
+
+        if i == 0:
+            dPdt = dPidt
+        else:
+            dPdt = np.concatenate((dPdt, dPidt), axis=None)
+    return dPdt
 
 
 def plot(m, s, P):
