@@ -1,10 +1,16 @@
 # PyDiffGame
+  * [What is this?](#what-is-this)
+  * [Mathematical Description](#mathematical-description)
+  * [Required Input](#required-input)
+  * [Supported Scenarios](#supported-scenarios)
+  * [References](#references)
 
+## What is this?
 `PyDiffGame` is a Python package that solves differential games for continuous-time control theory implementations.
 This package allows to solve equations arising in models that involve the use of differential games
 for finding optimal controllers of a multi-objective system with multiple controlled objects.
 
-## Mathematical Description and Required Input
+## Mathematical Description
 This package receives control parameters for <img src="https://render.githubusercontent.com/render/math?math=N \in \mathbb{N}"> control agendas acting upon <img src="https://render.githubusercontent.com/render/math?math=n \in \mathbb{N}"> controlled objects. Let us denote each controlled object as a state variable of the form:
 
 <img src="https://render.githubusercontent.com/render/math?math=x_i \in \mathbb{R}^{m_i}">
@@ -55,6 +61,8 @@ For the finite horizon case, minimizing the aforementioned cost functions result
 where:
 
 <img src="https://render.githubusercontent.com/render/math?math=P_{f_i} \geq 0 \ : \ \forall 1 \leq i \leq N">
+
+## Required Input
 
 Thus in the finite horizon case, the input includes <img src="https://render.githubusercontent.com/render/math?math=\{ m_i \}_{i=1}^N, A, \{ B_i \}_{i=1}^N, \{ Q_i \}_{i=1}^N, \{ \{ R_{ij} \}_{i=1}^N\}_{j=1}^N, T_f, x_0, \{ P_{f_i} \}_{i=1}^N, \psi"> and for the infinite horizon case - the same input holds but without the values for <img src="https://render.githubusercontent.com/render/math?math=P_{f}">.
 
