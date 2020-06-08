@@ -2,7 +2,6 @@ import numpy as np
 from numpy.linalg import eigvals, inv
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are
-import sys
 
 
 def get_P_f(m, B):
@@ -82,7 +81,7 @@ def solve_N_coupled_riccati(_, P, M, N, A, B, Q, R, cl):
     S_matrices = [B[i] @ inv(R[i]) @ B[i].transpose() for i in range(N)]
     SP_sum = sum(a @ b for a, b in zip(S_matrices, P_matrices))
     A_t = A.transpose()
-    dPdt = np.zeros((M, M))
+    dPdt = np.zeros((P_size,))
 
     for i in range(N):
         P_i = P_matrices[i]
@@ -99,8 +98,8 @@ def solve_N_coupled_riccati(_, P, M, N, A, B, Q, R, cl):
         if i == 0:
             dPdt = dPidt
         else:
-            dPdt = np.concatenate((dPdt, dPidt), axis=None)
-    return dPdt
+            dPdt = np.concatenate((dPdt, dPidt), axis=1)
+    return np.ravel(dPdt)
 
 
 def plot(m, s, P):
