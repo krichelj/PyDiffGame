@@ -5,7 +5,7 @@ import time
 from PyDiffGame import check_input, get_care_P_f, plot, solve_N_coupled_riccati
 
 
-def solve_riccati(m, A, B, Q, R, cl, T_f=5, P_f=None, data_points=5000):
+def solve_diff_game(m, A, B, Q, R, cl, T_f=5, P_f=None, data_points=5000):
     check_input(m, A, B, Q, R, T_f, P_f, data_points)
     M = sum(m)
     N = len(B)
@@ -39,7 +39,7 @@ if __name__ == '__main__':
 
     cl = True
 
-    t, P = solve_riccati(m, A, B, Q, R, cl)
+    t, P = solve_diff_game(m, A, B, Q, R, cl)
     end = time.time()
 
     print(end - start)
