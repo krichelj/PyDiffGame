@@ -49,3 +49,5 @@ For the finite horizon case, minimizing the aforementioned cost functions result
 where:
 
 <img src="https://render.githubusercontent.com/render/math?math=P_{f_i} \geq 0 \ : \ \forall 1 \leq i \leq N">
+
+Thus in the finite horizon case, the input includes <img src="https://render.githubusercontent.com/render/math?math=\{ m_i \}_{i=1}^N, A, \{ B_i \}_{i=1}^N, \{ Q_i \}_{i=1}^N, \{ \{ R_{ij} \}_{i=1}^N\}_{j=1}^N, T_f, x_0, \{ P_{f_i} \}_{i=1}^N, \psi"> and for the infinite horizon case - the same input holds but without the values for <img src="https://render.githubusercontent.com/render/math?math=P_{f}">.
