@@ -1,15 +1,23 @@
 # PyDiffGame
   * [What is this?](#what-is-this)
   * [Required Input](#input-Parameters)
-  
+
 ## Additional Information
   * [Mathematical Description](Math.md)
   * [Supported Scenarios](Scenarios.md)
   * [References](Math.md#references)
-  
+
 ## What is this?
 `PyDiffGame` is a Python package that allows to solve equations arising in models that involve the use of differential 
 games for finding optimal controllers of a multi-objective system with multiple controlled objects.
+
+## Local Installation
+To import locally from Git to a Jupyter notebook:
+```
+! git init
+! git remote add origin https://github.com/krichelj/PyDiffGame.git
+! git pull origin master
+```
 
 ## Input Parameters
 
