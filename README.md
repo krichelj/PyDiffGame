@@ -1,5 +1,6 @@
 # PyDiffGame
   * [What is this?](#what-is-this)
+  * [Local Installation](#local-installation)
   * [Required Input](#input-Parameters)
 
 ## Additional Information
