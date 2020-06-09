@@ -46,20 +46,21 @@ def check_input(m, A, B, Q, R, X0, T_f, P_f, data_points):
     N = len(B)
     P_size = M ** 2
 
-    if not all([isinstance(m_i, int) and m_i > 0 for m_i in m]):
-        raise ValueError('The state variables dimensions must all be positive integers')
-    if not A.shape == (M, M):
-        raise ValueError('The system matrix A must be of size MxM')
-    if not all([B_i.shape[0] == M for B_i in B]):
-        raise ValueError('The matrices B_i must all have M rows')
-    if not all([B_i.shape[1] == R_i.shape[0] == R_i.shape[1] for B_i, R_i in zip(B, R)]):
-        raise ValueError('The matrices B_i, R_i must have corresponding dimensions')
-    if not all([np.all(eigvals(Q_i) >= 0) for Q_i in Q]):
-        raise ValueError('The weight matrices Q_i must all be positive semi-definite')
-    if not all([np.all(eigvals(R_i) > 0) for R_i in R]):
-        raise ValueError('The weight matrices R_i must all be positive definite')
-    if not X0.shape == (M, ):
-        raise ValueError('The initial state vector should be of dimension M')
+    if not (isinstance(m, list) and all([isinstance(m_i, int) and m_i > 0 for m_i in m])):
+        raise ValueError('m must be a list of positive integers')
+    if not (isinstance(A, np.ndarray) and A.shape == (M, M)):
+        raise ValueError('A must be a square 2-d numpy array with shape MxM')
+    if not (isinstance(B, list) and all([isinstance(B_i, np.ndarray) and B_i.shape[0] == M for B_i in B])):
+        raise ValueError('B must be a list of 2-d numpy arrays with M rows')
+    if not (isinstance(B, list) and all([isinstance(R_i, np.ndarray) and B_i.shape[1] == R_i.shape[0] == R_i.shape[1]
+            and np.all(eigvals(R_i) > 0) for B_i, R_i in zip(B, R)])):
+        raise ValueError('R must be a list of square 2-d positive definite numpy arrays with shape '
+                         'corresponding to the second dimensions of the arrays in B')
+    if not (isinstance(Q, list) and all([isinstance(Q_i, np.ndarray) and Q_i.shape == (M, M)
+                                         and np.all(eigvals(Q_i) >= 0) for Q_i in Q])):
+        raise ValueError('Q must be a list of square 2-d positive semi-definite numpy arrays with shape MxM')
+    if not (isinstance(X0, np.ndarray) and X0.shape == (M, )):
+        raise ValueError('X0 must be a 1-d numpy array with length M')
 
     valid_T_f = isinstance(T_f, (float, int)) and T_f < 100
     valid_P_f = P_f is not None
@@ -106,12 +107,13 @@ def solve_N_coupled_riccati(_, P, M, N, A, B, Q, R, cl):
     return np.ravel(dPdt)
 
 
-def plot(m, s, mat, is_P):
+def plot(m, N, s, mat, is_P):
     M = sum(m)
-    V = range(1, len(m) + 1)
-    U = range(1, int(M) + 1)
+    V = range(1, N + 1)
+    U = range(1, M + 1)
 
-    legend = tuple(['${' + ('P' if is_P else 'X') + str(i) + '}_{' + str(j) + str(k) + '}$' for i in V for j in U for k in U])
+    legend = tuple(['${' + ('P' if is_P else 'X') + str(i) + '}_{' + str(j) + str(k) + '}$'
+                    for i in V for j in U for k in U])
 
     plt.figure(dpi=130)
     plt.plot(s, mat)
@@ -157,33 +159,43 @@ def solve_diff_game(m, A, B, Q, R, cl, X0, T_f=5, P_f=None, data_points=10000):
     else:
         P = odeint(func=solve_N_coupled_riccati, y0=P_f, t=t, args=(M, N, A, B, Q, R, cl), tfirst=True)
 
-    plot(m, t, P, True)
+    plot(m, N, t, P, True)
 
     forward_t = t[::-1]
     X = simulate_state_space(P, M, A, R, B, N, X0, forward_t)
-    plot(m, forward_t, X, False)
+    plot(m, N, forward_t, X, False)
 
 
 if __name__ == '__main__':
     # start = time.time()
-    m = [2, 2]
+    m = [2]
 
-    A = np.diag([2, 1, 1, 4])
-    B = [np.diag([2, 1, 1, 2]),
-         np.diag([1, 2, 2, 1])]
-    Q = [np.diag([2, 1, 2, 2]),
-         np.diag([1, 2, 3, 4])]
-    R = [np.diag([100, 200, 100, 200]),
-         np.diag([100, 300, 200, 400])]
-    coupled_R = [np.diag([100, 200, 100, 200]),
-                 np.diag([100, 300, 200, 400])]
+    A = np.array([[-2, 1],
+                  [1, 4]])
+    B = [np.array([[1, 0],
+                  [0, 1]]),
+         np.array([[0],
+                  [1]]),
+         np.array([[1],
+                  [0]])]
+    Q = [np.array([[1, 0],
+                  [0, 1]]),
+         np.array([[1, 0],
+                   [0, 10]]),
+         np.array([[10, 0],
+                   [0, 1]])
+         ]
+    R = [np.array([[100, 0],
+                  [0, 200]]),
+         np.array([[5]]),
+         np.array([[7]])]
 
     cl = True
-    T_f = 3
-    P_f = get_care_P_f(A, B, Q, R)
+    T_f = 5
+    P_f = np.array([10, 0, 0, 20, 30, 0, 0, 40, 50, 0, 0, 60])
     data_points = 1000
 
-    X0 = np.array([10, 20, 30, 100])
+    X0 = np.array([10, 20])
 
     solve_diff_game(m, A, B, Q, R, cl, X0, T_f, P_f, data_points)
     # end = time.time()
