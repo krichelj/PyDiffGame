@@ -41,7 +41,7 @@ def get_care_P_f(A, B, Q, R):
     return P_f
 
 
-def check_input(m, A, B, Q, R, T_f, P_f, data_points):
+def check_input(m, A, B, Q, R, X0, T_f, P_f, data_points):
     M = sum(m)
     N = len(B)
     P_size = M ** 2
@@ -58,6 +58,8 @@ def check_input(m, A, B, Q, R, T_f, P_f, data_points):
         raise ValueError('The weight matrices Q_i must all be positive semi-definite')
     if not all([np.all(eigvals(R_i) > 0) for R_i in R]):
         raise ValueError('The weight matrices R_i must all be positive definite')
+    if not X0.shape == (M, ):
+        raise ValueError('The initial state vector should be of dimension M')
 
     valid_T_f = isinstance(T_f, (float, int)) and T_f < 100
     valid_P_f = P_f is not None
@@ -143,7 +145,7 @@ def simulate_state_space(P, M, A, R, B, N, X0, t):
 
 
 def solve_diff_game(m, A, B, Q, R, cl, X0, T_f=5, P_f=None, data_points=10000):
-    check_input(m, A, B, Q, R, T_f, P_f, data_points)
+    check_input(m, A, B, Q, R, X0, T_f, P_f, data_points)
     M = sum(m)
     N = len(B)
     t = np.linspace(T_f, 0, data_points)
