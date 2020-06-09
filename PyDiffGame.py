@@ -115,7 +115,7 @@ def plot(m, N, s, mat, is_P):
     plt.figure(dpi=130)
     plt.plot(s, mat)
     plt.xlabel('Time')
-    plt.legend(legend, loc='best', ncol=int(M / 2), prop={'size': int(20 / M)})
+    plt.legend(legend, loc='upper left' if is_P else 'best', ncol=int(M / 2), prop={'size': int(20 / M)})
     plt.grid()
     plt.show()
 
