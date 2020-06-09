@@ -26,17 +26,17 @@ where:
 
 Let us define for each control agenda a weighted cost function to be minimized:
 
-<img src="https://render.githubusercontent.com/render/math?math=J_i = \int_0^{T_f} (x^TQ_ix %2B \sum_{j=1}^N u_j^TR_{ij}u_j)dt \ : \ \forall 1 \leq i \leq N">
+<img src="https://render.githubusercontent.com/render/math?math=J_i = \int_0^{T_f} (x^TQ_ix %2B \sum_{j=1}^N u_j^TR_{j}u_j)dt \ : \ \forall 1 \leq i \leq N">
 
 where:
 
-<img src="https://render.githubusercontent.com/render/math?math=Q_i \in \mathbb{R}^{M \times M}, R_{ij} \in \mathbb{R}^{k_j \times k_j} \ : \ \forall 1 \leq i \leq j \leq N">
+<img src="https://render.githubusercontent.com/render/math?math=Q_i \in \mathbb{R}^{M \times M}, R_{i} \in \mathbb{R}^{k_i \times k_i} \ : \ \forall 1 \leq i \leq N">
 
 such that:
 
-<img src="https://render.githubusercontent.com/render/math?math=Q_i \geq 0, R_{ii} > 0 \ : \ \forall 1 \leq i \leq N, R_{ij} \geq 0 \ : \ \forall 1 \leq i < j \leq N">
+<img src="https://render.githubusercontent.com/render/math?math=Q_i \geq 0, R_{i} > 0 \ : \ \forall 1 \leq i \leq N">
 
-i.e. <img src="https://render.githubusercontent.com/render/math?math=Q_i, R_{ij}"> are positive semi-definite for all <img src="https://render.githubusercontent.com/render/math?math=1 \leq i < j \leq N"> and <img src="https://render.githubusercontent.com/render/math?math=R_{ii}"> is positive-definite for all <img src="https://render.githubusercontent.com/render/math?math=1 \leq i  \leq N">.
+i.e. <img src="https://render.githubusercontent.com/render/math?math=Q_i"> is positive semi-definite and <img src="https://render.githubusercontent.com/render/math?math=R_{i}"> is positive-definite for all <img src="https://render.githubusercontent.com/render/math?math=1 \leq i  \leq N">.
 
 The horizon <img src="https://render.githubusercontent.com/render/math?math=T_f"> is defined as such:
 
@@ -50,7 +50,7 @@ where:
 
 <img src="https://render.githubusercontent.com/render/math?math=P_{f_i} \geq 0 \ : \ \forall 1 \leq i \leq N">
 
-Thus in the finite horizon case, the input includes <img src="https://render.githubusercontent.com/render/math?math=\{ m_i \}_{i=1}^N, A, \{ B_i \}_{i=1}^N, \{ Q_i \}_{i=1}^N, \{ \{ R_{ij} \}_{i=1}^N\}_{j=1}^N, T_f, x_0, \{ P_{f_i} \}_{i=1}^N, \psi"> and for the infinite horizon case - the same input holds but without the values for <img src="https://render.githubusercontent.com/render/math?math=P_{f}">.
+Thus in the finite horizon case, the input includes <img src="https://render.githubusercontent.com/render/math?math=\{ m_i \}_{i=1}^N, A, \{ B_i \}_{i=1}^N, \{ Q_i \}_{i=1}^N,  \{ R_{i} \}_{i=1}^N, T_f, x_0, \{ P_{f_i} \}_{i=1}^N, \psi"> and for the infinite horizon case - the same input holds but without the values for <img src="https://render.githubusercontent.com/render/math?math=P_{f}">.
 
 # References
 - **A Differential Game Approach to Formation Control**, Dongbing Gu, IEEE Transactions on Control Systems Technology, 2008

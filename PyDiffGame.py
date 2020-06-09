@@ -43,8 +43,6 @@ def get_care_P_f(A, B, Q, R):
 
 def check_input(m, A, B, Q, R, X0, T_f, P_f, data_points):
     M = sum(m)
-    N = len(B)
-    P_size = M ** 2
 
     if not (isinstance(m, list) and all([isinstance(m_i, int) and m_i > 0 for m_i in m])):
         raise ValueError('m must be a list of positive integers')
@@ -52,8 +50,8 @@ def check_input(m, A, B, Q, R, X0, T_f, P_f, data_points):
         raise ValueError('A must be a square 2-d numpy array with shape MxM')
     if not (isinstance(B, list) and all([isinstance(B_i, np.ndarray) and B_i.shape[0] == M for B_i in B])):
         raise ValueError('B must be a list of 2-d numpy arrays with M rows')
-    if not (isinstance(B, list) and all([isinstance(R_i, np.ndarray) and B_i.shape[1] == R_i.shape[0] == R_i.shape[1]
-            and np.all(eigvals(R_i) > 0) for B_i, R_i in zip(B, R)])):
+    if not (isinstance(R, list) and all([isinstance(R_i, np.ndarray) and B_i.shape[1] == R_i.shape[0] == R_i.shape[1]
+            and np.all(abs(eigvals(R_i)) > 1e-15) for B_i, R_i in zip(B, R)])):
         raise ValueError('R must be a list of square 2-d positive definite numpy arrays with shape '
                          'corresponding to the second dimensions of the arrays in B')
     if not (isinstance(Q, list) and all([isinstance(Q_i, np.ndarray) and Q_i.shape == (M, M)
@@ -62,19 +60,18 @@ def check_input(m, A, B, Q, R, X0, T_f, P_f, data_points):
     if not (isinstance(X0, np.ndarray) and X0.shape == (M, )):
         raise ValueError('X0 must be a 1-d numpy array with length M')
 
-    valid_T_f = isinstance(T_f, (float, int)) and T_f < 100
-    valid_P_f = P_f is not None
+    valid_T_f = isinstance(T_f, (float, int))
+    valid_P_f = P_f is not None and isinstance(P_f, list)
     valid_data_points = isinstance(data_points, int) and data_points < 10000
     finite_horizon = [valid_T_f, valid_P_f, valid_data_points]
 
     if any(finite_horizon) and not all(finite_horizon):
         raise ValueError('For finite horizon - T_f, P_f and the number of data points must all be defined as required')
     if valid_T_f and T_f <= 0:
-        raise ValueError('The horizon must be positive')
-    if valid_P_f and not \
-            all([eig >= 0 for eig_set in [eigvals(P_f[i * P_size:(i + 1) * P_size].reshape(M, M)) for i in range(N)]
-                 for eig in eig_set]):
-        raise ValueError('Final matrices P_f must all be positive semi-definite')
+        raise ValueError('T_f must be positive')
+    if valid_P_f and not all([eig >= 0 for eig_set in [eigvals(P_f_i) for P_f_i in P_f] for eig in eig_set]
+                             + [isinstance(P_i, np.ndarray) and P_i.shape[0] == P_i.shape[1] == M for P_i in P_f]):
+        raise ValueError('P_f must be a list of 2-d positive semi-definite numpy arrays with shape MxM')
     if valid_data_points and data_points <= 0:
         raise ValueError('There has to be a positive number of data points')
 
@@ -108,13 +105,13 @@ def solve_N_coupled_riccati(_, P, M, N, A, B, Q, R, cl):
 
 
 def plot(m, N, s, mat, is_P):
+    n = len(m)
     M = sum(m)
     V = range(1, N + 1)
     U = range(1, M + 1)
 
-    legend = tuple(['${' + ('P' if is_P else 'X') + str(i) + '}_{' + str(j) + str(k) + '}$'
-                    for i in V for j in U for k in U])
-
+    legend = tuple(['${P' + str(i) + '}_{' + str(j) + str(k) + '}$'for i in V for j in U for k in U] if is_P else
+                   ['${X' + (str(i) if n > 1 else '') + '}_{' + str(j) + '}$' for i in V for j in U])
     plt.figure(dpi=130)
     plt.plot(s, mat)
     plt.xlabel('Time')
@@ -157,7 +154,7 @@ def solve_diff_game(m, A, B, Q, R, cl, X0, T_f=5, P_f=None, data_points=10000):
         sol = solve_ivp(fun=solve_N_coupled_riccati, t_span=[T_f, 0], y0=P_f, args=(M, N, A, B, Q, R, cl), t_eval=t)
         P = np.swapaxes(sol.y, 0, 1)
     else:
-        P = odeint(func=solve_N_coupled_riccati, y0=P_f, t=t, args=(M, N, A, B, Q, R, cl), tfirst=True)
+        P = odeint(func=solve_N_coupled_riccati, y0=np.ravel(P_f), t=t, args=(M, N, A, B, Q, R, cl), tfirst=True)
 
     plot(m, N, t, P, True)
 
@@ -192,7 +189,12 @@ if __name__ == '__main__':
 
     cl = True
     T_f = 5
-    P_f = np.array([10, 0, 0, 20, 30, 0, 0, 40, 50, 0, 0, 60])
+    P_f = [np.array([[10, 0],
+                     [0, 20]]),
+           np.array([[30, 0],
+                     [0, 40]]),
+           np.array([[50, 0],
+                     [0, 60]])]
     data_points = 1000
 
     X0 = np.array([10, 20])
