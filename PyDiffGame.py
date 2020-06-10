@@ -58,7 +58,7 @@ def check_input(m, A, B, Q, R, X0, T_f, P_f, data_points):
     if not (isinstance(Q, list) and all([isinstance(Q_i, np.ndarray) and Q_i.shape == (M, M) for Q_i in Q])):
         raise ValueError('Q must be a list of square 2-d positive semi-definite numpy arrays with shape MxM')
     if not all([np.all(eigvals(Q_i) >= 0) for Q_i in Q]):
-        if all([np.all(abs(eigvals(Q_i)) <= 1e-15) for Q_i in Q]):
+        if all([np.all(eigvals(Q_i) >= -1e-15) for Q_i in Q]):
             warnings.warn("Warning: there is a matrix in Q that has negative (but really small) eigenvalues")
         else:
             raise ValueError('Q must contain positive semi-definite numpy arrays')
@@ -77,7 +77,7 @@ def check_input(m, A, B, Q, R, X0, T_f, P_f, data_points):
     if valid_P_f and not all([isinstance(P_i, np.ndarray) and P_i.shape[0] == P_i.shape[1] == M for P_i in P_f]):
         raise ValueError('P_f must be a list of 2-d positive semi-definite numpy arrays with shape MxM')
     if not all([eig >= 0 for eig_set in [eigvals(P_f_i) for P_f_i in P_f] for eig in eig_set]):
-        if all([abs(eig) <= 1e-15 for eig_set in [eigvals(P_f_i) for P_f_i in P_f] for eig in eig_set]):
+        if all([eig >= -1e-15 for eig_set in [eigvals(P_f_i) for P_f_i in P_f] for eig in eig_set]):
             warnings.warn("Warning: there is a matrix in P_f that has negative (but really small) eigenvalues")
         else:
             raise ValueError('P_f must contain positive semi-definite numpy arrays')
