@@ -12,6 +12,8 @@ Let us define the augmented state variable for all of these objects:
 
 <img src="https://render.githubusercontent.com/render/math?math=x = [x_1, ..., x_n]^T">
 
+<img src="https://render.githubusercontent.com/render/math?math=x = [x_{1,1}, ..., x_{1,m_1}, ...., x_{n,1}, ..., x_{n,m_n}]^T">
+
 where:
 
 <img src="https://render.githubusercontent.com/render/math?math=x \in \mathbb{R}^{M}, M = \sum_{i=1}^n m_i">
