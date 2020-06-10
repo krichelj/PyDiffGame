@@ -62,7 +62,7 @@ def check_input(m, A, B, Q, R, X0, T_f, P_f, data_points):
             warnings.warn("Warning: there is a matrix in Q that has negative (but really small) eigenvalues")
         else:
             raise ValueError('Q must contain positive semi-definite numpy arrays')
-    if not (isinstance(X0, np.ndarray) and X0.shape == (M, )):
+    if X0 is not None and not (isinstance(X0, np.ndarray) and X0.shape == (M, )):
         raise ValueError('X0 must be a 1-d numpy array with length M')
 
     valid_T_f = isinstance(T_f, (float, int))
@@ -145,11 +145,11 @@ def simulate_state_space(P, M, A, R, B, N, X0, t):
 
         if j > 0:
             j -= 1
-        return dXdt
+        return np.ravel(dXdt)
 
     X = odeint(stateDiffEqn, X0, t)
 
-    return np.ravel(X)
+    return X
 
 
 def solve_diff_game(m, A, B, Q, R, cl, X0=None, T_f=5, P_f=None, data_points=10000):
