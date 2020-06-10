@@ -149,10 +149,10 @@ def simulate_state_space(P, M, A, R, B, N, X0, t):
 
     X = odeint(stateDiffEqn, X0, t)
 
-    return X
+    return np.ravel(X)
 
 
-def solve_diff_game(m, A, B, Q, R, cl, X0, T_f=5, P_f=None, data_points=10000):
+def solve_diff_game(m, A, B, Q, R, cl, X0=None, T_f=5, P_f=None, data_points=10000):
     check_input(m, A, B, Q, R, X0, T_f, P_f, data_points)
     M = sum(m)
     N = len(B)
@@ -168,8 +168,12 @@ def solve_diff_game(m, A, B, Q, R, cl, X0, T_f=5, P_f=None, data_points=10000):
     plot(m, N, t, P, True)
 
     forward_t = t[::-1]
-    X = simulate_state_space(P, M, A, R, B, N, X0, forward_t)
-    plot(m, N, forward_t, X, False)
+
+    if X0 is not None:
+        X = simulate_state_space(P, M, A, R, B, N, X0, forward_t)
+        plot(m, N, forward_t, X, False)
+
+    return P
 
 
 if __name__ == '__main__':
@@ -208,7 +212,7 @@ if __name__ == '__main__':
 
     X0 = np.array([10, 20])
 
-    solve_diff_game(m, A, B, Q, R, cl, X0, T_f, P_f, data_points)
+    P = solve_diff_game(m, A, B, Q, R, cl, X0, T_f, P_f, data_points)
     # end = time.time()
 
     # print(end - start)

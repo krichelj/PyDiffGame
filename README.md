@@ -39,7 +39,7 @@ The input parameters for `solve_diff_game` are:
 >Indicates whether to render the closed (True) or open (False) loop behaviour
 * `T_f` : positive float, optional, default = 5
 >System dynamics horizon. Should be given in the case of finite horizon
-* `X_0` : numpy 2-d array, of shape(<img src="https://render.githubusercontent.com/render/math?math=M">)
+* `X_0` : numpy 2-d array, of shape(<img src="https://render.githubusercontent.com/render/math?math=M">), optional
 >Initial state vector
 * `P_f` : list of numpy 2-d arrays, of shape(<img src="https://render.githubusercontent.com/render/math?math=M, M">), optional, default = solution of scipy's `solve_continuous_are`
 >Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
