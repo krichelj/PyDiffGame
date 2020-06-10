@@ -88,7 +88,7 @@ X0 = np.array([10, 20])
 
 Invoking the function `solve_diff_game` as such:
 ```
-solve_diff_game(m, A, B, Q, R, cl, X0, T_f, P_f, data_points)
+P = solve_diff_game(m, A, B, Q, R, cl, X0, T_f, P_f, data_points)
 ```
 
 will result in the following plot for the Riccati equation solution:
