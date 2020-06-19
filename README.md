@@ -13,6 +13,11 @@
 games for finding optimal controllers of a multi-objective system with multiple controlled objects.
 
 ## Local Installation
+To clone Git repository locally run this from the command prompt:
+```
+git clone https://github.com/krichelj/PyDiffGame.git
+```
+
 To import locally from Git to a Jupyter notebook:
 ```
 ! git init
@@ -20,9 +25,16 @@ To import locally from Git to a Jupyter notebook:
 ! git pull origin master
 ```
 
+## Jupyter Notebook
+The following Jupyter Notebook includes the code with the appropriate input and
+illustrates a live simulation of the use of the output to implement a control task:
+
+[PyDiffGameGit Notebook](https://colab.research.google.com/drive/1SPA6OUob_vOMTy9X0sAdQHpWxlb9R10u?usp=sharing)
+
 ## Input Parameters
 
 The package a file named `PyDiffGame.py`. The main function is `solve_diff_game`.
+All the constants are defined in the [Mathematical Description](Math.md) section.
 The input parameters for `solve_diff_game` are:
 
 * `m` : list of positive ints, of len(<img src="https://render.githubusercontent.com/render/math?math=n">)
@@ -48,50 +60,49 @@ The input parameters for `solve_diff_game` are:
 
 ## Tutorial
 
-Let us consider the following input parameters:
+Let us consider the following input parameters and invocation of the `solve_diff_game` function:
 
-```
-m = [2]
+```python
+import numpy as np
+from PyDiffGame import solve_diff_game
+
+m = [2] # define one controlled object with two state variables
 
 A = np.array([[-2, 1],
-              [1, 4]])
+              [1, 4]]) # system dynamics matrix
 B = [np.array([[1, 0],
               [0, 1]]),
      np.array([[0],
               [1]]),
      np.array([[1],
-              [0]])]
+              [0]])] # define three agendas operating on different control signals
 Q = [np.array([[1, 0],
               [0, 1]]),
      np.array([[1, 0],
                [0, 10]]),
      np.array([[10, 0],
-               [0, 1]])
-     ]
+               [0, 1]])] # cost function state variables weights
 R = [np.array([[100, 0],
               [0, 200]]),
      np.array([[5]]),
-     np.array([[7]])]
+     np.array([[7]])] # cost function control signals weights
 
-cl = True
-T_f = 5
+cl = True # render the closed loop response
+X0 = np.array([10, 20]) # intial state vector
+T_f = 5 # horizon value
 P_f = [np.array([[10, 0],
                  [0, 20]]),
        np.array([[30, 0],
                  [0, 40]]),
        np.array([[50, 0],
-                 [0, 60]])]
+                 [0, 60]])] # Riccati matrix P final value
 data_points = 1000
+show_legend = True
 
-X0 = np.array([10, 20])
+P = solve_diff_game(m, A, B, Q, R, cl, X0, T_f, P_f, data_points, show_legend) # the function returns P
 ```
 
-Invoking the function `solve_diff_game` as such:
-```
-P = solve_diff_game(m, A, B, Q, R, cl, X0, T_f, P_f, data_points)
-```
-
-will result in the following plot for the Riccati equation solution:
+This will result in the following plot for the Riccati equation solution:
 
 <img src="https://github.com/krichelj/PyDiffGame/blob/master/images/tut1_riccati.png" width="640" alt="EKF pic">
 
