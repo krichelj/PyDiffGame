@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are
 from scipy.integrate import odeint, solve_ivp
 import warnings
-import time
 
 
 def get_P_f(m, B):
@@ -113,18 +112,21 @@ def solve_N_coupled_riccati(_, P, M, N, A, B, Q, R, cl):
     return np.ravel(dPdt)
 
 
-def plot(m, N, s, mat, is_P):
+def plot(m, N, s, mat, is_P, show_legend=True):
     n = len(m)
     M = sum(m)
     V = range(1, N + 1)
     U = range(1, M + 1)
 
-    legend = tuple(['${P' + str(i) + '}_{' + str(j) + str(k) + '}$'for i in V for j in U for k in U] if is_P else
-                   ['${X' + (str(i) if n > 1 else '') + '}_{' + str(j) + '}$' for i in V for j in U])
     plt.figure(dpi=130)
     plt.plot(s, mat)
     plt.xlabel('Time')
-    plt.legend(legend, loc='upper left' if is_P else 'best', ncol=int(M / 2), prop={'size': int(20 / M)})
+
+    if show_legend:
+        legend = tuple(['${P' + str(i) + '}_{' + str(j) + str(k) + '}$' for i in V for j in U for k in U] if is_P else
+                       ['${X' + (str(i) if n > 1 else '') + '}_{' + str(j) + '}$' for i in V for j in U])
+        plt.legend(legend, loc='upper left' if is_P else 'best', ncol=int(M / 2), prop={'size': int(20 / M)})
+
     plt.grid()
     plt.show()
 
@@ -152,7 +154,7 @@ def simulate_state_space(P, M, A, R, B, N, X0, t):
     return X
 
 
-def solve_diff_game(m, A, B, Q, R, cl, X0=None, T_f=5, P_f=None, data_points=10000):
+def solve_diff_game(m, A, B, Q, R, cl, X0=None, T_f=5, P_f=None, data_points=10000, show_legend=True):
     check_input(m, A, B, Q, R, X0, T_f, P_f, data_points)
     M = sum(m)
     N = len(B)
@@ -165,7 +167,7 @@ def solve_diff_game(m, A, B, Q, R, cl, X0=None, T_f=5, P_f=None, data_points=100
     else:
         P = odeint(func=solve_N_coupled_riccati, y0=np.ravel(P_f), t=t, args=(M, N, A, B, Q, R, cl), tfirst=True)
 
-    plot(m, N, t, P, True)
+    plot(m, N, t, P, True, show_legend)
 
     forward_t = t[::-1]
 
@@ -177,7 +179,6 @@ def solve_diff_game(m, A, B, Q, R, cl, X0=None, T_f=5, P_f=None, data_points=100
 
 
 if __name__ == '__main__':
-    # start = time.time()
     m = [2]
 
     A = np.array([[-2, 1],
@@ -201,6 +202,7 @@ if __name__ == '__main__':
          np.array([[7]])]
 
     cl = True
+    X0 = np.array([10, 20])
     T_f = 5
     P_f = [np.array([[10, 0],
                      [0, 20]]),
@@ -209,10 +211,6 @@ if __name__ == '__main__':
            np.array([[50, 0],
                      [0, 60]])]
     data_points = 1000
+    show_legend = True
 
-    X0 = np.array([10, 20])
-
-    P = solve_diff_game(m, A, B, Q, R, cl, X0, T_f, P_f, data_points)
-    # end = time.time()
-
-    # print(end - start)
+    P = solve_diff_game(m, A, B, Q, R, cl, X0, T_f, P_f, data_points, show_legend)
