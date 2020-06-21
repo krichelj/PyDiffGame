@@ -6,24 +6,6 @@ from scipy.integrate import odeint, solve_ivp
 import warnings
 
 
-def get_P_f(m, B):
-    M = sum(m)
-    N = len(B)
-    P_size = M ** 2
-    P_f = np.zeros((N * P_size,))
-
-    for i in range(N):
-        random_matrix = np.random.rand(M, M)
-        P_f_i = random_matrix.transpose() @ random_matrix
-        P_f_i = P_f_i.reshape((P_size,))
-
-        if i == 0:
-            P_f = P_f_i
-        else:
-            P_f = np.concatenate((P_f, P_f_i), axis=0)
-    return P_f
-
-
 def get_care_P_f(A, B, Q, R):
     M = A.shape[0]
     N = len(B)
@@ -41,11 +23,9 @@ def get_care_P_f(A, B, Q, R):
     return P_f
 
 
-def check_input(m, A, B, Q, R, X0, T_f, P_f, data_points):
-    M = sum(m)
+def check_input(A, B, Q, R, X0, T_f, P_f, data_points):
+    M = A.shape[0]
 
-    if not (isinstance(m, list) and all([isinstance(m_i, int) and m_i > 0 for m_i in m])):
-        raise ValueError('m must be a list of positive integers')
     if not (isinstance(A, np.ndarray) and A.shape == (M, M)):
         raise ValueError('A must be a square 2-d numpy array with shape MxM')
     if not (isinstance(B, list) and all([isinstance(B_i, np.ndarray) and B_i.shape[0] == M for B_i in B])):
@@ -112,9 +92,7 @@ def solve_N_coupled_riccati(_, P, M, N, A, B, Q, R, cl):
     return np.ravel(dPdt)
 
 
-def plot(m, N, s, mat, is_P, show_legend=True):
-    n = len(m)
-    M = sum(m)
+def plot(M, N, s, mat, is_P, show_legend=True):
     V = range(1, N + 1)
     U = range(1, M + 1)
 
@@ -124,7 +102,7 @@ def plot(m, N, s, mat, is_P, show_legend=True):
 
     if show_legend:
         legend = tuple(['${P' + str(i) + '}_{' + str(j) + str(k) + '}$' for i in V for j in U for k in U] if is_P else
-                       ['${X' + (str(i) if n > 1 else '') + '}_{' + str(j) + '}$' for i in V for j in U])
+                       ['${X' + (str(j) if M > 1 else '') + '}_{' + str(j) + '}$' for j in U])
         plt.legend(legend, loc='upper left' if is_P else 'best', ncol=int(M / 2), prop={'size': int(20 / M)})
 
     plt.grid()
@@ -154,9 +132,9 @@ def simulate_state_space(P, M, A, R, B, N, X0, t):
     return X
 
 
-def solve_diff_game(m, A, B, Q, R, cl, X0=None, T_f=5, P_f=None, data_points=10000, show_legend=True):
-    check_input(m, A, B, Q, R, X0, T_f, P_f, data_points)
-    M = sum(m)
+def solve_diff_game(A, B, Q, R, cl, X0=None, T_f=5, P_f=None, data_points=10000, show_legend=True):
+    check_input(A, B, Q, R, X0, T_f, P_f, data_points)
+    M = A.shape[0]
     N = len(B)
     t = np.linspace(T_f, 0, data_points)
 
@@ -167,20 +145,18 @@ def solve_diff_game(m, A, B, Q, R, cl, X0=None, T_f=5, P_f=None, data_points=100
     else:
         P = odeint(func=solve_N_coupled_riccati, y0=np.ravel(P_f), t=t, args=(M, N, A, B, Q, R, cl), tfirst=True)
 
-    plot(m, N, t, P, True, show_legend)
+    plot(M, N, t, P, True, show_legend)
 
     forward_t = t[::-1]
 
     if X0 is not None:
         X = simulate_state_space(P, M, A, R, B, N, X0, forward_t)
-        plot(m, N, forward_t, X, False)
+        plot(M, N, forward_t, X, False)
 
     return P
 
 
 if __name__ == '__main__':
-    m = [2]
-
     A = np.array([[-2, 1],
                   [1, 4]])
     B = [np.array([[1, 0],
@@ -213,4 +189,4 @@ if __name__ == '__main__':
     data_points = 1000
     show_legend = True
 
-    P = solve_diff_game(m, A, B, Q, R, cl, X0, T_f, P_f, data_points, show_legend)
+    P = solve_diff_game(A, B, Q, R, cl, X0, T_f, P_f, data_points, show_legend)
