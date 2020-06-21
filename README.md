@@ -18,19 +18,6 @@ To clone Git repository locally run this from the command prompt:
 git clone https://github.com/krichelj/PyDiffGame.git
 ```
 
-To import locally from Git to a Jupyter notebook:
-```
-! git init
-! git remote add origin https://github.com/krichelj/PyDiffGame.git
-! git pull origin master
-```
-
-## Jupyter Notebook
-The following Jupyter Notebook includes the code with the appropriate input and
-illustrates a live simulation of the use of the output to implement a control task:
-
-[PyDiffGameGit Notebook](https://colab.research.google.com/drive/1SPA6OUob_vOMTy9X0sAdQHpWxlb9R10u?usp=sharing)
-
 ## Input Parameters
 
 The package a file named `PyDiffGame.py`. The main function is `solve_diff_game`.
