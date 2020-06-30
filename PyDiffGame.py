@@ -31,7 +31,7 @@ def check_input(A, B, Q, R, X0, T_f, P_f, data_points):
     if not (isinstance(B, list) and all([isinstance(B_i, np.ndarray) and B_i.shape[0] == M for B_i in B])):
         raise ValueError('B must be a list of 2-d numpy arrays with M rows')
     if not (isinstance(R, list) and all([isinstance(R_i, np.ndarray) and B_i.shape[1] == R_i.shape[0] == R_i.shape[1]
-            and np.all(eigvals(R_i) >= 0) for B_i, R_i in zip(B, R)])):
+                                         and np.all(eigvals(R_i) >= 0) for B_i, R_i in zip(B, R)])):
         raise ValueError('R must be a list of square 2-d positive definite numpy arrays with shape '
                          'corresponding to the second dimensions of the arrays in B')
     if not (isinstance(Q, list) and all([isinstance(Q_i, np.ndarray) and Q_i.shape == (M, M) for Q_i in Q])):
@@ -41,7 +41,7 @@ def check_input(A, B, Q, R, X0, T_f, P_f, data_points):
             warnings.warn("Warning: there is a matrix in Q that has negative (but really small) eigenvalues")
         else:
             raise ValueError('Q must contain positive semi-definite numpy arrays')
-    if X0 is not None and not (isinstance(X0, np.ndarray) and X0.shape == (M, )):
+    if X0 is not None and not (isinstance(X0, np.ndarray) and X0.shape == (M,)):
         raise ValueError('X0 must be a 1-d numpy array with length M')
 
     valid_T_f = isinstance(T_f, (float, int))
@@ -64,13 +64,10 @@ def check_input(A, B, Q, R, X0, T_f, P_f, data_points):
         raise ValueError('There has to be a positive number of data points')
 
 
-def solve_N_coupled_riccati(_, P, M, N, A, B, Q, R, cl):
+def solve_N_coupled_riccati(_, P, M, N, A, A_t, S_matrices, Q, cl):
     P_size = M ** 2
-
     P_matrices = [(P[i * P_size:(i + 1) * P_size]).reshape(M, M) for i in range(N)]
-    S_matrices = [B[i] @ inv(R[i]) @ B[i].transpose() for i in range(N)]
     SP_sum = sum(a @ b for a, b in zip(S_matrices, P_matrices))
-    A_t = A.transpose()
     dPdt = np.zeros((P_size,))
 
     for i in range(N):
@@ -109,11 +106,9 @@ def plot(M, N, s, mat, is_P, show_legend=True):
     plt.show()
 
 
-def simulate_state_space(P, M, A, R, B, N, X0, t):
+def simulate_state_space(P, M, A, S_matrices, N, X0, t):
     j = len(P) - 1
     P_size = M ** 2
-
-    S_matrices = [B[i] @ inv(R[i]) @ B[i].transpose() for i in range(N)]
 
     def stateDiffEqn(X, _):
         nonlocal j
@@ -134,23 +129,29 @@ def simulate_state_space(P, M, A, R, B, N, X0, t):
 
 def solve_diff_game(A, B, Q, R, cl, X0=None, T_f=5, P_f=None, data_points=10000, show_legend=True):
     check_input(A, B, Q, R, X0, T_f, P_f, data_points)
+
     M = A.shape[0]
     N = len(B)
     t = np.linspace(T_f, 0, data_points)
 
+    A_t = A.transpose()
+    S_matrices = [B[i] @ inv(R[i]) @ B[i].transpose() for i in range(N)]
+
     if P_f is None:
         P_f = get_care_P_f(A, B, Q, R)
-        sol = solve_ivp(fun=solve_N_coupled_riccati, t_span=[T_f, 0], y0=P_f, args=(M, N, A, B, Q, R, cl), t_eval=t)
+        sol = solve_ivp(fun=solve_N_coupled_riccati, t_span=[T_f, 0], y0=P_f, args=(M, N, A, A_t, S_matrices, Q, cl),
+                        t_eval=t)
         P = np.swapaxes(sol.y, 0, 1)
     else:
-        P = odeint(func=solve_N_coupled_riccati, y0=np.ravel(P_f), t=t, args=(M, N, A, B, Q, R, cl), tfirst=True)
+        P = odeint(func=solve_N_coupled_riccati, y0=np.ravel(P_f), t=t, args=(M, N, A, A_t, S_matrices, Q, cl),
+                   tfirst=True)
 
     plot(M, N, t, P, True, show_legend)
 
     forward_t = t[::-1]
 
     if X0 is not None:
-        X = simulate_state_space(P, M, A, R, B, N, X0, forward_t)
+        X = simulate_state_space(P, M, A, S_matrices, N, X0, forward_t)
         plot(M, N, forward_t, X, False)
 
     return P
@@ -160,20 +161,20 @@ if __name__ == '__main__':
     A = np.array([[-2, 1],
                   [1, 4]])
     B = [np.array([[1, 0],
-                  [0, 1]]),
+                   [0, 1]]),
          np.array([[0],
-                  [1]]),
+                   [1]]),
          np.array([[1],
-                  [0]])]
+                   [0]])]
     Q = [np.array([[1, 0],
-                  [0, 1]]),
+                   [0, 1]]),
          np.array([[1, 0],
                    [0, 10]]),
          np.array([[10, 0],
                    [0, 1]])
          ]
     R = [np.array([[100, 0],
-                  [0, 200]]),
+                   [0, 200]]),
          np.array([[5]]),
          np.array([[7]])]
 
@@ -189,4 +190,8 @@ if __name__ == '__main__':
     data_points = 1000
     show_legend = True
 
-    P = solve_diff_game(A, B, Q, R, cl, X0, T_f, P_f, data_points, show_legend)
+    P = solve_diff_game(A=A, B=B, Q=Q, R=R, cl=cl, X0=X0, T_f=T_f, P_f=P_f, data_points=data_points,
+                        show_legend=show_legend)
+
+    # P = solve_diff_game(A=A, B=B, Q=Q, R=R, cl=cl, X0=X0, T_f=T_f, P_f=P_f, data_points=data_points,
+    #                     show_legend=show_legend)
