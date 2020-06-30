@@ -3,6 +3,7 @@ from numpy.linalg import eigvals, inv
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are
 from scipy.integrate import odeint, solve_ivp
+from scipy.optimize import fsolve
 import warnings
 
 
@@ -43,28 +44,22 @@ def check_input(A, B, Q, R, X0, T_f, P_f, data_points):
             raise ValueError('Q must contain positive semi-definite numpy arrays')
     if X0 is not None and not (isinstance(X0, np.ndarray) and X0.shape == (M,)):
         raise ValueError('X0 must be a 1-d numpy array with length M')
-
-    valid_T_f = isinstance(T_f, (float, int))
-    valid_P_f = P_f is not None and isinstance(P_f, list)
-    valid_data_points = isinstance(data_points, int) and data_points < 10000
-    finite_horizon = [valid_T_f, valid_P_f, valid_data_points]
-
-    if any(finite_horizon) and not all(finite_horizon):
-        raise ValueError('For finite horizon - T_f, P_f and the number of data points must all be defined as required')
-    if valid_T_f and T_f <= 0:
-        raise ValueError('T_f must be positive')
-    if valid_P_f and not all([isinstance(P_i, np.ndarray) and P_i.shape[0] == P_i.shape[1] == M for P_i in P_f]):
-        raise ValueError('P_f must be a list of 2-d positive semi-definite numpy arrays with shape MxM')
-    if not all([eig >= 0 for eig_set in [eigvals(P_f_i) for P_f_i in P_f] for eig in eig_set]):
-        if all([eig >= -1e-15 for eig_set in [eigvals(P_f_i) for P_f_i in P_f] for eig in eig_set]):
-            warnings.warn("Warning: there is a matrix in P_f that has negative (but really small) eigenvalues")
-        else:
-            raise ValueError('P_f must contain positive semi-definite numpy arrays')
-    if valid_data_points and data_points <= 0:
-        raise ValueError('There has to be a positive number of data points')
+    if T_f is not None and not (isinstance(T_f, (float, int)) and T_f > 0):
+        raise ValueError('T_f must be a positive real number')
+    if P_f is not None:
+        if not (isinstance(P_f, list) and
+                all([isinstance(P_i, np.ndarray) and P_i.shape[0] == P_i.shape[1] == M for P_i in P_f])):
+            raise ValueError('P_f must be a list of 2-d positive semi-definite numpy arrays with shape MxM')
+        if not all([eig >= 0 for eig_set in [eigvals(P_f_i) for P_f_i in P_f] for eig in eig_set]):
+            if all([eig >= -1e-15 for eig_set in [eigvals(P_f_i) for P_f_i in P_f] for eig in eig_set]):
+                warnings.warn("Warning: there is a matrix in P_f that has negative (but really small) eigenvalues")
+            else:
+                raise ValueError('P_f must contain positive semi-definite numpy arrays')
+    if not (isinstance(data_points, int) and data_points > 0):
+        raise ValueError('The number of data points must be a positive integer')
 
 
-def solve_N_coupled_riccati(_, P, M, N, A, A_t, S_matrices, Q, cl):
+def solve_N_coupled_riccati(P, M, N, A, A_t, S_matrices, Q, cl):
     P_size = M ** 2
     P_matrices = [(P[i * P_size:(i + 1) * P_size]).reshape(M, M) for i in range(N)]
     SP_sum = sum(a @ b for a, b in zip(S_matrices, P_matrices))
@@ -89,6 +84,10 @@ def solve_N_coupled_riccati(_, P, M, N, A, A_t, S_matrices, Q, cl):
     return np.ravel(dPdt)
 
 
+def solve_N_coupled_diff_riccati(_, P, M, N, A, A_t, S_matrices, Q, cl):
+    return solve_N_coupled_riccati(P, M, N, A, A_t, S_matrices, Q, cl)
+
+
 def plot(M, N, s, mat, is_P, show_legend=True):
     V = range(1, N + 1)
     U = range(1, M + 1)
@@ -106,52 +105,67 @@ def plot(M, N, s, mat, is_P, show_legend=True):
     plt.show()
 
 
-def simulate_state_space(P, M, A, S_matrices, N, X0, t):
+def simulate_state_space(P, M, A, S_matrices, N, X0, t, finite_horizon):
     j = len(P) - 1
     P_size = M ** 2
 
-    def stateDiffEqn(X, _):
+    def get_dXdt(X, P_matrices):
+        SP_sum = sum(a @ b for a, b in zip(S_matrices, P_matrices))
+        A_cl = A - SP_sum
+        dXdt = A_cl @ X
+
+        return dXdt
+
+    def finite_horizon_state_diff_eqn(X, _):
         nonlocal j
 
         P_matrices_j = [(P[j][i * P_size:(i + 1) * P_size]).reshape(M, M) for i in range(N)]
-        SP_sum = sum(a @ b for a, b in zip(S_matrices, P_matrices_j))
-        A_cl = A - SP_sum
-        dXdt = A_cl @ X
+        dXdt = get_dXdt(X, P_matrices_j)
 
         if j > 0:
             j -= 1
         return np.ravel(dXdt)
 
-    X = odeint(stateDiffEqn, X0, t)
+    def infinite_horizon_state_diff_eqn(X, _):
+        P_matrices = [(P[i * P_size:(i + 1) * P_size]).reshape(M, M) for i in range(N)]
+        dXdt = get_dXdt(X, P_matrices)
+
+        return np.ravel(dXdt)
+
+    X = odeint(finite_horizon_state_diff_eqn if finite_horizon else infinite_horizon_state_diff_eqn, X0, t)
 
     return X
 
 
-def solve_diff_game(A, B, Q, R, cl, X0=None, T_f=5, P_f=None, data_points=10000, show_legend=True):
+def solve_diff_game(A, B, Q, R, cl, X0=None, T_f=None, P_f=None, data_points=10000, show_legend=True):
     check_input(A, B, Q, R, X0, T_f, P_f, data_points)
 
     M = A.shape[0]
     N = len(B)
-    t = np.linspace(T_f, 0, data_points)
+    t = np.linspace(T_f if T_f else 5, 0, data_points)
 
     A_t = A.transpose()
     S_matrices = [B[i] @ inv(R[i]) @ B[i].transpose() for i in range(N)]
 
-    if P_f is None:
+    if T_f is None:
         P_f = get_care_P_f(A, B, Q, R)
-        sol = solve_ivp(fun=solve_N_coupled_riccati, t_span=[T_f, 0], y0=P_f, args=(M, N, A, A_t, S_matrices, Q, cl),
-                        t_eval=t)
-        P = np.swapaxes(sol.y, 0, 1)
+        P = fsolve(func=solve_N_coupled_riccati, x0=P_f, args=(M, N, A, A_t, S_matrices, Q, cl))
+        finite_horizon = False
     else:
-        P = odeint(func=solve_N_coupled_riccati, y0=np.ravel(P_f), t=t, args=(M, N, A, A_t, S_matrices, Q, cl),
-                   tfirst=True)
-
-    plot(M, N, t, P, True, show_legend)
-
-    forward_t = t[::-1]
+        if P_f is None:
+            P_f = get_care_P_f(A, B, Q, R)
+            sol = solve_ivp(fun=solve_N_coupled_diff_riccati, t_span=[T_f, 0], y0=P_f,
+                            args=(M, N, A, A_t, S_matrices, Q, cl), t_eval=t)
+            P = np.swapaxes(sol.y, 0, 1)
+        else:
+            P = odeint(func=solve_N_coupled_diff_riccati, y0=np.ravel(P_f), t=t,
+                       args=(M, N, A, A_t, S_matrices, Q, cl), tfirst=True)
+        plot(M, N, t, P, True, show_legend)
+        finite_horizon = True
 
     if X0 is not None:
-        X = simulate_state_space(P, M, A, S_matrices, N, X0, forward_t)
+        forward_t = t[::-1]
+        X = simulate_state_space(P, M, A, S_matrices, N, X0, forward_t, finite_horizon)
         plot(M, N, forward_t, X, False)
 
     return P
@@ -178,7 +192,7 @@ if __name__ == '__main__':
          np.array([[5]]),
          np.array([[7]])]
 
-    cl = True
+    cl = False
     X0 = np.array([10, 20])
     T_f = 5
     P_f = [np.array([[10, 0],
@@ -190,8 +204,7 @@ if __name__ == '__main__':
     data_points = 1000
     show_legend = True
 
-    P = solve_diff_game(A=A, B=B, Q=Q, R=R, cl=cl, X0=X0, T_f=T_f, P_f=P_f, data_points=data_points,
-                        show_legend=show_legend)
-
     # P = solve_diff_game(A=A, B=B, Q=Q, R=R, cl=cl, X0=X0, T_f=T_f, P_f=P_f, data_points=data_points,
     #                     show_legend=show_legend)
+
+    P = solve_diff_game(A=A, B=B, Q=Q, R=R, cl=cl, X0=X0, show_legend=show_legend)
