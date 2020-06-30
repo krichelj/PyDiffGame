@@ -24,8 +24,6 @@ The package a file named `PyDiffGame.py`. The main function is `solve_diff_game`
 All the constants are defined in the [Mathematical Description](Math.md) section.
 The input parameters for `solve_diff_game` are:
 
-* `m` : list of positive ints, of len(<img src="https://render.githubusercontent.com/render/math?math=n">)
->Lengths of controlled objects' state vectors
 * `A` : numpy 2-d array, of shape(<img src="https://render.githubusercontent.com/render/math?math=M,M">)
 >The system dynamics matrix
 * `B` : list of numpy 2-d arrays, of len(<img src="https://render.githubusercontent.com/render/math?math=N">), each matrix <img src="https://render.githubusercontent.com/render/math?math=B_j"> of shape(<img src="https://render.githubusercontent.com/render/math?math=M,k_j">), <img src="https://render.githubusercontent.com/render/math?math=j=1...N">
@@ -53,40 +51,40 @@ Let us consider the following input parameters and invocation of the `solve_diff
 import numpy as np
 from PyDiffGame import solve_diff_game
 
-m = [2] # define one controlled object with two state variables
-
 A = np.array([[-2, 1],
-              [1, 4]]) # system dynamics matrix
+                  [1, 4]])
 B = [np.array([[1, 0],
-              [0, 1]]),
+               [0, 1]]),
      np.array([[0],
-              [1]]),
+               [1]]),
      np.array([[1],
-              [0]])] # define three agendas operating on different control signals
+               [0]])]
 Q = [np.array([[1, 0],
-              [0, 1]]),
+               [0, 1]]),
      np.array([[1, 0],
                [0, 10]]),
      np.array([[10, 0],
-               [0, 1]])] # cost function state variables weights
+               [0, 1]])
+     ]
 R = [np.array([[100, 0],
-              [0, 200]]),
+               [0, 200]]),
      np.array([[5]]),
-     np.array([[7]])] # cost function control signals weights
+     np.array([[7]])]
 
-cl = True # render the closed loop response
-X0 = np.array([10, 20]) # intial state vector
-T_f = 5 # horizon value
+cl = False
+X0 = np.array([10, 20])
+T_f = 5
 P_f = [np.array([[10, 0],
                  [0, 20]]),
        np.array([[30, 0],
                  [0, 40]]),
        np.array([[50, 0],
-                 [0, 60]])] # Riccati matrix P final value
+                 [0, 60]])]
 data_points = 1000
 show_legend = True
 
-P = solve_diff_game(m, A, B, Q, R, cl, X0, T_f, P_f, data_points, show_legend) # the function returns P
+P = solve_diff_game(A=A, B=B, Q=Q, R=R, cl=cl, X0=X0, T_f=T_f, P_f=P_f, data_points=data_points, 
+                        show_legend=show_legend) # the function returns P
 ```
 
 This will result in the following plot for the Riccati equation solution:
