@@ -204,7 +204,7 @@ if __name__ == '__main__':
     data_points = 1000
     show_legend = True
 
-    # P = solve_diff_game(A=A, B=B, Q=Q, R=R, cl=cl, X0=X0, T_f=T_f, P_f=P_f, data_points=data_points,
-    #                     show_legend=show_legend)
+    P = solve_diff_game(A=A, B=B, Q=Q, R=R, cl=cl, X0=X0, T_f=T_f, P_f=P_f, data_points=data_points,
+                        show_legend=show_legend)
 
     P = solve_diff_game(A=A, B=B, Q=Q, R=R, cl=cl, X0=X0, show_legend=show_legend)
