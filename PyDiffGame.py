@@ -2,8 +2,7 @@ import numpy as np
 from numpy.linalg import eigvals, inv
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are
-from scipy.integrate import odeint, solve_ivp
-from scipy.optimize import fsolve
+from scipy.integrate import odeint
 import warnings
 
 
@@ -85,7 +84,8 @@ def solve_N_coupled_riccati(P, M, N, A, A_t, S_matrices, Q, cl):
 
 
 def solve_N_coupled_diff_riccati(_, P, M, N, A, A_t, S_matrices, Q, cl):
-    return solve_N_coupled_riccati(P, M, N, A, A_t, S_matrices, Q, cl)
+    sol = solve_N_coupled_riccati(P, M, N, A, A_t, S_matrices, Q, cl)
+    return sol
 
 
 def plot(M, N, s, mat, is_P, show_legend=True):
@@ -139,36 +139,31 @@ def simulate_state_space(P, M, A, S_matrices, N, X0, t, finite_horizon):
 
 def solve_diff_game(A, B, Q, R, cl, X0=None, T_f=None, P_f=None, data_points=10000, show_legend=True):
     check_input(A, B, Q, R, X0, T_f, P_f, data_points)
-
     M = A.shape[0]
     N = len(B)
-    t = np.linspace(T_f if T_f else 5, 0, data_points)
 
+    infinite_horizon = T_f is None
+    current_T_f = 5 if infinite_horizon else T_f
+    t = np.linspace(current_T_f, 0, data_points)
     A_t = A.transpose()
     S_matrices = [B[i] @ inv(R[i]) @ B[i].transpose() for i in range(N)]
 
-    if T_f is None:
+    if P_f is None:
         P_f = get_care_P_f(A, B, Q, R)
-        P = fsolve(func=solve_N_coupled_riccati, x0=P_f, args=(M, N, A, A_t, S_matrices, Q, cl))
-        finite_horizon = False
-    else:
-        if P_f is None:
-            P_f = get_care_P_f(A, B, Q, R)
-            sol = solve_ivp(fun=solve_N_coupled_diff_riccati, t_span=[T_f, 0], y0=P_f,
-                            args=(M, N, A, A_t, S_matrices, Q, cl), t_eval=t)
-            P = np.swapaxes(sol.y, 0, 1)
-        else:
-            P = odeint(func=solve_N_coupled_diff_riccati, y0=np.ravel(P_f), t=t,
-                       args=(M, N, A, A_t, S_matrices, Q, cl), tfirst=True)
+
+    P = odeint(func=solve_N_coupled_diff_riccati, y0=np.ravel(P_f), t=t,
+               args=(M, N, A, A_t, S_matrices, Q, cl), tfirst=True, rtol=1e-4 if infinite_horizon else 1.49012e-8)
+
+    if T_f:
         plot(M, N, t, P, True, show_legend)
-        finite_horizon = True
 
     if X0 is not None:
         forward_t = t[::-1]
-        X = simulate_state_space(P, M, A, S_matrices, N, X0, forward_t, finite_horizon)
+        X = simulate_state_space(P, M, A, S_matrices, N, X0, forward_t, current_T_f)
         plot(M, N, forward_t, X, False)
 
-    return P
+    output = P[-1] if infinite_horizon else P
+    return output
 
 
 if __name__ == '__main__':
@@ -204,7 +199,7 @@ if __name__ == '__main__':
     data_points = 1000
     show_legend = True
 
-    P = solve_diff_game(A=A, B=B, Q=Q, R=R, cl=cl, X0=X0, T_f=T_f, P_f=P_f, data_points=data_points,
-                        show_legend=show_legend)
-
-    P = solve_diff_game(A=A, B=B, Q=Q, R=R, cl=cl, X0=X0, show_legend=show_legend)
+    P = solve_diff_game(A=A, B=B, Q=Q, R=R, cl=cl, T_f=T_f, data_points=data_points, show_legend=show_legend)
+    print(P[-1])
+    P = solve_diff_game(A=A, B=B, Q=Q, R=R, cl=cl, show_legend=show_legend)
+    print(P)
