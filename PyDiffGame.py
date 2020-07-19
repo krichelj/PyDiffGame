@@ -1,9 +1,11 @@
 import numpy as np
-from numpy.linalg import eigvals, inv
+from numpy.linalg import eigvals, inv, norm
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are
-from scipy.integrate import odeint
+from scipy.integrate import odeint, solve_ivp
 import warnings
+
+global_solution = []
 
 
 def get_care_P_f(A, B, Q, R):
@@ -67,7 +69,6 @@ def solve_N_coupled_riccati(P, M, N, A, A_t, S_matrices, Q, cl):
     for i in range(N):
         P_i = P_matrices[i]
         Q_i = Q[i]
-
         dPidt = - A_t @ P_i - P_i @ A - Q_i + P_i @ SP_sum
 
         if cl:
@@ -80,7 +81,11 @@ def solve_N_coupled_riccati(P, M, N, A, A_t, S_matrices, Q, cl):
             dPdt = dPidt
         else:
             dPdt = np.concatenate((dPdt, dPidt), axis=0)
-    return np.ravel(dPdt)
+
+    global_solution.append(dPdt)
+    output = np.ravel(dPdt)
+
+    return output
 
 
 def solve_N_coupled_diff_riccati(_, P, M, N, A, A_t, S_matrices, Q, cl):
@@ -141,6 +146,7 @@ def solve_diff_game(A, B, Q, R, cl, X0=None, T_f=None, P_f=None, data_points=100
     check_input(A, B, Q, R, X0, T_f, P_f, data_points)
     M = A.shape[0]
     N = len(B)
+    P_size = M ** 2
 
     infinite_horizon = T_f is None
     current_T_f = 5 if infinite_horizon else T_f
@@ -151,8 +157,35 @@ def solve_diff_game(A, B, Q, R, cl, X0=None, T_f=None, P_f=None, data_points=100
     if P_f is None:
         P_f = get_care_P_f(A, B, Q, R)
 
-    P = odeint(func=solve_N_coupled_diff_riccati, y0=np.ravel(P_f), t=t,
-               args=(M, N, A, A_t, S_matrices, Q, cl), tfirst=True, rtol=1e-4 if infinite_horizon else 1.49012e-8)
+    convergence_norms = []
+
+    def convergence_criterion(t, y, M, N, A, A_t, S_matrices, Q, cl):
+
+        convergence = False
+        convergence_checking_points = 5
+        convergence_norm_threshold = 20
+
+        if len(global_solution) >= convergence_checking_points:
+            convergence_norms.append(
+                norm([norm(global_solution[-i] - y) for i in range(1, convergence_checking_points + 1)]))
+
+        if len(convergence_norms) > convergence_checking_points:
+            convergence = all([abs(convergence_norms[-i] - convergence_norms[-(i+1)]) < convergence_norm_threshold
+                   for i in range(1, convergence_checking_points + 1)])
+
+        result = int(convergence)
+        print(result)
+        return result - 1
+
+    convergence_criterion.terminal = True
+
+    sol = solve_ivp(fun=solve_N_coupled_diff_riccati, t_span=[current_T_f, 0], y0=P_f, dense_output=True,
+                    args=(M, N, A, A_t, S_matrices, Q, cl), t_eval=t, max_step=10e-2)
+    print('Status: ' + sol.message + ' Iterations num: ' + str(sol.nfev))
+    P = np.swapaxes(sol.y, 0, 1)
+
+    # P = odeint(func=solve_N_coupled_diff_riccati, y0=np.ravel(P_f), t=t,
+    #            args=(M, N, A, A_t, S_matrices, Q, cl), tfirst=True, rtol=1e-4 if infinite_horizon else 1.49012e-8)
 
     if T_f:
         plot(M, N, t, P, True, show_legend)
@@ -162,7 +195,7 @@ def solve_diff_game(A, B, Q, R, cl, X0=None, T_f=None, P_f=None, data_points=100
         X = simulate_state_space(P, M, A, S_matrices, N, X0, forward_t, current_T_f)
         plot(M, N, forward_t, X, False)
 
-    output = P[-1] if infinite_horizon else P
+    output = [(P[-1][i * P_size:(i + 1) * P_size]).reshape(M, M) for i in range(N)] if infinite_horizon else P
     return output
 
 
@@ -199,7 +232,7 @@ if __name__ == '__main__':
     data_points = 1000
     show_legend = True
 
-    P = solve_diff_game(A=A, B=B, Q=Q, R=R, cl=cl, T_f=T_f, data_points=data_points, show_legend=show_legend)
-    print(P[-1])
+    # P = solve_diff_game(A=A, B=B, Q=Q, R=R, cl=cl, T_f=T_f, data_points=data_points, show_legend=show_legend)
+    # print(P[-1])
     P = solve_diff_game(A=A, B=B, Q=Q, R=R, cl=cl, show_legend=show_legend)
     print(P)
