@@ -57,7 +57,6 @@ class PyDiffGame:
         self.__R = R
         self.__cl = cl
         self.__X0 = X0
-        self.__T_f = T_f
         self.__P_f = self.get_care_P_f() if P_f is None else P_f
         self.__show_legend = show_legend
         self.__infinite_horizon = T_f is None
@@ -123,7 +122,7 @@ class PyDiffGame:
         return P_f
 
     @staticmethod
-    def solve_N_coupled_riccati(P, M, N, A, A_t, S_matrices, Q, cl):
+    def solve_N_coupled_diff_riccati(_, P, M, N, A, A_t, S_matrices, Q, cl):
         P_size = M ** 2
         P_matrices = [(P[i * P_size:(i + 1) * P_size]).reshape(M, M) for i in range(N)]
         SP_sum = sum(a @ b for a, b in zip(S_matrices, P_matrices))
@@ -146,11 +145,6 @@ class PyDiffGame:
             else:
                 dPdt = np.concatenate((dPdt, dPidt), axis=0)
         return np.ravel(dPdt)
-
-    @staticmethod
-    def solve_N_coupled_diff_riccati(_, P, M, N, A, A_t, S_matrices, Q, cl):
-        sol = PyDiffGame.solve_N_coupled_riccati(P, M, N, A, A_t, S_matrices, Q, cl)
-        return sol
 
     def plot(self, t, mat, is_P):
         V = range(1, self.__N + 1)
