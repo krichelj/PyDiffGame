@@ -20,9 +20,11 @@ git clone https://github.com/krichelj/PyDiffGame.git
 
 ## Input Parameters
 
-The package a file named `PyDiffGame.py`. The main function is `solve_diff_game`.
+The package contains a file named `PyDiffGame.py` and a class of the same name.
+An object of the class represents an instance of differential game. Once the object is created,
+the method that calls for the game to begin is `play_the_game`.
 All the constants are defined in the [Mathematical Description](Math.md) section.
-The input parameters for `solve_diff_game` are:
+The input parameters to instantiate a `PyDiffGame` object are:
 
 * `A` : numpy 2-d array, of shape(<img src="https://render.githubusercontent.com/render/math?math=M,M">)
 >The system dynamics matrix
@@ -45,14 +47,15 @@ The input parameters for `solve_diff_game` are:
 
 ## Tutorial
 
-Let us consider the following input parameters and invocation of the `solve_diff_game` function:
+Let us consider the following input parameters for the instantiation of a `PyDiffGame` object and 
+corresponding call for `play_the_game`:
 
 ```python
 import numpy as np
-from PyDiffGame import solve_diff_game
+from PyDiffGame import PyDiffGame
 
 A = np.array([[-2, 1],
-                  [1, 4]])
+              [1, 4]])
 B = [np.array([[1, 0],
                [0, 1]]),
      np.array([[0],
@@ -83,8 +86,8 @@ P_f = [np.array([[10, 0],
 data_points = 1000
 show_legend = True
 
-P = solve_diff_game(A=A, B=B, Q=Q, R=R, cl=cl, X0=X0, T_f=T_f, P_f=P_f, data_points=data_points, 
-                        show_legend=show_legend) # the function returns P
+P = PyDiffGame(A=A, B=B, Q=Q, R=R, cl=cl, X0=X0, P_f =P_f, T_f=T_f, data_points=data_points,
+               show_legend=show_legend).play_the_game() # the function returns P
 ```
 
 This will result in the following plot for the Riccati equation solution:
