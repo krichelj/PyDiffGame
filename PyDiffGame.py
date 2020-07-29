@@ -226,7 +226,7 @@ if __name__ == '__main__':
          np.array([[7]])]
 
     cl = False
-    X0 = np.array([10, -10])
+    X0 = np.array([10, 20])
     T_f = 5
     P_f = [np.array([[10, 0],
                      [0, 20]]),
@@ -237,8 +237,8 @@ if __name__ == '__main__':
     data_points = 1000
     show_legend = True
 
-    P = PyDiffGame(A=A, B=B, Q=Q, R=R, cl=cl, X0=X0, T_f=T_f, data_points=data_points, show_legend=show_legend)\
-        .play_the_game()
+    P = PyDiffGame(A=A, B=B, Q=Q, R=R, cl=cl, X0=X0, P_f =P_f, T_f=T_f, data_points=data_points,
+                   show_legend=show_legend).play_the_game()
     print(P[-1])
     P = PyDiffGame(A=A, B=B, Q=Q, R=R, cl=cl, show_legend=show_legend).play_the_game()
     print(P[-1])
