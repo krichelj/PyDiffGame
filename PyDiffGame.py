@@ -79,7 +79,7 @@ class PyDiffGame:
             while not convergence:
                 self.__t = np.linspace(self.__current_T_f, self.__current_T_f - delta_T, delta_T_points)
                 P = odeint(func=PyDiffGame.solve_N_coupled_diff_riccati, y0=np.ravel(self.__P_f), t=self.__t,
-                           args=(self.__M, self.__N, self.__A, self.__A_t, self.__S_matrices, self.__Q, cl),
+                           args=(self.__M, self.__N, self.__A, self.__A_t, self.__S_matrices, self.__Q, self.__cl),
                            tfirst=True)
                 self.__P_f = P[-1]
 
@@ -112,7 +112,7 @@ class PyDiffGame:
         P_f = np.zeros((self.__N * self.__P_size,))
 
         for i in range(self.__N):
-            P_f_i = solve_continuous_are(A, B[i], Q[i], R[i]).reshape((self.__P_size,))
+            P_f_i = solve_continuous_are(self.__A, self.__B[i], self.__Q[i], self.__R[i]).reshape((self.__P_size,))
 
             if i == 0:
                 P_f = P_f_i
@@ -169,7 +169,7 @@ class PyDiffGame:
 
         def get_dXdt(X, P_matrices):
             SP_sum = sum(a @ b for a, b in zip(self.__S_matrices, P_matrices))
-            A_cl = A - SP_sum
+            A_cl = self.__A - SP_sum
             dXdt = A_cl @ X
 
             return dXdt
