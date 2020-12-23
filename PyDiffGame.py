@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are
 from scipy.integrate import odeint
 import warnings
-from typing import List
+from typing import List, Optional, Union
 
 
 class PyDiffGame:
@@ -44,31 +44,31 @@ class PyDiffGame:
             raise ValueError('The number of data points must be a positive integer')
 
     def __init__(self, A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
-                 cl: bool, X0: np.ndarray = None, T_f: float or int = None, P_f: List[np.ndarray] = None,
-                 data_points: int = 10000, show_legend: bool = True):
+                 cl: bool, X0: Optional[np.ndarray] = None, T_f: Optional[Union[float, int]] = None,
+                 P_f: Optional[List[np.ndarray]] = None, data_points: int = 10000, show_legend: bool = True):
         PyDiffGame.check_input(A, B, Q, R, X0, T_f, P_f, data_points)
 
-        self.__A = A
-        self.__B = B
-        self.__M = A.shape[0]
-        self.__N = len(B)
-        self.__P_size = self.__M ** 2
-        self.__Q = Q
-        self.__R = R
-        self.__cl = cl
-        self.__X0 = X0
-        self.__P_f = self.get_care_P_f() if P_f is None else P_f
-        self.__show_legend = show_legend
-        self.__infinite_horizon = T_f is None
-        self.__current_T_f = 20 if self.__infinite_horizon else T_f
-        self.__t = np.linspace(self.__current_T_f, 0, data_points)
-        self.__A_t = A.transpose()
-        self.__S_matrices = [B[i] @ inv(R[i]) @ B[i].transpose() for i in range(self.__N)]
+        self.A = A
+        self.B = B
+        self.M = A.shape[0]
+        self.N = len(B)
+        self.P_size = self.M ** 2
+        self.Q = Q
+        self.R = R
+        self.cl = cl
+        self.X0 = X0
+        self.P_f = self.get_care_P_f() if P_f is None else P_f
+        self.show_legend = show_legend
+        self.infinite_horizon = T_f is None
+        self.current_T_f = 20 if self.infinite_horizon else T_f
+        self.t = np.linspace(self.current_T_f, 0, data_points)
+        self.A_t = A.transpose()
+        self.S_matrices = [B[i] @ inv(R[i]) @ B[i].transpose() for i in range(self.N)]
 
-    def play_the_game(self):
-        P = []
+    def play_the_game(self) -> np.ndarray:
+        P = np.array([])
 
-        if self.__infinite_horizon:
+        if self.infinite_horizon:
             a_level = 10e-8
             delta_T = 5
             delta_T_points = 10
@@ -77,13 +77,12 @@ class PyDiffGame:
             convergence = False
 
             while not convergence:
-                self.__t = np.linspace(self.__current_T_f, self.__current_T_f - delta_T, delta_T_points)
-                P = odeint(func=PyDiffGame.solve_N_coupled_diff_riccati, y0=np.ravel(self.__P_f), t=self.__t,
-                           args=(self.__M, self.__N, self.__A, self.__A_t, self.__S_matrices, self.__Q, self.__cl),
-                           tfirst=True)
-                self.__P_f = P[-1]
+                self.t = np.linspace(self.current_T_f, self.current_T_f - delta_T, delta_T_points)
+                P = odeint(func=PyDiffGame.solve_N_coupled_diff_riccati, y0=np.ravel(self.P_f), t=self.t,
+                           args=(self.M, self.N, self.A, self.A_t, self.S_matrices, self.Q, self.cl), tfirst=True)
+                self.P_f = P[-1]
 
-                P_matrix_norm = norm(self.__P_f)
+                P_matrix_norm = norm(self.P_f)
                 last_Ps.append(P_matrix_norm)
 
                 if len(last_Ps) > 3:
@@ -93,26 +92,26 @@ class PyDiffGame:
                     if abs(last_Ps[2] - last_Ps[1]) < a_level and abs(last_Ps[1] - last_Ps[0]) < a_level:
                         convergence = True
 
-                self.__current_T_f -= delta_T
+                self.current_T_f -= delta_T
 
         else:
-            P = odeint(func=PyDiffGame.solve_N_coupled_diff_riccati, y0=np.ravel(self.__P_f), t=self.__t,
-                       args=(self.__M, self.__N, self.__A, self.__A_t, self.__S_matrices, self.__Q, self.__cl),
+            P = odeint(func=PyDiffGame.solve_N_coupled_diff_riccati, y0=np.ravel(self.P_f), t=self.t,
+                       args=(self.M, self.N, self.A, self.A_t, self.S_matrices, self.Q, self.cl),
                        tfirst=True)
-            self.plot(self.__t, P, True)
+            self.plot(self.t, P, True)
 
-        if self.__X0 is not None:
-            forward_t = self.__t[::-1]
+        if self.X0 is not None:
+            forward_t = self.t[::-1]
             X = self.simulate_state_space(forward_t, P)
             self.plot(forward_t, X, False)
 
         return P
 
     def get_care_P_f(self):
-        P_f = np.zeros((self.__N * self.__P_size,))
+        P_f = np.zeros((self.N * self.P_size,))
 
-        for i in range(self.__N):
-            P_f_i = solve_continuous_are(self.__A, self.__B[i], self.__Q[i], self.__R[i]).reshape((self.__P_size,))
+        for i in range(self.N):
+            P_f_i = solve_continuous_are(self.A, self.B[i], self.Q[i], self.R[i]).reshape((self.P_size,))
 
             if i == 0:
                 P_f = P_f_i
@@ -147,19 +146,19 @@ class PyDiffGame:
         return np.ravel(dPdt)
 
     def plot(self, t, mat, is_P):
-        V = range(1, self.__N + 1)
-        U = range(1, self.__M + 1)
+        V = range(1, self.N + 1)
+        U = range(1, self.M + 1)
 
         plt.figure(dpi=130)
         plt.plot(t, mat)
         plt.xlabel('Time')
 
-        if self.__show_legend:
+        if self.show_legend:
             legend = tuple(
                 ['${P' + str(i) + '}_{' + str(j) + str(k) + '}$' for i in V for j in U for k in U] if is_P else
-                ['${X' + (str(j) if self.__M > 1 else '') + '}_{' + str(j) + '}$' for j in U])
-            plt.legend(legend, loc='upper left' if is_P else 'best', ncol=int(self.__M / 2),
-                       prop={'size': int(20 / self.__M)})
+                ['${X' + (str(j) if self.M > 1 else '') + '}_{' + str(j) + '}$' for j in U])
+            plt.legend(legend, loc='upper left' if is_P else 'best', ncol=int(self.M / 2),
+                       prop={'size': int(20 / self.M)})
 
         plt.grid()
         plt.show()
@@ -168,8 +167,8 @@ class PyDiffGame:
         j = len(P) - 1
 
         def get_dXdt(X, P_matrices):
-            SP_sum = sum(a @ b for a, b in zip(self.__S_matrices, P_matrices))
-            A_cl = self.__A - SP_sum
+            SP_sum = sum(a @ b for a, b in zip(self.S_matrices, P_matrices))
+            A_cl = self.A - SP_sum
             dXdt = A_cl @ X
 
             return dXdt
@@ -177,8 +176,8 @@ class PyDiffGame:
         def finite_horizon_state_diff_eqn(X, _):
             nonlocal j
 
-            P_matrices_j = [(P[j][i * self.__P_size:(i + 1) * self.__P_size]).reshape(self.__M, self.__M)
-                            for i in range(self.__N)]
+            P_matrices_j = [(P[j][i * self.P_size:(i + 1) * self.P_size]).reshape(self.M, self.M)
+                            for i in range(self.N)]
             dXdt = get_dXdt(X, P_matrices_j)
 
             if j > 0:
@@ -186,14 +185,14 @@ class PyDiffGame:
             return np.ravel(dXdt)
 
         def infinite_horizon_state_diff_eqn(X, _):
-            P_matrices = [(P[i * self.__P_size:(i + 1) * self.__P_size]).reshape(self.__M, self.__M)
-                          for i in range(self.__N)]
+            P_matrices = [(P[i * self.P_size:(i + 1) * self.P_size]).reshape(self.M, self.M)
+                          for i in range(self.N)]
             dXdt = get_dXdt(X, P_matrices)
 
             return np.ravel(dXdt)
 
-        X = odeint(infinite_horizon_state_diff_eqn if self.__infinite_horizon else finite_horizon_state_diff_eqn,
-                   self.__X0, t)
+        X = odeint(infinite_horizon_state_diff_eqn if self.infinite_horizon else finite_horizon_state_diff_eqn,
+                   self.X0, t)
 
         return X
 
