@@ -329,8 +329,8 @@ def get_higher_level_control(state, st, a_y):
     return p_r, q_r, r_r, t_r, tilda_state
 
 
-v_d_s_0_2 = 0
-h_d_s_0_2 = 0
+v_d_s_0 = 0
+h_d_s_0 = 0
 
 
 def calculate_Bs(u_sizes, dividing_matrix, B):
@@ -350,7 +350,7 @@ def wall_punishment(wall_distance, a_y):
 
 
 def get_higher_level_control2(state, st, a_y):
-    global v_d_s_0_2, h_d_s_0_2, sum_theta
+    global v_d_s_0, h_d_s_0, sum_theta
     m = 0.65
     g = 9.81
     # a_y = 1

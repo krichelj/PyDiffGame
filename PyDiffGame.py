@@ -4,13 +4,15 @@ import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are
 from scipy.integrate import odeint
 import warnings
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 
 
 class PyDiffGame:
 
     @staticmethod
-    def check_input(A, B, Q, R, X0, T_f, P_f, data_points):
+    def check_input(A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
+                    X0: Optional[np.ndarray] = None, T_f: Optional[Union[float, int]] = None,
+                    P_f: Optional[List[np.ndarray]] = None, data_points: int = 10000):
         M = A.shape[0]
 
         if A.shape != (M, M):
@@ -121,7 +123,8 @@ class PyDiffGame:
         return P_f
 
     @staticmethod
-    def solve_N_coupled_diff_riccati(_, P, M, N, A, A_t, S_matrices, Q, cl):
+    def solve_N_coupled_diff_riccati(_, P: np.ndarray, M: int, N: int, A: np.ndarray, A_t: np.ndarray,
+                                     S_matrices, Q: List[np.ndarray], cl: bool):
         P_size = M ** 2
         P_matrices = [(P[i * P_size:(i + 1) * P_size]).reshape(M, M) for i in range(N)]
         SP_sum = sum(a @ b for a, b in zip(S_matrices, P_matrices))
@@ -145,7 +148,7 @@ class PyDiffGame:
                 dPdt = np.concatenate((dPdt, dPidt), axis=0)
         return np.ravel(dPdt)
 
-    def plot(self, t, mat, is_P):
+    def plot(self, t: np.ndarray, mat: Tuple[np.ndarray, dict], is_P: bool):
         V = range(1, self.N + 1)
         U = range(1, self.M + 1)
 
@@ -163,17 +166,17 @@ class PyDiffGame:
         plt.grid()
         plt.show()
 
-    def simulate_state_space(self, t, P):
+    def simulate_state_space(self, t: np.ndarray, P: np.ndarray):
         j = len(P) - 1
 
-        def get_dXdt(X, P_matrices):
+        def get_dXdt(X: np.ndarray, P_matrices: List[np.ndarray]):
             SP_sum = sum(a @ b for a, b in zip(self.S_matrices, P_matrices))
             A_cl = self.A - SP_sum
             dXdt = A_cl @ X
 
             return dXdt
 
-        def finite_horizon_state_diff_eqn(X, _):
+        def finite_horizon_state_diff_eqn(X: np.ndarray, _):
             nonlocal j
 
             P_matrices_j = [(P[j][i * self.P_size:(i + 1) * self.P_size]).reshape(self.M, self.M)
@@ -184,7 +187,7 @@ class PyDiffGame:
                 j -= 1
             return np.ravel(dXdt)
 
-        def infinite_horizon_state_diff_eqn(X, _):
+        def infinite_horizon_state_diff_eqn(X: np.ndarray, _):
             P_matrices = [(P[i * self.P_size:(i + 1) * self.P_size]).reshape(self.M, self.M)
                           for i in range(self.N)]
             dXdt = get_dXdt(X, P_matrices)
