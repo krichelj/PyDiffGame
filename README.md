@@ -26,21 +26,21 @@ the method that calls for the game to begin is `play_the_game`.
 All the constants are defined in the [Mathematical Description](Math.md) section.
 The input parameters to instantiate a `PyDiffGame` object are:
 
-* `A` : numpy 2-d array, of shape(<img src="https://render.githubusercontent.com/render/math?math=M,M">)
+* `A` : numpy 2-d array, of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}M,M">)
 >The system dynamics matrix
-* `B` : list of numpy 2-d arrays, of len(<img src="https://render.githubusercontent.com/render/math?math=N">), each matrix <img src="https://render.githubusercontent.com/render/math?math=B_j"> of shape(<img src="https://render.githubusercontent.com/render/math?math=M,k_j">), <img src="https://render.githubusercontent.com/render/math?math=j=1...N">
+* `B` : list of numpy 2-d arrays, of len(<img src="https://render.githubusercontent.com/render/math?math=\color{white}N">), each matrix <img src="https://render.githubusercontent.com/render/math?math=\color{white}B_j"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}M,k_j">), <img src="https://render.githubusercontent.com/render/math?math=\color{white}j=1...N">
 >System input matrices for each control agenda
-* `Q` : list of numpy 2-d arrays, of len(<img src="https://render.githubusercontent.com/render/math?math=N">), each matrix <img src="https://render.githubusercontent.com/render/math?math=Q_j"> of shape(<img src="https://render.githubusercontent.com/render/math?math=M,M">), <img src="https://render.githubusercontent.com/render/math?math=j=1...N">
+* `Q` : list of numpy 2-d arrays, of len(<img src="https://render.githubusercontent.com/render/math?math=\color{white}N">), each matrix <img src="https://render.githubusercontent.com/render/math?math=\color{white}Q_j"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}M,M">), <img src="https://render.githubusercontent.com/render/math?math=\color{white}j=1...N">
 >Cost function state weights for each control agenda
-* `R` : list of numpy 2-d arrays, of len(<img src="https://render.githubusercontent.com/render/math?math=N">), each matrix <img src="https://render.githubusercontent.com/render/math?math=R_{j}"> of shape(<img src="https://render.githubusercontent.com/render/math?math=k_j,k_j">), <img src="https://render.githubusercontent.com/render/math?math=j=1...N">
+* `R` : list of numpy 2-d arrays, of len(<img src="https://render.githubusercontent.com/render/math?math=\color{white}N">), each matrix <img src="https://render.githubusercontent.com/render/math?math=\color{white}R_{j}"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}k_j,k_j">), <img src="https://render.githubusercontent.com/render/math?math=\color{white}j=1...N">
 >Cost function input weights for each control agenda
 * `cl` : boolean
 >Indicates whether to render the closed (True) or open (False) loop behaviour
 * `T_f` : positive float, optional, default = 5
 >System dynamics horizon. Should be given in the case of finite horizon
-* `X_0` : numpy 2-d array, of shape(<img src="https://render.githubusercontent.com/render/math?math=M">), optional
+* `X_0` : numpy 2-d array, of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}M">), optional
 >Initial state vector
-* `P_f` : list of numpy 2-d arrays, of shape(<img src="https://render.githubusercontent.com/render/math?math=M, M">), optional, default = solution of scipy's `solve_continuous_are`
+* `P_f` : list of numpy 2-d arrays, of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}M, M">), optional, default = solution of scipy's `solve_continuous_are`
 >Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
 * `data_points` : positive int, optional, default = 1000
 >Number of data points to evaluate the Riccati equation matrix. Should be given in the case of finite horizon
