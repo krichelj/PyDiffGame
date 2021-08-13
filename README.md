@@ -29,11 +29,11 @@ The input parameters to instantiate a `PyDiffGame` object are:
 * `A` : numpy 2-d array, of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}M,M">)
 >The system dynamics matrix
 * `B` : list of numpy 2-d arrays, of len(<img src="https://render.githubusercontent.com/render/math?math=\color{white}N">), each matrix <img src="https://render.githubusercontent.com/render/math?math=\color{white}B_j"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}M,k_j">), <img src="https://render.githubusercontent.com/render/math?math=\color{white}j=1...N">
->System input matrices for each control agenda
+>System input matrices for each control objective
 * `Q` : list of numpy 2-d arrays, of len(<img src="https://render.githubusercontent.com/render/math?math=\color{white}N">), each matrix <img src="https://render.githubusercontent.com/render/math?math=\color{white}Q_j"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}M,M">), <img src="https://render.githubusercontent.com/render/math?math=\color{white}j=1...N">
->Cost function state weights for each control agenda
+>Cost function state weights for each control objective
 * `R` : list of numpy 2-d arrays, of len(<img src="https://render.githubusercontent.com/render/math?math=\color{white}N">), each matrix <img src="https://render.githubusercontent.com/render/math?math=\color{white}R_{j}"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}k_j,k_j">), <img src="https://render.githubusercontent.com/render/math?math=\color{white}j=1...N">
->Cost function input weights for each control agenda
+>Cost function input weights for each control objective
 * `cl` : boolean
 >Indicates whether to render the closed (True) or open (False) loop behaviour
 * `T_f` : positive float, optional, default = 5
@@ -44,7 +44,9 @@ The input parameters to instantiate a `PyDiffGame` object are:
 >Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
 * `data_points` : positive int, optional, default = 1000
 >Number of data points to evaluate the Riccati equation matrix. Should be given in the case of finite horizon
-
+* `show_legend` : boolean
+>Indicates whether to display a legend in the plots (True) or not (False)
+> 
 ## Tutorial
 
 Let us consider the following input parameters for the instantiation of a `PyDiffGame` object and 
@@ -74,8 +76,8 @@ R = [np.array([[100, 0],
      np.array([[5]]),
      np.array([[7]])]
 
-cl = False
-X0 = np.array([10, 20])
+cl = True
+X_0 = np.array([10, 20])
 T_f = 5
 P_f = [np.array([[10, 0],
                  [0, 20]]),
@@ -86,8 +88,18 @@ P_f = [np.array([[10, 0],
 data_points = 1000
 show_legend = True
 
-P = PyDiffGame(A=A, B=B, Q=Q, R=R, cl=cl, X0=X0, P_f =P_f, T_f=T_f, data_points=data_points,
-               show_legend=show_legend).play_the_game() # the function returns P
+game = PyDiffGame(A=A,
+                  B=B,
+                  Q=Q,
+                  R=R,
+                  cl=cl,
+                  X_0=X_0,
+                  P_f=P_f,
+                  T_f=T_f,
+                  data_points=data_points,
+                  show_legend=show_legend)
+
+P = game.play_the_game()
 ```
 
 This will result in the following plot for the Riccati equation solution:
