@@ -8,6 +8,54 @@ from typing import List, Optional, Union, Tuple
 
 
 class PyDiffGame:
+    """
+    Differential Game Base Class
+
+    Parameters
+    ----------
+    A: numpy 2-d array, of shape(M, M)
+        The system dynamics matrix
+    B: list of numpy 2-d arrays, of len(N), each matrix B_j of shape(M, k_j) for j = 1,...,N
+        System input matrices for each control objective
+    Q: list of numpy 2-d arrays, of len(N), each matrix Q_j of shape(M, M) for j = 1,...,N
+        Cost function state weights for each control objective
+    R: list of numpy 2-d arrays, of len(N), each matrix R_j of shape(k_j, k_j) for j = 1,...,N
+        Cost function input weights for each control objective
+    cl: boolean
+        Indicates whether to render the closed (True) or open (False) loop behaviour
+    T_f: positive float, optional, default = 5
+        System dynamics horizon. Should be given in the case of finite horizon
+    X_0: numpy 2-d array, of shape(), optional
+        Initial state vector
+    P_f: list of numpy 2-d arrays, of shape(), optional, default = solution of scipy's solve_continuous_are
+        Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
+    data_points: positive int, optional, default = 1000
+        Number of data points to evaluate the Riccati equation matrix. Should be given in the case of finite horizon
+    show_legend: boolean
+        Indicates whether to display a legend in the plots (True) or not (False)
+    """
+
+    def __init__(self, A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
+                 cl: bool, X_0: Optional[np.ndarray] = None, T_f: Optional[Union[float, int]] = None,
+                 P_f: Optional[List[np.ndarray]] = None, data_points: int = 10000, show_legend: bool = True):
+        PyDiffGame.check_input(A, B, Q, R, X_0, T_f, P_f, data_points)
+
+        self.A = A
+        self.B = B
+        self.M = A.shape[0]
+        self.N = len(B)
+        self.P_size = self.M ** 2
+        self.Q = Q
+        self.R = R
+        self.cl = cl
+        self.X_0 = X_0
+        self.P_f = self.get_care_P_f() if P_f is None else P_f
+        self.show_legend = show_legend
+        self.infinite_horizon = T_f is None
+        self.current_T_f = 20 if self.infinite_horizon else T_f
+        self.t = np.linspace(self.current_T_f, 0, data_points)
+        self.A_t = A.transpose()
+        self.S_matrices = [B[i] @ inv(R[i]) @ B[i].transpose() for i in range(self.N)]
 
     @staticmethod
     def check_input(A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
@@ -45,28 +93,6 @@ class PyDiffGame:
         if data_points <= 0:
             raise ValueError('The number of data points must be a positive integer')
 
-    def __init__(self, A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
-                 cl: bool, X0: Optional[np.ndarray] = None, T_f: Optional[Union[float, int]] = None,
-                 P_f: Optional[List[np.ndarray]] = None, data_points: int = 10000, show_legend: bool = True):
-        PyDiffGame.check_input(A, B, Q, R, X0, T_f, P_f, data_points)
-
-        self.A = A
-        self.B = B
-        self.M = A.shape[0]
-        self.N = len(B)
-        self.P_size = self.M ** 2
-        self.Q = Q
-        self.R = R
-        self.cl = cl
-        self.X0 = X0
-        self.P_f = self.get_care_P_f() if P_f is None else P_f
-        self.show_legend = show_legend
-        self.infinite_horizon = T_f is None
-        self.current_T_f = 20 if self.infinite_horizon else T_f
-        self.t = np.linspace(self.current_T_f, 0, data_points)
-        self.A_t = A.transpose()
-        self.S_matrices = [B[i] @ inv(R[i]) @ B[i].transpose() for i in range(self.N)]
-
     def play_the_game(self, a_level: float = 10e-8, delta_T: int = 5, delta_T_points: int = 10) -> np.ndarray:
         P = np.array([])
 
@@ -98,7 +124,7 @@ class PyDiffGame:
                        tfirst=True)
             self.plot(self.t, P, True)
 
-        if self.X0 is not None:
+        if self.X_0 is not None:
             forward_t = self.t[::-1]
             X = self.simulate_state_space(forward_t, P)
             self.plot(forward_t, X, False)
@@ -191,7 +217,7 @@ class PyDiffGame:
             return np.ravel(dXdt)
 
         X = odeint(infinite_horizon_state_diff_eqn if self.infinite_horizon else finite_horizon_state_diff_eqn,
-                   self.X0, t)
+                   self.X_0, t)
 
         return X
 
@@ -217,8 +243,8 @@ if __name__ == '__main__':
          np.array([[5]]),
          np.array([[7]])]
 
-    cl = False
-    X0 = np.array([10, 20])
+    cl = True
+    X_0 = np.array([10, 20])
     T_f = 5
     P_f = [np.array([[10, 0],
                      [0, 20]]),
@@ -229,8 +255,18 @@ if __name__ == '__main__':
     data_points = 1000
     show_legend = True
 
-    P = PyDiffGame(A=A, B=B, Q=Q, R=R, cl=cl, X0=X0, P_f =P_f, T_f=T_f, data_points=data_points,
-                   show_legend=show_legend).play_the_game()
+    game = PyDiffGame(A=A,
+                      B=B,
+                      Q=Q,
+                      R=R,
+                      cl=cl,
+                      X_0=X_0,
+                      P_f=P_f,
+                      T_f=T_f,
+                      data_points=data_points,
+                      show_legend=show_legend)
+
+    P = game.play_the_game()
     print(P[-1])
-    P = PyDiffGame(A=A, B=B, Q=Q, R=R, cl=cl, show_legend=show_legend).play_the_game()
-    print(P[-1])
+    # P = PyDiffGame(A=A, B=B, Q=Q, R=R, cl=cl, show_legend=show_legend).play_the_game()
+    # print(P[-1])
