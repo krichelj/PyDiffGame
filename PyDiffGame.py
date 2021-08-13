@@ -67,14 +67,10 @@ class PyDiffGame:
         self.A_t = A.transpose()
         self.S_matrices = [B[i] @ inv(R[i]) @ B[i].transpose() for i in range(self.N)]
 
-    def play_the_game(self) -> np.ndarray:
+    def play_the_game(self, a_level: float = 10e-8, delta_T: int = 5, delta_T_points: int = 10) -> np.ndarray:
         P = np.array([])
 
         if self.infinite_horizon:
-            a_level = 10e-8
-            delta_T = 5
-            delta_T_points = 10
-
             last_Ps = []
             convergence = False
 
