@@ -9,15 +9,15 @@ from typing import List, Optional, Union, Tuple
 
 class PyDiffGame:
     """
-    Differential Game Base Class
+    Differential game base class
 
     Parameters
     ----------
-    A: numpy 2-d array, of shape(M, M)
+    A: numpy 2-d array, of shape(n, n)
         The system dynamics matrix
-    B: list of numpy 2-d arrays, of len(N), each matrix B_j of shape(M, k_j) for j = 1,...,N
+    B: list of numpy 2-d arrays, of len(N), each matrix B_j of shape(n, k_j) for j = 1,...,N
         System input matrices for each control objective
-    Q: list of numpy 2-d arrays, of len(N), each matrix Q_j of shape(M, M) for j = 1,...,N
+    Q: list of numpy 2-d arrays, of len(N), each matrix Q_j of shape(n, M) for j = 1,...,N
         Cost function state weights for each control objective
     R: list of numpy 2-d arrays, of len(N), each matrix R_j of shape(k_j, k_j) for j = 1,...,N
         Cost function input weights for each control objective
@@ -25,9 +25,9 @@ class PyDiffGame:
         Indicates whether to render the closed (True) or open (False) loop behaviour
     T_f: positive float, optional, default = 5
         System dynamics horizon. Should be given in the case of finite horizon
-    X_0: numpy 2-d array, of shape(), optional
+    X_0: numpy 1-d array, of shape(n), optional
         Initial state vector
-    P_f: list of numpy 2-d arrays, of shape(), optional, default = solution of scipy's solve_continuous_are
+    P_f: list of numpy 2-d arrays, of shape(n, n), optional, default = solution of scipy's solve_continuous_are
         Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
     data_points: positive int, optional, default = 1000
         Number of data points to evaluate the Riccati equation matrix. Should be given in the case of finite horizon
@@ -42,9 +42,9 @@ class PyDiffGame:
 
         self.A = A
         self.B = B
-        self.M = A.shape[0]
+        self.n = A.shape[0]
         self.N = len(B)
-        self.P_size = self.M ** 2
+        self.P_size = self.n ** 2
         self.Q = Q
         self.R = R
         self.cl = cl
@@ -61,29 +61,35 @@ class PyDiffGame:
     def check_input(A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
                     X0: Optional[np.ndarray] = None, T_f: Optional[Union[float, int]] = None,
                     P_f: Optional[List[np.ndarray]] = None, data_points: int = 10000):
-        M = A.shape[0]
+        """
+        Input checking method
 
-        if A.shape != (M, M):
+        :raises Case-specific errors
+        """
+
+        n = A.shape[0]
+
+        if A.shape != (n, n):
             raise ValueError('A must be a square 2-d numpy array with shape MxM')
-        if any([B_i.shape[0] != M for B_i in B]):
+        if any([B_i.shape[0] != n for B_i in B]):
             raise ValueError('B must be a list of 2-d numpy arrays with M rows')
         if not all([B_i.shape[1] == R_i.shape[0] == R_i.shape[1]
                     and np.all(eigvals(R_i) >= 0) for B_i, R_i in zip(B, R)]):
             raise ValueError('R must be a list of square 2-d positive definite numpy arrays with shape '
                              'corresponding to the second dimensions of the arrays in B')
-        if any([Q_i.shape != (M, M) for Q_i in Q]):
+        if any([Q_i.shape != (n, n) for Q_i in Q]):
             raise ValueError('Q must be a list of square 2-d positive semi-definite numpy arrays with shape MxM')
         if any([np.all(eigvals(Q_i) < 0) for Q_i in Q]):
             if all([np.all(eigvals(Q_i) >= -1e-15) for Q_i in Q]):
                 warnings.warn("Warning: there is a matrix in Q that has negative (but really small) eigenvalues")
             else:
                 raise ValueError('Q must contain positive semi-definite numpy arrays')
-        if X0 is not None and X0.shape != (M,):
+        if X0 is not None and X0.shape != (n,):
             raise ValueError('X0 must be a 1-d numpy array with length M')
         if T_f is not None and T_f <= 0:
             raise ValueError('T_f must be a positive real number')
         if P_f is not None:
-            if not all([P_i.shape[0] == P_i.shape[1] == M for P_i in P_f]):
+            if not all([P_i.shape[0] == P_i.shape[1] == n for P_i in P_f]):
                 raise ValueError('P_f must be a list of 2-d positive semi-definite numpy arrays with shape MxM')
             if not all([eig >= 0 for eig_set in [eigvals(P_f_i) for P_f_i in P_f] for eig in eig_set]):
                 if all([eig >= -1e-15 for eig_set in [eigvals(P_f_i) for P_f_i in P_f] for eig in eig_set]):
@@ -93,7 +99,19 @@ class PyDiffGame:
         if data_points <= 0:
             raise ValueError('The number of data points must be a positive integer')
 
-    def play_the_game(self, a_level: float = 10e-8, delta_T: int = 5, delta_T_points: int = 10) -> np.ndarray:
+    def play_the_game(self, epsilon: float = 10e-8, delta_T: float = 5, delta_T_points: int = 10) -> np.ndarray:
+        """
+        Differential game evolution method
+
+        Parameters
+        ----------
+        epsilon: float
+            The convergence criterion constant
+        delta_T: float
+            The interval length
+        delta_T_points: int
+            Number of calculation points
+        """
         P = np.array([])
 
         if self.infinite_horizon:
@@ -103,7 +121,7 @@ class PyDiffGame:
             while not convergence:
                 self.t = np.linspace(self.current_T_f, self.current_T_f - delta_T, delta_T_points)
                 P = odeint(func=PyDiffGame.solve_N_coupled_diff_riccati, y0=np.ravel(self.P_f), t=self.t,
-                           args=(self.M, self.N, self.A, self.A_t, self.S_matrices, self.Q, self.cl), tfirst=True)
+                           args=(self.n, self.N, self.A, self.A_t, self.S_matrices, self.Q, self.cl), tfirst=True)
                 self.P_f = P[-1]
 
                 P_matrix_norm = norm(self.P_f)
@@ -113,14 +131,14 @@ class PyDiffGame:
                     last_Ps.pop(0)
 
                 if len(last_Ps) == 3:
-                    if abs(last_Ps[2] - last_Ps[1]) < a_level and abs(last_Ps[1] - last_Ps[0]) < a_level:
+                    if abs(last_Ps[2] - last_Ps[1]) < epsilon and abs(last_Ps[1] - last_Ps[0]) < epsilon:
                         convergence = True
 
                 self.current_T_f -= delta_T
 
         else:
             P = odeint(func=PyDiffGame.solve_N_coupled_diff_riccati, y0=np.ravel(self.P_f), t=self.t,
-                       args=(self.M, self.N, self.A, self.A_t, self.S_matrices, self.Q, self.cl),
+                       args=(self.A, self.A_t, self.S_matrices, self.Q, self.cl),
                        tfirst=True)
             self.plot(self.t, P, True)
 
@@ -145,10 +163,12 @@ class PyDiffGame:
         return P_f
 
     @staticmethod
-    def solve_N_coupled_diff_riccati(_, P: np.ndarray, M: int, N: int, A: np.ndarray, A_t: np.ndarray,
-                                     S_matrices, Q: List[np.ndarray], cl: bool):
-        P_size = M ** 2
-        P_matrices = [(P[i * P_size:(i + 1) * P_size]).reshape(M, M) for i in range(N)]
+    def solve_N_coupled_diff_riccati(_, P: np.ndarray, A: np.ndarray, A_t: np.ndarray, S_matrices: List[np.ndarray],
+                                     Q: List[np.ndarray], cl: bool):
+        n = A.shape[0]
+        N = len(Q)
+        P_size = n ** 2
+        P_matrices = [(P[i * P_size:(i + 1) * P_size]).reshape(n, n) for i in range(N)]
         SP_sum = sum(a @ b for a, b in zip(S_matrices, P_matrices))
         dPdt = np.zeros((P_size,))
 
@@ -172,7 +192,7 @@ class PyDiffGame:
 
     def plot(self, t: np.ndarray, mat: Tuple[np.ndarray, dict], is_P: bool):
         V = range(1, self.N + 1)
-        U = range(1, self.M + 1)
+        U = range(1, self.n + 1)
 
         plt.figure(dpi=130)
         plt.plot(t, mat)
@@ -181,9 +201,9 @@ class PyDiffGame:
         if self.show_legend:
             legend = tuple(
                 ['${P' + str(i) + '}_{' + str(j) + str(k) + '}$' for i in V for j in U for k in U] if is_P else
-                ['${X' + (str(j) if self.M > 1 else '') + '}_{' + str(j) + '}$' for j in U])
-            plt.legend(legend, loc='upper left' if is_P else 'best', ncol=int(self.M / 2),
-                       prop={'size': int(20 / self.M)})
+                ['${X' + (str(j) if self.n > 1 else '') + '}_{' + str(j) + '}$' for j in U])
+            plt.legend(legend, loc='upper left' if is_P else 'best', ncol=int(self.n / 2),
+                       prop={'size': int(20 / self.n)})
 
         plt.grid()
         plt.show()
@@ -201,7 +221,7 @@ class PyDiffGame:
         def finite_horizon_state_diff_eqn(X: np.ndarray, _):
             nonlocal j
 
-            P_matrices_j = [(P[j][i * self.P_size:(i + 1) * self.P_size]).reshape(self.M, self.M)
+            P_matrices_j = [(P[j][i * self.P_size:(i + 1) * self.P_size]).reshape(self.n, self.n)
                             for i in range(self.N)]
             dXdt = get_dXdt(X, P_matrices_j)
 
@@ -210,7 +230,7 @@ class PyDiffGame:
             return np.ravel(dXdt)
 
         def infinite_horizon_state_diff_eqn(X: np.ndarray, _):
-            P_matrices = [(P[i * self.P_size:(i + 1) * self.P_size]).reshape(self.M, self.M)
+            P_matrices = [(P[i * self.P_size:(i + 1) * self.P_size]).reshape(self.n, self.n)
                           for i in range(self.N)]
             dXdt = get_dXdt(X, P_matrices)
 
