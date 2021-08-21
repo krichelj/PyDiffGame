@@ -104,7 +104,7 @@ class PyDiffGame:
     def play_the_continuous_game(self, epsilon: float = 10e-8, delta_T: float = 5, delta_T_points: int = 10) \
             -> np.ndarray:
         """
-        Differential game evolution method
+        Differential game main evolution method for the continuous case
 
         Parameters
         ----------
@@ -117,8 +117,8 @@ class PyDiffGame:
 
         Returns
         -------
-        P : list of numpy 2-d array, , of len(N), each matrix P_j of shape(n, n)
-            Solutions to the continuous-time set of Riccati equations
+        P : numpy 2-d array, of shape(n, n) or of shape(n, n)
+            Solution to the continuous-time set of Riccati equations
         """
         P = np.array([])
 
@@ -170,7 +170,7 @@ class PyDiffGame:
         if self.X_0 is not None:
             forward_t = self.t[::-1]
             X = self.simulate_state_space(forward_t, P)
-            
+
             self.plot(t=forward_t,
                       mat=X,
                       is_P=False)
@@ -192,6 +192,13 @@ class PyDiffGame:
                 P_f = np.concatenate((P_f, P_f_i), axis=0)
 
         return P_f
+
+    def get_dXdt(self, X: np.ndarray, P_matrices: List[np.ndarray]):
+        SP_sum = sum(a @ b for a, b in zip(self.S_matrices, P_matrices))
+        A_cl = self.A - SP_sum
+        dXdt = A_cl @ X
+
+        return dXdt
 
     @staticmethod
     def solve_N_coupled_diff_riccati(_, P: np.ndarray, A: np.ndarray, A_t: np.ndarray, S_matrices: List[np.ndarray],
@@ -242,32 +249,19 @@ class PyDiffGame:
     def simulate_state_space(self, t: np.ndarray, P: np.ndarray):
         j = len(P) - 1
 
-        def get_dXdt(X: np.ndarray, P_matrices: List[np.ndarray]):
-            SP_sum = sum(a @ b for a, b in zip(self.S_matrices, P_matrices))
-            A_cl = self.A - SP_sum
-            dXdt = A_cl @ X
-
-            return dXdt
-
-        def finite_horizon_state_diff_eqn(X: np.ndarray, _):
+        def state_diff_eqn(X: np.ndarray, _):
             nonlocal j
 
             P_matrices_j = [(P[j][i * self.P_size:(i + 1) * self.P_size]).reshape(self.n, self.n)
                             for i in range(self.N)]
-            dXdt = get_dXdt(X, P_matrices_j)
+            dXdt = self.get_dXdt(X, P_matrices_j)
 
             if j > 0:
                 j -= 1
-            return np.ravel(dXdt)
-
-        def infinite_horizon_state_diff_eqn(X: np.ndarray, _):
-            P_matrices = [(P[i * self.P_size:(i + 1) * self.P_size]).reshape(self.n, self.n)
-                          for i in range(self.N)]
-            dXdt = get_dXdt(X, P_matrices)
 
             return np.ravel(dXdt)
 
-        X = odeint(infinite_horizon_state_diff_eqn if self.infinite_horizon else finite_horizon_state_diff_eqn,
+        X = odeint(state_diff_eqn,
                    self.X_0, t)
 
         return X
@@ -318,3 +312,8 @@ if __name__ == '__main__':
                       show_legend=show_legend)
 
     P = game.play_the_continuous_game()
+
+    n = A.shape[0]
+    P_size = n ** 2
+    N = len(Q)
+    print([(P[-1][i * P_size:(i + 1) * P_size]).reshape(n, n) for i in range(N)])
