@@ -99,7 +99,7 @@ game = PyDiffGame(A=A,
                   data_points=data_points,
                   show_legend=show_legend)
 
-P = game.play_the_game()
+P = game.play_the_continuous_game()
 ```
 
 This will result in the following plot for the Riccati equation solution:

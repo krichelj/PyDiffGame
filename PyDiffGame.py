@@ -15,11 +15,11 @@ class PyDiffGame:
     ----------
     A: numpy 2-d array, of shape(n, n)
         The system dynamics matrix
-    B: list of numpy 2-d arrays, of len(N), each matrix B_j of shape(n, k_j) for j = 1,...,N
+    B: list of numpy 2-d arrays, of len(N), each matrix B_j of shape(n, k_j)
         System input matrices for each control objective
-    Q: list of numpy 2-d arrays, of len(N), each matrix Q_j of shape(n, M) for j = 1,...,N
+    Q: list of numpy 2-d arrays, of len(N), each matrix Q_j of shape(n, M)
         Cost function state weights for each control objective
-    R: list of numpy 2-d arrays, of len(N), each matrix R_j of shape(k_j, k_j) for j = 1,...,N
+    R: list of numpy 2-d arrays, of len(N), each matrix R_j of shape(k_j, k_j)
         Cost function input weights for each control objective
     cl: boolean
         Indicates whether to render the closed (True) or open (False) loop behaviour
@@ -27,7 +27,7 @@ class PyDiffGame:
         System dynamics horizon. Should be given in the case of finite horizon
     X_0: numpy 1-d array, of shape(n), optional
         Initial state vector
-    P_f: list of numpy 2-d arrays, of shape(n, n), optional, default = solution of scipy's solve_continuous_are
+    P_f: list of numpy 2-d arrays, , of len(N), of shape(n, n), optional, default = solution of scipy's solve_continuous_are
         Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
     data_points: positive int, optional, default = 1000
         Number of data points to evaluate the Riccati equation matrix. Should be given in the case of finite horizon
@@ -64,7 +64,9 @@ class PyDiffGame:
         """
         Input checking method
 
-        :raises Case-specific errors
+        Raises
+        ------
+        Case-specific errors
         """
 
         n = A.shape[0]
@@ -99,7 +101,8 @@ class PyDiffGame:
         if data_points <= 0:
             raise ValueError('The number of data points must be a positive integer')
 
-    def play_the_game(self, epsilon: float = 10e-8, delta_T: float = 5, delta_T_points: int = 10) -> np.ndarray:
+    def play_the_continuous_game(self, epsilon: float = 10e-8, delta_T: float = 5, delta_T_points: int = 10) \
+            -> np.ndarray:
         """
         Differential game evolution method
 
@@ -111,6 +114,11 @@ class PyDiffGame:
             The interval length
         delta_T_points: int
             Number of calculation points
+
+        Returns
+        -------
+        P : list of numpy 2-d array, , of len(N), each matrix P_j of shape(n, n)
+            Solutions to the continuous-time set of Riccati equations
         """
         P = np.array([])
 
@@ -120,8 +128,16 @@ class PyDiffGame:
 
             while not convergence:
                 self.t = np.linspace(self.current_T_f, self.current_T_f - delta_T, delta_T_points)
-                P = odeint(func=PyDiffGame.solve_N_coupled_diff_riccati, y0=np.ravel(self.P_f), t=self.t,
-                           args=(self.n, self.N, self.A, self.A_t, self.S_matrices, self.Q, self.cl), tfirst=True)
+                P = odeint(func=PyDiffGame.solve_N_coupled_diff_riccati,
+                           y0=np.ravel(self.P_f),
+                           t=self.t,
+                           args=(self.A,
+                                 self.A_t,
+                                 self.S_matrices,
+                                 self.Q,
+                                 self.cl),
+                           tfirst=True)
+
                 self.P_f = P[-1]
 
                 P_matrix_norm = norm(self.P_f)
@@ -137,17 +153,32 @@ class PyDiffGame:
                 self.current_T_f -= delta_T
 
         else:
-            P = odeint(func=PyDiffGame.solve_N_coupled_diff_riccati, y0=np.ravel(self.P_f), t=self.t,
-                       args=(self.A, self.A_t, self.S_matrices, self.Q, self.cl),
+            P = odeint(func=PyDiffGame.solve_N_coupled_diff_riccati,
+                       y0=np.ravel(self.P_f),
+                       t=self.t,
+                       args=(self.A,
+                             self.A_t,
+                             self.S_matrices,
+                             self.Q,
+                             self.cl),
                        tfirst=True)
-            self.plot(self.t, P, True)
+
+            self.plot(t=self.t,
+                      mat=P,
+                      is_P=True)
 
         if self.X_0 is not None:
             forward_t = self.t[::-1]
             X = self.simulate_state_space(forward_t, P)
-            self.plot(forward_t, X, False)
+            
+            self.plot(t=forward_t,
+                      mat=X,
+                      is_P=False)
 
         return P
+
+    def play_the_discrete_game(self):
+        pass
 
     def get_care_P_f(self):
         P_f = np.zeros((self.N * self.P_size,))
@@ -286,7 +317,4 @@ if __name__ == '__main__':
                       data_points=data_points,
                       show_legend=show_legend)
 
-    P = game.play_the_game()
-    print(P[-1])
-    # P = PyDiffGame(A=A, B=B, Q=Q, R=R, cl=cl, show_legend=show_legend).play_the_game()
-    # print(P[-1])
+    P = game.play_the_continuous_game()
