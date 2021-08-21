@@ -38,7 +38,7 @@ The input parameters to instantiate a `PyDiffGame` object are:
 >Indicates whether to render the closed (True) or open (False) loop behaviour
 * `T_f` : positive float, optional, default = 5
 >System dynamics horizon. Should be given in the case of finite horizon
-* `X_0` : numpy 1-d array, of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}n">), optional
+* `x_0` : numpy 1-d array, of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}n">), optional
 >Initial state vector
 * `P_f` : list of numpy 2-d arrays, of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}n, n">), optional, default = solution of scipy's `solve_continuous_are`
 >Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
@@ -77,7 +77,7 @@ R = [np.array([[100, 0],
      np.array([[7]])]
 
 cl = True
-X_0 = np.array([10, 20])
+x_0 = np.array([10, 20])
 T_f = 5
 P_f = [np.array([[10, 0],
                  [0, 20]]),
@@ -93,22 +93,34 @@ game = PyDiffGame(A=A,
                   Q=Q,
                   R=R,
                   cl=cl,
-                  X_0=X_0,
+                  x_0=x_0,
                   P_f=P_f,
                   T_f=T_f,
                   data_points=data_points,
                   show_legend=show_legend)
 
 P = game.play_the_continuous_game()
+
+n = A.shape[0]
+P_size = n ** 2
+N = len(Q)
+print([(P[-1][i * P_size:(i + 1) * P_size]).reshape(n, n) for i in range(N)])
+```
+The output will be:
+
+```
+>>> [array([[0.21206958, 0.02483988],
+>>>         [0.02483988, 0.11586253]]), 
+>>> array([[ 1.20634199,  6.38917789],
+>>>         [ 6.38917789, 42.59805757]]), 
+>>> array([[2.26874197, 0.32396162],
+>>>         [0.32396162, 0.18060845]])]
 ```
 
 This will result in the following plot for the Riccati equation solution:
 
 <img src="https://github.com/krichelj/PyDiffGame/blob/master/images/tut1_riccati.png" width="640" alt="EKF pic">
 
-and the following state space simulation:
+with the corresponding state space simulation:
 
 <img src="https://github.com/krichelj/PyDiffGame/blob/master/images/tut1_state.png" width="640" alt="EKF pic">
-
-
-

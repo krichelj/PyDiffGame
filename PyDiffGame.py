@@ -25,7 +25,7 @@ class PyDiffGame:
         Indicates whether to render the closed (True) or open (False) loop behaviour
     T_f: positive float, optional, default = 5
         System dynamics horizon. Should be given in the case of finite horizon
-    X_0: numpy 1-d array, of shape(n), optional
+    x_0: numpy 1-d array, of shape(n), optional
         Initial state vector
     P_f: list of numpy 2-d arrays, , of len(N), of shape(n, n), optional, default = solution of scipy's solve_continuous_are
         Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
@@ -36,9 +36,9 @@ class PyDiffGame:
     """
 
     def __init__(self, A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
-                 cl: bool, X_0: Optional[np.ndarray] = None, T_f: Optional[Union[float, int]] = None,
-                 P_f: Optional[List[np.ndarray]] = None, data_points: int = 10000, show_legend: bool = True):
-        PyDiffGame.check_input(A, B, Q, R, X_0, T_f, P_f, data_points)
+                 cl: bool, x_0: Optional[np.ndarray] = None, T_f: Optional[Union[float, int]] = None,
+                 P_f: Optional[List[np.ndarray]] = None, data_points: int = 1000, show_legend: bool = True):
+        PyDiffGame.check_input(A, B, Q, R, x_0, T_f, P_f, data_points)
 
         self.A = A
         self.B = B
@@ -48,19 +48,20 @@ class PyDiffGame:
         self.Q = Q
         self.R = R
         self.cl = cl
-        self.X_0 = X_0
+        self.x_0 = x_0
         self.P_f = self.get_care_P_f() if P_f is None else P_f
         self.show_legend = show_legend
         self.infinite_horizon = T_f is None
         self.current_T_f = 20 if self.infinite_horizon else T_f
-        self.t = np.linspace(self.current_T_f, 0, data_points)
+        self.data_points = data_points
+        self.t = np.linspace(self.current_T_f, 0, self.data_points)
         self.A_t = A.transpose()
         self.S_matrices = [B[i] @ inv(R[i]) @ B[i].transpose() for i in range(self.N)]
 
     @staticmethod
     def check_input(A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
-                    X0: Optional[np.ndarray] = None, T_f: Optional[Union[float, int]] = None,
-                    P_f: Optional[List[np.ndarray]] = None, data_points: int = 10000):
+                    x0: Optional[np.ndarray], T_f: Optional[Union[float, int]],
+                    P_f: Optional[List[np.ndarray]], data_points: int):
         """
         Input checking method
 
@@ -86,11 +87,11 @@ class PyDiffGame:
                 warnings.warn("Warning: there is a matrix in Q that has negative (but really small) eigenvalues")
             else:
                 raise ValueError('Q must contain positive semi-definite numpy arrays')
-        if X0 is not None and X0.shape != (n,):
-            raise ValueError('X0 must be a 1-d numpy array with length M')
-        if T_f is not None and T_f <= 0:
+        if x0 and x0.shape != (n,):
+            raise ValueError('x_0 must be a 1-d numpy array with length M')
+        if T_f and T_f <= 0:
             raise ValueError('T_f must be a positive real number')
-        if P_f is not None:
+        if P_f:
             if not all([P_i.shape[0] == P_i.shape[1] == n for P_i in P_f]):
                 raise ValueError('P_f must be a list of 2-d positive semi-definite numpy arrays with shape MxM')
             if not all([eig >= 0 for eig_set in [eigvals(P_f_i) for P_f_i in P_f] for eig in eig_set]):
@@ -101,7 +102,7 @@ class PyDiffGame:
         if data_points <= 0:
             raise ValueError('The number of data points must be a positive integer')
 
-    def play_the_continuous_game(self, epsilon: float = 10e-8, delta_T: float = 5, delta_T_points: int = 10) \
+    def play_the_continuous_game(self, epsilon: float = 10e-8, delta_T: float = 5, delta_T_points: int = None) \
             -> np.ndarray:
         """
         Differential game main evolution method for the continuous case
@@ -121,6 +122,9 @@ class PyDiffGame:
             Solution to the continuous-time set of Riccati equations
         """
         P = np.array([])
+
+        if not delta_T_points:
+            delta_T_points = self.data_points
 
         if self.infinite_horizon:
             last_Ps = []
@@ -167,12 +171,12 @@ class PyDiffGame:
                       mat=P,
                       is_P=True)
 
-        if self.X_0 is not None:
+        if self.x_0 is not None:
             forward_t = self.t[::-1]
-            X = self.simulate_state_space(forward_t, P)
+            x = self.simulate_state_space(forward_t, P)
 
             self.plot(t=forward_t,
-                      mat=X,
+                      mat=x,
                       is_P=False)
 
         return P
@@ -193,12 +197,12 @@ class PyDiffGame:
 
         return P_f
 
-    def get_dXdt(self, X: np.ndarray, P_matrices: List[np.ndarray]):
+    def get_dxdt(self, x: np.ndarray, P_matrices: List[np.ndarray]):
         SP_sum = sum(a @ b for a, b in zip(self.S_matrices, P_matrices))
         A_cl = self.A - SP_sum
-        dXdt = A_cl @ X
+        dxdt = A_cl @ x
 
-        return dXdt
+        return dxdt
 
     @staticmethod
     def solve_N_coupled_diff_riccati(_, P: np.ndarray, A: np.ndarray, A_t: np.ndarray, S_matrices: List[np.ndarray],
@@ -239,7 +243,7 @@ class PyDiffGame:
         if self.show_legend:
             legend = tuple(
                 ['${P' + str(i) + '}_{' + str(j) + str(k) + '}$' for i in V for j in U for k in U] if is_P else
-                ['${X' + (str(j) if self.n > 1 else '') + '}_{' + str(j) + '}$' for j in U])
+                ['${\mathbf{x}' + (str(j) if self.n > 1 else '') + '}_{' + str(j) + '}$' for j in U])
             plt.legend(legend, loc='upper left' if is_P else 'best', ncol=int(self.n / 2),
                        prop={'size': int(20 / self.n)})
 
@@ -249,22 +253,22 @@ class PyDiffGame:
     def simulate_state_space(self, t: np.ndarray, P: np.ndarray):
         j = len(P) - 1
 
-        def state_diff_eqn(X: np.ndarray, _):
+        def state_diff_eqn(x: np.ndarray, _):
             nonlocal j
 
             P_matrices_j = [(P[j][i * self.P_size:(i + 1) * self.P_size]).reshape(self.n, self.n)
                             for i in range(self.N)]
-            dXdt = self.get_dXdt(X, P_matrices_j)
+            dxdt = self.get_dxdt(x, P_matrices_j)
 
             if j > 0:
                 j -= 1
 
-            return np.ravel(dXdt)
+            return np.ravel(dxdt)
 
-        X = odeint(state_diff_eqn,
-                   self.X_0, t)
+        x = odeint(state_diff_eqn,
+                   self.x_0, t)
 
-        return X
+        return x
 
 
 if __name__ == '__main__':
@@ -289,7 +293,7 @@ if __name__ == '__main__':
          np.array([[7]])]
 
     cl = True
-    X_0 = np.array([10, 20])
+    x_0 = np.array([10, 20])
     T_f = 5
     P_f = [np.array([[10, 0],
                      [0, 20]]),
@@ -305,7 +309,7 @@ if __name__ == '__main__':
                       Q=Q,
                       R=R,
                       cl=cl,
-                      X_0=X_0,
+                      x_0=x_0,
                       P_f=P_f,
                       T_f=T_f,
                       data_points=data_points,
