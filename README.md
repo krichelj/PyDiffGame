@@ -99,7 +99,7 @@ game = PyDiffGame(A=A,
                   data_points=data_points,
                   show_legend=show_legend)
 
-P = game.play_the_continuous_game()
+P = game.solve_the_continuous_game()
 
 n = A.shape[0]
 P_size = n ** 2
