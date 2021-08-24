@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.linalg import eigvals, inv, pinv, norm
+from numpy.linalg import eigvals, inv, norm
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are
 from scipy.integrate import odeint
@@ -103,7 +103,7 @@ class PyDiffGame:
         if data_points <= 0:
             raise ValueError('The number of data points must be a positive integer')
 
-    def play_the_continuous_game(self, epsilon: float = 10e-8, delta_T: float = 5, delta_T_points: int = None) \
+    def solve_the_continuous_game(self, epsilon: float = 10e-8, delta_T: float = 5, delta_T_points: int = None) \
             -> np.ndarray:
         """
         Differential game main evolution method for the continuous case
@@ -185,14 +185,14 @@ class PyDiffGame:
     def get_K_i(self, Y: np.array, i: int) -> np.array:
         P_rows_num = self.N * self.n
 
-        K_i_offset = self.B[i - 1].shape[1] if i else 0
+        K_i_offset = sum([self.B[j].shape[1] for j in range(i)]) if i else 0
         first_K_i_index = P_rows_num + K_i_offset
         second_K_i_index = first_K_i_index + self.B[i].shape[1]
         K_i = Y[first_K_i_index:second_K_i_index, :]
 
         return K_i
 
-    def get_discrete_parameters(self, Y: np.array) -> Tuple[List[np.array], List[np.array], np.array, np.array]:
+    def get_discrete_parameters(self, Y: np.array) -> Tuple[List[np.array], List[np.array], np.array]:
         P_rows_num = self.N * self.n
         K_rows_num = sum([b.shape[1] for b in self.B])
         Y_row_num = P_rows_num + K_rows_num
@@ -203,21 +203,16 @@ class PyDiffGame:
         A_k = self.A
 
         for i in range(self.N):
-            first_P_i_index = i * self.n
-            second_P_i_index = (i + 1) * self.n
-            P_i = Y[first_P_i_index:second_P_i_index, :]
+            P_i = Y[i * self.n:(i + 1) * self.n, :]
             P += [P_i]
             K_i = self.get_K_i(Y, i)
             K += [K_i]
 
-            B_i = self.B[i]
-            A_k = A_k - B_i @ K_i
+            A_k = A_k - self.B[i] @ K_i
 
-        A_k_T = A_k.T
+        return P, K, A_k
 
-        return P, K, A_k, A_k_T
-
-    def get_discrete_equations(self, P: List[np.array], K: List[np.array], A_k: np.array, A_k_T: np.array) \
+    def evaluate_discrete_equations(self, P: List[np.array], K: List[np.array], A_k: np.array) \
             -> np.array:
         equations_P = []
         equations_K = []
@@ -230,23 +225,24 @@ class PyDiffGame:
             Q_i = self.Q[i]
             B_i = self.B[i]
             B_i_T = B_i.T
+            B_i_T_P_i = B_i_T @ P_i
 
-            coefficient = R_ii + B_i_T @ P_i @ B_i
-            inv_coefficient = pinv(coefficient)
-            coefficient = inv_coefficient @ B_i_T @ P_i
+            coefficient = R_ii + B_i_T_P_i @ B_i
+            inv_coefficient = inv(coefficient)
+            coefficient = inv_coefficient @ B_i_T_P_i
             A_k_i = A_k + B_i @ K_i
 
             equation_K_i = K_i - coefficient @ A_k_i
             equations_K += [equation_K_i]
 
-            equation_P_i = Q_i + K_i_T @ R_ii @ K_i - P_i + A_k_T @ P_i @ A_k
+            equation_P_i = Q_i + K_i_T @ R_ii @ K_i - P_i + A_k.T @ P_i @ A_k
             equations_P += [equation_P_i]
 
         equations = np.concatenate((*equations_P, *equations_K), axis=0).ravel()
 
         return equations
 
-    def play_the_discrete_game(self):
+    def solve_the_discrete_game(self):
         """
         Differential game main evolution method for the discrete case
 
@@ -258,9 +254,9 @@ class PyDiffGame:
         """
 
         def get_equations(Y: np.array):
-            P, K, A_k, A_k_T = self.get_discrete_parameters(Y)
-            equations = self.get_discrete_equations(P, K, A_k, A_k_T)
-            Y = equations
+            P, K, A_k = self.get_discrete_parameters(Y)
+            Y = self.evaluate_discrete_equations(P, K, A_k)
+            print(eigvals(A_k))
 
             return Y
 
@@ -268,17 +264,16 @@ class PyDiffGame:
         K_0 = [np.random.rand(b.shape[1], self.n) for b in self.B]
         Y_0 = np.concatenate((*P_0, *K_0), axis=0)
 
-        Y = fsolve(get_equations, Y_0)
+        Y, info_dict, ier, message = fsolve(get_equations, Y_0, full_output=True)
 
         P_rows_num = self.N * self.n
-        K_rows_num = sum([b.shape[1] for b in B])
+        K_rows_num = sum([b.shape[1] for b in self.B])
         Y_row_num = P_rows_num + K_rows_num
 
         Y = np.array(Y).reshape((Y_row_num, self.n))
 
         K = [self.get_K_i(Y, i) for i in range(self.N)]
-
-        A_k = A - sum([B[i] @ K[i] for i in range(self.N)])
+        A_k = self.A - sum([self.B[i] @ K[i] for i in range(self.N)])
         x_0 = self.x_0.reshape((self.n, 1))
 
         x_t = x_0
@@ -413,7 +408,7 @@ if __name__ == '__main__':
                      [0, 60]])]
     data_points = 1000
     show_legend = True
-    #
+
     game = PyDiffGame(A=A,
                       B=B,
                       Q=Q,
@@ -430,6 +425,6 @@ if __name__ == '__main__':
     # n = A.shape[0]
     # N = len(Q)
 
-    game.play_the_discrete_game()
+    game.solve_the_discrete_game()
 
     # print([(P[-1][i * P_size:(i + 1) * P_size]).reshape(n, n) for i in range(N)])
