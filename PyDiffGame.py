@@ -1,10 +1,11 @@
 import numpy as np
-from numpy.linalg import eigvals, inv, norm
+from numpy.linalg import eigvals, inv, pinv, norm
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are
 from scipy.integrate import odeint
 import warnings
 from typing import List, Optional, Union, Tuple
+from scipy.optimize import fsolve
 
 
 class PyDiffGame:
@@ -52,9 +53,9 @@ class PyDiffGame:
         self.P_f = self.get_care_P_f() if P_f is None else P_f
         self.show_legend = show_legend
         self.infinite_horizon = T_f is None
-        self.current_T_f = 20 if self.infinite_horizon else T_f
+        self.T_f = 20 if self.infinite_horizon else T_f
         self.data_points = data_points
-        self.t = np.linspace(self.current_T_f, 0, self.data_points)
+        self.t = np.linspace(self.T_f, 0, self.data_points)
         self.A_t = A.transpose()
         self.S_matrices = [B[i] @ inv(R[i]) @ B[i].transpose() for i in range(self.N)]
 
@@ -87,7 +88,7 @@ class PyDiffGame:
                 warnings.warn("Warning: there is a matrix in Q that has negative (but really small) eigenvalues")
             else:
                 raise ValueError('Q must contain positive semi-definite numpy arrays')
-        if x0 and x0.shape != (n,):
+        if x0 is not None and x0.shape != (n,):
             raise ValueError('x_0 must be a 1-d numpy array with length M')
         if T_f and T_f <= 0:
             raise ValueError('T_f must be a positive real number')
@@ -131,7 +132,7 @@ class PyDiffGame:
             convergence = False
 
             while not convergence:
-                self.t = np.linspace(self.current_T_f, self.current_T_f - delta_T, delta_T_points)
+                self.t = np.linspace(self.T_f, self.T_f - delta_T, delta_T_points)
                 P = odeint(func=PyDiffGame.solve_N_coupled_diff_riccati,
                            y0=np.ravel(self.P_f),
                            t=self.t,
@@ -154,7 +155,7 @@ class PyDiffGame:
                     if abs(last_Ps[2] - last_Ps[1]) < epsilon and abs(last_Ps[1] - last_Ps[0]) < epsilon:
                         convergence = True
 
-                self.current_T_f -= delta_T
+                self.T_f -= delta_T
 
         else:
             P = odeint(func=PyDiffGame.solve_N_coupled_diff_riccati,
@@ -181,8 +182,117 @@ class PyDiffGame:
 
         return P
 
+    def get_K_i(self, Y: np.array, i: int) -> np.array:
+        P_rows_num = self.N * self.n
+
+        K_i_offset = self.B[i - 1].shape[1] if i else 0
+        first_K_i_index = P_rows_num + K_i_offset
+        second_K_i_index = first_K_i_index + self.B[i].shape[1]
+        K_i = Y[first_K_i_index:second_K_i_index, :]
+
+        return K_i
+
+    def get_discrete_parameters(self, Y: np.array) -> Tuple[List[np.array], List[np.array], np.array, np.array]:
+        P_rows_num = self.N * self.n
+        K_rows_num = sum([b.shape[1] for b in self.B])
+        Y_row_num = P_rows_num + K_rows_num
+        Y = Y.reshape((Y_row_num, self.n))
+
+        P = []
+        K = []
+        A_k = self.A
+
+        for i in range(self.N):
+            first_P_i_index = i * self.n
+            second_P_i_index = (i + 1) * self.n
+            P_i = Y[first_P_i_index:second_P_i_index, :]
+            P += [P_i]
+            K_i = self.get_K_i(Y, i)
+            K += [K_i]
+
+            B_i = self.B[i]
+            A_k = A_k - B_i @ K_i
+
+        A_k_T = A_k.T
+
+        return P, K, A_k, A_k_T
+
+    def get_discrete_equations(self, P: List[np.array], K: List[np.array], A_k: np.array, A_k_T: np.array) \
+            -> np.array:
+        equations_P = []
+        equations_K = []
+
+        for i in range(self.N):
+            K_i = K[i]
+            K_i_T = K_i.T
+            P_i = P[i]
+            R_ii = self.R[i]
+            Q_i = self.Q[i]
+            B_i = self.B[i]
+            B_i_T = B_i.T
+
+            coefficient = R_ii + B_i_T @ P_i @ B_i
+            inv_coefficient = pinv(coefficient)
+            coefficient = inv_coefficient @ B_i_T @ P_i
+            A_k_i = A_k + B_i @ K_i
+
+            equation_K_i = K_i - coefficient @ A_k_i
+            equations_K += [equation_K_i]
+
+            equation_P_i = Q_i + K_i_T @ R_ii @ K_i - P_i + A_k_T @ P_i @ A_k
+            equations_P += [equation_P_i]
+
+        equations = np.concatenate((*equations_P, *equations_K), axis=0).ravel()
+
+        return equations
+
     def play_the_discrete_game(self):
-        pass
+        """
+        Differential game main evolution method for the discrete case
+
+        Notes
+        ----------
+
+        This method is used to solve for the optimal controllers K_i and the riccati equations solutions P_i
+        for n >= i >= 1
+        """
+
+        def get_equations(Y: np.array):
+            P, K, A_k, A_k_T = self.get_discrete_parameters(Y)
+            equations = self.get_discrete_equations(P, K, A_k, A_k_T)
+            Y = equations
+
+            return Y
+
+        P_0 = [np.random.rand(self.n, self.n) for _ in range(self.N)]
+        K_0 = [np.random.rand(b.shape[1], self.n) for b in self.B]
+        Y_0 = np.concatenate((*P_0, *K_0), axis=0)
+
+        Y = fsolve(get_equations, Y_0)
+
+        P_rows_num = self.N * self.n
+        K_rows_num = sum([b.shape[1] for b in B])
+        Y_row_num = P_rows_num + K_rows_num
+
+        Y = np.array(Y).reshape((Y_row_num, self.n))
+
+        K = [self.get_K_i(Y, i) for i in range(self.N)]
+
+        A_k = A - sum([B[i] @ K[i] for i in range(self.N)])
+        x_0 = self.x_0.reshape((self.n, 1))
+
+        x_t = x_0
+        T = np.linspace(start=0, stop=self.T_f, num=100)
+        x_T = np.array([x_t]).reshape(1, self.n)
+
+        for _ in T[:-1]:
+            x_t_1 = A_k @ x_t
+            x_T = np.concatenate((x_T, x_t_1.reshape(1, self.n)), axis=0)
+            x_t = x_t_1
+
+        plt.plot(T, x_T)
+        plt.grid()
+        plt.show()
 
     def get_care_P_f(self):
         P_f = np.zeros((self.N * self.P_size,))
@@ -243,7 +353,7 @@ class PyDiffGame:
         if self.show_legend:
             legend = tuple(
                 ['${P' + str(i) + '}_{' + str(j) + str(k) + '}$' for i in V for j in U for k in U] if is_P else
-                ['${\mathbf{x}' + (str(j) if self.n > 1 else '') + '}_{' + str(j) + '}$' for j in U])
+                ['${\mathbf{x}}_{' + str(j) + '}$' for j in U])
             plt.legend(legend, loc='upper left' if is_P else 'best', ncol=int(self.n / 2),
                        prop={'size': int(20 / self.n)})
 
@@ -303,21 +413,23 @@ if __name__ == '__main__':
                      [0, 60]])]
     data_points = 1000
     show_legend = True
-
+    #
     game = PyDiffGame(A=A,
                       B=B,
                       Q=Q,
                       R=R,
                       cl=cl,
                       x_0=x_0,
-                      P_f=P_f,
-                      T_f=T_f,
+                      # P_f=P_f,
+                      # T_f=T_f,
                       data_points=data_points,
                       show_legend=show_legend)
 
-    P = game.play_the_continuous_game()
+    # P = game.play_the_continuous_game()
 
-    n = A.shape[0]
-    P_size = n ** 2
-    N = len(Q)
-    print([(P[-1][i * P_size:(i + 1) * P_size]).reshape(n, n) for i in range(N)])
+    # n = A.shape[0]
+    # N = len(Q)
+
+    game.play_the_discrete_game()
+
+    # print([(P[-1][i * P_size:(i + 1) * P_size]).reshape(n, n) for i in range(N)])
