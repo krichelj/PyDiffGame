@@ -56,8 +56,12 @@ class PyDiffGame:
         self.T_f = 20 if self.infinite_horizon else T_f
         self.data_points = data_points
         self.t = np.linspace(self.T_f, 0, self.data_points)
-        self.A_t = A.transpose()
-        self.S_matrices = [B[i] @ inv(R[i]) @ B[i].transpose() for i in range(self.N)]
+        self.A_t = A.T
+        self.S_matrices = [B[i] @ inv(R[i]) @ B[i].T for i in range(self.N)]
+
+        self.P_rows_num = self.N * self.n
+        K_rows_num = sum([b.shape[1] for b in self.B])
+        self.Y_row_num = self.P_rows_num + K_rows_num
 
     @staticmethod
     def check_input(A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
@@ -103,7 +107,7 @@ class PyDiffGame:
         if data_points <= 0:
             raise ValueError('The number of data points must be a positive integer')
 
-    def solve_the_continuous_game(self, epsilon: float = 10e-8, delta_T: float = 5, delta_T_points: int = None) \
+    def solve_continuous_game(self, epsilon: float = 10e-8, delta_T: float = 5, delta_T_points: int = None) \
             -> np.ndarray:
         """
         Differential game main evolution method for the continuous case
@@ -174,120 +178,13 @@ class PyDiffGame:
 
         if self.x_0 is not None:
             forward_t = self.t[::-1]
-            x = self.simulate_state_space(forward_t, P)
+            x = self.simulate_continuous_state_space(forward_t, P)
 
             self.plot(t=forward_t,
                       mat=x,
                       is_P=False)
 
         return P
-
-    def get_K_i(self, Y: np.array, i: int) -> np.array:
-        P_rows_num = self.N * self.n
-
-        K_i_offset = sum([self.B[j].shape[1] for j in range(i)]) if i else 0
-        first_K_i_index = P_rows_num + K_i_offset
-        second_K_i_index = first_K_i_index + self.B[i].shape[1]
-        K_i = Y[first_K_i_index:second_K_i_index, :]
-
-        return K_i
-
-    def get_discrete_parameters(self, Y: np.array) -> Tuple[List[np.array], List[np.array], np.array]:
-        P_rows_num = self.N * self.n
-        K_rows_num = sum([b.shape[1] for b in self.B])
-        Y_row_num = P_rows_num + K_rows_num
-        Y = Y.reshape((Y_row_num, self.n))
-
-        P = []
-        K = []
-        A_k = self.A
-
-        for i in range(self.N):
-            P_i = Y[i * self.n:(i + 1) * self.n, :]
-            P += [P_i]
-            K_i = self.get_K_i(Y, i)
-            K += [K_i]
-
-            A_k = A_k - self.B[i] @ K_i
-
-        return P, K, A_k
-
-    def evaluate_discrete_equations(self, P: List[np.array], K: List[np.array], A_k: np.array) \
-            -> np.array:
-        equations_P = []
-        equations_K = []
-
-        for i in range(self.N):
-            K_i = K[i]
-            K_i_T = K_i.T
-            P_i = P[i]
-            R_ii = self.R[i]
-            Q_i = self.Q[i]
-            B_i = self.B[i]
-            B_i_T = B_i.T
-            B_i_T_P_i = B_i_T @ P_i
-
-            coefficient = R_ii + B_i_T_P_i @ B_i
-            inv_coefficient = inv(coefficient)
-            coefficient = inv_coefficient @ B_i_T_P_i
-            A_k_i = A_k + B_i @ K_i
-
-            equation_K_i = K_i - coefficient @ A_k_i
-            equations_K += [equation_K_i]
-
-            equation_P_i = Q_i + K_i_T @ R_ii @ K_i - P_i + A_k.T @ P_i @ A_k
-            equations_P += [equation_P_i]
-
-        equations = np.concatenate((*equations_P, *equations_K), axis=0).ravel()
-
-        return equations
-
-    def solve_the_discrete_game(self):
-        """
-        Differential game main evolution method for the discrete case
-
-        Notes
-        ----------
-
-        This method is used to solve for the optimal controllers K_i and the riccati equations solutions P_i
-        for n >= i >= 1
-        """
-
-        def get_equations(Y: np.array):
-            P, K, A_k = self.get_discrete_parameters(Y)
-            Y = self.evaluate_discrete_equations(P, K, A_k)
-            print(eigvals(A_k))
-
-            return Y
-
-        P_0 = [np.random.rand(self.n, self.n) for _ in range(self.N)]
-        K_0 = [np.random.rand(b.shape[1], self.n) for b in self.B]
-        Y_0 = np.concatenate((*P_0, *K_0), axis=0)
-
-        Y, info_dict, ier, message = fsolve(get_equations, Y_0, full_output=True)
-
-        P_rows_num = self.N * self.n
-        K_rows_num = sum([b.shape[1] for b in self.B])
-        Y_row_num = P_rows_num + K_rows_num
-
-        Y = np.array(Y).reshape((Y_row_num, self.n))
-
-        K = [self.get_K_i(Y, i) for i in range(self.N)]
-        A_k = self.A - sum([self.B[i] @ K[i] for i in range(self.N)])
-        x_0 = self.x_0.reshape((self.n, 1))
-
-        x_t = x_0
-        T = np.linspace(start=0, stop=self.T_f, num=100)
-        x_T = np.array([x_t]).reshape(1, self.n)
-
-        for _ in T[:-1]:
-            x_t_1 = A_k @ x_t
-            x_T = np.concatenate((x_T, x_t_1.reshape(1, self.n)), axis=0)
-            x_t = x_t_1
-
-        plt.plot(T, x_T)
-        plt.grid()
-        plt.show()
 
     def get_care_P_f(self):
         P_f = np.zeros((self.N * self.P_size,))
@@ -303,8 +200,7 @@ class PyDiffGame:
         return P_f
 
     def get_dxdt(self, x: np.ndarray, P_matrices: List[np.ndarray]):
-        SP_sum = sum(a @ b for a, b in zip(self.S_matrices, P_matrices))
-        A_cl = self.A - SP_sum
+        A_cl = self.A - sum([a @ b for a, b in zip(self.S_matrices, P_matrices)])
         dxdt = A_cl @ x
 
         return dxdt
@@ -355,7 +251,7 @@ class PyDiffGame:
         plt.grid()
         plt.show()
 
-    def simulate_state_space(self, t: np.ndarray, P: np.ndarray):
+    def simulate_continuous_state_space(self, t: np.ndarray, P: np.ndarray) -> np.array:
         j = len(P) - 1
 
         def state_diff_eqn(x: np.ndarray, _):
@@ -374,6 +270,131 @@ class PyDiffGame:
                    self.x_0, t)
 
         return x
+
+    def get_K_i(self, Y: np.array, i: int) -> np.array:
+        K_i_offset = sum([self.B[j].shape[1] for j in range(i)]) if i else 0
+        first_K_i_index = self.P_rows_num + K_i_offset
+        second_K_i_index = first_K_i_index + self.B[i].shape[1]
+        K_i = Y[first_K_i_index:second_K_i_index, :]
+
+        return K_i
+
+    def get_K(self, Y: np.array) -> List[np.array]:
+        return [self.get_K_i(Y, i) for i in range(self.N)]
+
+    def get_A_k(self, Y: np.array) -> np.array:
+        K = self.get_K(Y)
+        A_k = self.A - sum([self.B[i] @ K[i] for i in range(self.N)])
+
+        return A_k
+
+    @staticmethod
+    def check_discrete_stability(A_k: np.array) -> bool:
+        return all([norm(eig) <= 1 for eig in eigvals(A_k)])
+
+    def get_discrete_parameters(self, Y: np.array) -> Tuple[List[np.array], List[np.array], np.array]:
+
+        Y = Y.reshape((self.Y_row_num, self.n))
+
+        P = []
+        K = []
+        A_k = self.A
+
+        for i in range(self.N):
+            P_i = Y[i * self.n:(i + 1) * self.n, :]
+            P += [P_i]
+            K_i = self.get_K_i(Y, i)
+            K += [K_i]
+
+            A_k = A_k - self.B[i] @ K_i
+
+        return P, K, A_k
+
+    def evaluate_discrete_equations(self, P: List[np.array], K: List[np.array], A_k: np.array) -> np.array:
+        equations_P = []
+        equations_K = []
+
+        for i in range(self.N):
+            K_i = K[i]
+            P_i = P[i]
+            R_ii = self.R[i]
+            Q_i = self.Q[i]
+            B_i = self.B[i]
+            B_i_T_P_i = B_i.T @ P_i
+
+            coefficient = R_ii + B_i_T_P_i @ B_i
+            inv_coefficient = inv(coefficient)
+            coefficient = inv_coefficient @ B_i_T_P_i
+            A_k_i = A_k + B_i @ K_i
+
+            equation_K_i = K_i - coefficient @ A_k_i
+            equations_K += [equation_K_i]
+
+            equation_P_i = Q_i + K_i.T @ R_ii @ K_i - P_i + A_k.T @ P_i @ A_k
+            equations_P += [equation_P_i]
+
+        equations = np.concatenate((*equations_P, *equations_K), axis=0)
+
+        return equations
+
+    def simulate_discrete_state_space(self, Y: np.array):
+        A_k = self.get_A_k(Y)
+        x_0 = self.x_0.reshape((self.n, 1))
+
+        x_t = x_0
+        T = np.linspace(start=0, stop=self.T_f, num=self.data_points)
+        x_T = np.array([x_t]).reshape(1, self.n)
+
+        for _ in T[:-1]:
+            x_t_1 = A_k @ x_t
+            x_T = np.concatenate((x_T, x_t_1.reshape(1, self.n)), axis=0)
+            x_t = x_t_1
+
+        plt.plot(T, x_T)
+        plt.grid()
+        plt.show()
+
+    def generate_Y_0(self) -> np.array:
+        P_0 = [100 * np.random.rand(self.n, self.n) for _ in range(self.N)]
+        K_0 = [100 * np.random.rand(b.shape[1], self.n) for b in self.B]
+        Y_0 = np.concatenate((*P_0, *K_0), axis=0)
+
+        return Y_0.ravel()
+
+    def solve_discrete_game(self, num_of_simulations: int):
+        """
+        Differential game main evolution method for the discrete case
+
+        Notes
+        ----------
+
+        This method is used to solve for the optimal controllers K_i and the riccati equations solutions P_i
+        for n >= i >= 1
+        """
+
+        def get_equations(Y: np.array):
+            P, K, A_k = self.get_discrete_parameters(Y)
+
+            Y = self.evaluate_discrete_equations(P, K, A_k)
+
+            Y = Y.ravel()
+
+            return Y
+
+        Y = None
+        stable_simulation = False
+
+        for _ in range(num_of_simulations):
+            while not stable_simulation:
+                Y_0 = self.generate_Y_0()
+                Y = fsolve(get_equations, Y_0)
+                Y = np.array(Y).reshape((self.Y_row_num, self.n))
+
+                A_k = self.get_A_k(Y)
+                stable_simulation = self.check_discrete_stability(A_k)
+
+            self.simulate_discrete_state_space(Y)
+            stable_simulation = False
 
 
 if __name__ == '__main__':
@@ -400,12 +421,12 @@ if __name__ == '__main__':
     cl = True
     x_0 = np.array([10, 20])
     T_f = 5
-    P_f = [np.array([[10, 0],
-                     [0, 20]]),
-           np.array([[30, 0],
-                     [0, 40]]),
-           np.array([[50, 0],
-                     [0, 60]])]
+    P_f = [np.array([[1, 0],
+                     [0, 200]]),
+           np.array([[3, 0],
+                     [0, 4]]),
+           np.array([[500, 0],
+                     [0, 600]])]
     data_points = 1000
     show_legend = True
 
@@ -416,15 +437,16 @@ if __name__ == '__main__':
                       cl=cl,
                       x_0=x_0,
                       # P_f=P_f,
-                      # T_f=T_f,
+                      T_f=T_f,
                       data_points=data_points,
                       show_legend=show_legend)
 
-    # P = game.play_the_continuous_game()
+    # P = game.solve_continuous_game()
 
     # n = A.shape[0]
     # N = len(Q)
 
-    game.solve_the_discrete_game()
+    num_of_simulations = 10
+    game.solve_discrete_game(num_of_simulations)
 
     # print([(P[-1][i * P_size:(i + 1) * P_size]).reshape(n, n) for i in range(N)])
