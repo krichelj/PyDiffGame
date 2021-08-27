@@ -11,7 +11,7 @@ from numpy import sin, cos, arctan
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 
-from PyDiffGame import PyDiffGame
+from PyDiffGame import ContinuousPyDiffGame
 
 # Global Constants
 
@@ -94,7 +94,7 @@ def low_level_angular_rate_controller(x, p, q, r, T, Plast):
     R = [R1, R2, R3]
     P_sol = Plast
     reduced_X = np.array(x) - np.array([p, q, r])
-    reduced_X_tr = reduced_X.T
+    reduced_X_tr = reduced_X.forward_time
     inv_Rs = [inv(r) for r in R]
     B_t = [b.T for b in B]
     U_angular = np.array([- r @ b @ p @ reduced_X_tr for r, b, p in zip(inv_Rs, B_t, P_sol)]).reshape(3, )
@@ -140,7 +140,7 @@ def get_P_quad_given_angular_rates(x, P_sol):
     B = [B1, B2, B3]
     R = [R1, R2, R3]
     Q = [Q1, Q2, Q3]
-    P = PyDiffGame(A=A, B=B, Q=Q, R=R, P_f=P_sol, cl=True, show_legend=False).play_the_game()
+    P = ContinuousPyDiffGame(A=A, B=B, Q=Q, R=R, P_f=P_sol, cl=True, show_legend=False).solve_game()
     Plast = P[-1]
 
     return Plast
@@ -339,7 +339,7 @@ def get_higher_level_control2(state, st, a_y):
         Q = [0.01 * Q1, 0.01 * Q_wall_0]
     P_sol = [0.01 * Q1, 0.01 * Q1]
 
-    Psol = PyDiffGame(A=A, B=Bs, Q=Q, R=R, P_f=P_sol, cl=True, show_legend=False).play_the_game()
+    Psol = ContinuousPyDiffGame(A=A, B=Bs, Q=Q, R=R, P_f=P_sol, cl=True, show_legend=False).solve_game()
     Plast = Psol[-1]
     N = 2
     M = 9
@@ -347,7 +347,7 @@ def get_higher_level_control2(state, st, a_y):
     Plast = [(Plast[i * P_size:(i + 1) * P_size]).reshape(M, M) for i in range(N)]
 
     inv_Rs = [inv(r) for r in R]
-    B_t = [b.T for b in Bs]
+    B_t = [b.forward_time for b in Bs]
 
     U_Agenda1 = - inv_Rs[0] @ B_t[0] @ Plast[0] @ np.array(
         [-phi_tilda[0], -vp_y, -vp_x, -p_y_tilda[0], -h_d[0], -p_z_tilda[0], -v_d[0], sum_theta, sum_theta_2])
@@ -356,7 +356,7 @@ def get_higher_level_control2(state, st, a_y):
 
     Us = [U_Agenda1, U_Agenda2]
 
-    U_all_Out = dividing_matrix @ np.concatenate(Us).ravel().T
+    U_all_Out = dividing_matrix @ np.concatenate(Us).ravel().forward_time
     p_r, q_r, r_r, t_r = U_all_Out
 
     tilda_state = np.array(
