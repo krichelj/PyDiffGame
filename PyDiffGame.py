@@ -38,6 +38,7 @@ class PyDiffGame(ABC):
     def __init__(self, A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
                  x_0: Optional[np.ndarray] = None, T_f: Optional[Union[float, int]] = None,
                  P_f: Optional[List[np.ndarray]] = None, data_points: int = 1000, show_legend: bool = True):
+
         PyDiffGame.check_input(A, B, Q, R, x_0, T_f, P_f, data_points)
 
         self.A = A
@@ -125,8 +126,23 @@ class PyDiffGame(ABC):
     def simulate_state_space(self, **args):
         pass
 
-    def plot(self, **args):
-        pass
+    def plot(self, t: np.ndarray, mat: Tuple[np.ndarray, dict], is_P: bool):
+        V = range(1, self.N + 1)
+        U = range(1, self.n + 1)
+
+        plt.figure(dpi=130)
+        plt.plot(t, mat)
+        plt.xlabel('Time')
+
+        if self.show_legend:
+            legend = tuple(
+                ['${P' + str(i) + '}_{' + str(j) + str(k) + '}$' for i in V for j in U for k in U] if is_P else
+                ['${\mathbf{x}}_{' + str(j) + '}$' for j in U])
+            plt.legend(legend, loc='upper left' if is_P else 'best', ncol=int(self.n / 2),
+                       prop={'size': int(20 / self.n)})
+
+        plt.grid()
+        plt.show()
 
 
 class ContinuousPyDiffGame(PyDiffGame):
@@ -142,8 +158,8 @@ class ContinuousPyDiffGame(PyDiffGame):
     def __init__(self, A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
                  cl: bool, x_0: Optional[np.ndarray] = None, T_f: Optional[Union[float, int]] = None,
                  P_f: Optional[List[np.ndarray]] = None, data_points: int = 1000, show_legend: bool = True):
-        super().__init__(A, B, Q, R, x_0, T_f, P_f, data_points, show_legend)
 
+        super().__init__(A, B, Q, R, x_0, T_f, P_f, data_points, show_legend)
         self.cl = cl
 
     def solve_game(self, epsilon: float = 10e-8, delta_T: float = 5, delta_T_points: int = None) \
@@ -258,24 +274,6 @@ class ContinuousPyDiffGame(PyDiffGame):
                 dPdt = np.concatenate((dPdt, dPidt), axis=0)
         return np.ravel(dPdt)
 
-    def plot(self, t: np.ndarray, mat: Tuple[np.ndarray, dict], is_P: bool):
-        V = range(1, self.N + 1)
-        U = range(1, self.n + 1)
-
-        plt.figure(dpi=130)
-        plt.plot(t, mat)
-        plt.xlabel('Time')
-
-        if self.show_legend:
-            legend = tuple(
-                ['${P' + str(i) + '}_{' + str(j) + str(k) + '}$' for i in V for j in U for k in U] if is_P else
-                ['${\mathbf{x}}_{' + str(j) + '}$' for j in U])
-            plt.legend(legend, loc='upper left' if is_P else 'best', ncol=int(self.n / 2),
-                       prop={'size': int(20 / self.n)})
-
-        plt.grid()
-        plt.show()
-
     def simulate_state_space(self, t: np.ndarray, P: np.ndarray) -> np.array:
         j = len(P) - 1
 
@@ -367,11 +365,6 @@ class DiscretePyDiffGame(PyDiffGame):
 
         return equations
 
-    def plot(self, x_T: np.array):
-        plt.plot(self.forward_time, x_T)
-        plt.grid()
-        plt.show()
-
     def simulate_state_space(self, Y: np.array):
         self.update_discrete_A_cl(Y)
         x_0 = self.x_0.reshape((self.n, 1))
@@ -384,7 +377,7 @@ class DiscretePyDiffGame(PyDiffGame):
             x_T = np.concatenate((x_T, x_t_1.reshape(1, self.n)), axis=0)
             x_t = x_t_1
 
-        self.plot(x_T)
+        self.plot(t=self.forward_time, mat=x_T, is_P=False)
 
     def generate_Y_0(self) -> np.array:
         random_values_multiplier = 1
