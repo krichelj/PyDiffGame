@@ -39,23 +39,28 @@ class PyDiffGame(ABC):
                  x_0: Optional[np.ndarray] = None, T_f: Optional[Union[float, int]] = None,
                  P_f: Optional[List[np.ndarray]] = None, data_points: int = 1000, show_legend: bool = True):
 
-        PyDiffGame.check_input(A, B, Q, R, x_0, T_f, P_f, data_points)
-
+        # input parameters
         self.A = A
         self.B = B
-        self.n = A.shape[0]
-        self.N = len(B)
-        self.P_size = self.n ** 2
         self.Q = Q
         self.R = R
         self.x_0 = x_0
-        self.show_legend = show_legend
         self.infinite_horizon = T_f is None
-        self.P_f = self.get_care_P_f() if P_f is None else P_f
         self.T_f = 20 if self.infinite_horizon else T_f
+        self.P_f = self.get_care_P_f() if P_f is None else P_f
         self.data_points = data_points
+        self.show_legend = show_legend
+
         self.forward_time = np.linspace(0, self.T_f, self.data_points)
         self.backward_time = reversed(self.forward_time)
+        self.n = A.shape[0]
+        self.N = len(B)
+        self.P_size = self.n ** 2
+
+        self.check_input()
+
+        # additional parameters
+
         self.A_t = A.T
         self.S_matrices = [self.B[i] @ inv(self.R[i]) @ self.B[i].T for i in range(self.N)]
         self.P_rows_num = self.N * self.n
@@ -63,10 +68,7 @@ class PyDiffGame(ABC):
         self.Y_row_num = self.P_rows_num + K_rows_num
         self.A_cl = self.A
 
-    @staticmethod
-    def check_input(A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
-                    x0: Optional[np.ndarray], T_f: Optional[Union[float, int]],
-                    P_f: Optional[List[np.ndarray]], data_points: int):
+    def check_input(self):
         """
         Input checking method
 
@@ -75,36 +77,34 @@ class PyDiffGame(ABC):
         Case-specific errors
         """
 
-        n = A.shape[0]
-
-        if A.shape != (n, n):
+        if self.A.shape != (self.n, self.n):
             raise ValueError('A must be a square 2-d numpy array with shape MxM')
-        if any([B_i.shape[0] != n for B_i in B]):
+        if any([B_i.shape[0] != self.n for B_i in self.B]):
             raise ValueError('B must be a list of 2-d numpy arrays with M rows')
         if not all([B_i.shape[1] == R_i.shape[0] == R_i.shape[1]
-                    and np.all(eigvals(R_i) >= 0) for B_i, R_i in zip(B, R)]):
+                    and np.all(eigvals(R_i) >= 0) for B_i, R_i in zip(self.B, self.R)]):
             raise ValueError('R must be a list of square 2-d positive definite numpy arrays with shape '
                              'corresponding to the second dimensions of the arrays in B')
-        if any([Q_i.shape != (n, n) for Q_i in Q]):
+        if any([Q_i.shape != (self.n, self.n) for Q_i in self.Q]):
             raise ValueError('Q must be a list of square 2-d positive semi-definite numpy arrays with shape MxM')
-        if any([np.all(eigvals(Q_i) < 0) for Q_i in Q]):
-            if all([np.all(eigvals(Q_i) >= -1e-15) for Q_i in Q]):
+        if any([np.all(eigvals(Q_i) < 0) for Q_i in self.Q]):
+            if all([np.all(eigvals(Q_i) >= -1e-15) for Q_i in self.Q]):
                 warnings.warn("Warning: there is a matrix in Q that has negative (but really small) eigenvalues")
             else:
                 raise ValueError('Q must contain positive semi-definite numpy arrays')
-        if x0 is not None and x0.shape != (n,):
+        if self.x_0 is not None and self.x_0.shape != (self.n,):
             raise ValueError('x_0 must be a 1-d numpy array with length M')
-        if T_f and T_f <= 0:
+        if self.T_f and self.T_f <= 0:
             raise ValueError('T_f must be a positive real number')
         if P_f:
-            if not all([P_i.shape[0] == P_i.shape[1] == n for P_i in P_f]):
+            if not all([P_i.shape[0] == P_i.shape[1] == self.n for P_i in self.P_f]):
                 raise ValueError('P_f must be a list of 2-d positive semi-definite numpy arrays with shape MxM')
-            if not all([eig >= 0 for eig_set in [eigvals(P_f_i) for P_f_i in P_f] for eig in eig_set]):
-                if all([eig >= -1e-15 for eig_set in [eigvals(P_f_i) for P_f_i in P_f] for eig in eig_set]):
+            if not all([eig >= 0 for eig_set in [eigvals(P_f_i) for P_f_i in self.P_f] for eig in eig_set]):
+                if all([eig >= -1e-15 for eig_set in [eigvals(P_f_i) for P_f_i in self.P_f] for eig in eig_set]):
                     warnings.warn("Warning: there is a matrix in P_f that has negative (but really small) eigenvalues")
                 else:
                     raise ValueError('P_f must contain positive semi-definite numpy arrays')
-        if data_points <= 0:
+        if self.data_points <= 0:
             raise ValueError('The number of data points must be a positive integer')
 
     def get_care_P_f(self):
@@ -149,10 +149,22 @@ class ContinuousPyDiffGame(PyDiffGame):
     """
     Continuous differential game base class
 
+
+    Considers the system:
+    dx(t)/dt = Ax(t) + sum_{j=1}^N B_j v_j(t)
+
+    with the finite-horizon cost functions:
+    J_i = x(T_f)^T F_i(T_f) x(T_f) + int_{t=0}^T_f [x(t)^T Q_i x(t) + sum_{j=1}^N u_j(t)^T R_{ij} u_j(t)]dt
+
+    or with the infinite-horizon cost functions:
+    J_i = int_{t=0}^infty [x(t)^T Q_i x(t) + sum_{j=1}^N u_j(t)^T R_{ij} u_j(t)]dt
+
+
     Parameters
     ----------
     cl: boolean
         Indicates whether to render the closed (True) or open (False) loop behaviour
+
     """
 
     def __init__(self, A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
@@ -296,6 +308,17 @@ class ContinuousPyDiffGame(PyDiffGame):
 
 
 class DiscretePyDiffGame(PyDiffGame):
+    """
+    Discrete differential game base class
+
+
+    Considers the system:
+    x[k+1] = Ax[k] + sum_{j=1}^N B_j v_j[k]
+
+    with the infinite-horizon cost functions:
+    J_i = sum_{k=1}^infty [ x[k]^T Q_i x[k] + sum_{j=1}^N u_j[k]^T R_{ij} u_j[k] ]
+
+    """
     def get_K_i(self, Y: np.array, i: int) -> np.array:
         K_i_offset = sum([self.B[j].shape[1] for j in range(i)]) if i else 0
         first_K_i_index = self.P_rows_num + K_i_offset
@@ -307,13 +330,12 @@ class DiscretePyDiffGame(PyDiffGame):
     def get_K(self, Y: np.array) -> List[np.array]:
         return [self.get_K_i(Y, i) for i in range(self.N)]
 
-    def update_discrete_A_cl(self, Y: np.array):
+    def update_K_and_A_cl(self, Y: np.array):
         K = self.get_K(Y)
         self.A_cl = self.A - sum([self.B[i] @ K[i] for i in range(self.N)])
 
-    @staticmethod
-    def check_discrete_stability(A_k: np.array) -> bool:
-        closed_loop_eigenvalues = eigvals(A_k)
+    def check_discrete_stability(self) -> bool:
+        closed_loop_eigenvalues = eigvals(self.A_cl)
         closed_loop_eigenvalues_absolute_values = [abs(eig) for eig in closed_loop_eigenvalues]
         stability = all([eig_norm < 1 for eig_norm in closed_loop_eigenvalues_absolute_values])
 
@@ -366,7 +388,7 @@ class DiscretePyDiffGame(PyDiffGame):
         return equations
 
     def simulate_state_space(self, Y: np.array):
-        self.update_discrete_A_cl(Y)
+        self.update_K_and_A_cl(Y)
         x_0 = self.x_0.reshape((self.n, 1))
 
         x_t = x_0
@@ -377,6 +399,7 @@ class DiscretePyDiffGame(PyDiffGame):
             x_T = np.concatenate((x_T, x_t_1.reshape(1, self.n)), axis=0)
             x_t = x_t_1
 
+        # print(f"On iteration {j}, the system is {'NOT ' if not is_Y_stable else ''}stable")
         self.plot(t=self.forward_time, mat=x_T, is_P=False)
 
     def generate_Y_0(self) -> np.array:
@@ -387,7 +410,7 @@ class DiscretePyDiffGame(PyDiffGame):
 
         return Y_0
 
-    def solve_game(self, num_of_simulations: int):
+    def solve_game(self, num_of_simulations: int = 1):
         """
         Differential game main evolution method for the discrete case
 
@@ -407,8 +430,8 @@ class DiscretePyDiffGame(PyDiffGame):
             j += 1
             P, K, A_k = self.get_discrete_parameters(Y.ravel())
             Y = self.evaluate_discrete_equations(P, K, A_k)
-            is_Y_stable = self.check_discrete_stability(A_k)
-            print(f"On iteration {j}, the system is {'NOT ' if not is_Y_stable else ''}stable")
+            is_Y_stable = self.check_discrete_stability()
+            # print(f"On iteration {j}, the system is {'NOT ' if not is_Y_stable else ''}stable")
 
             return Y
 
@@ -420,8 +443,8 @@ class DiscretePyDiffGame(PyDiffGame):
             while not is_Y_0_stable:
                 Y_0 = self.generate_Y_0()
 
-                self.update_discrete_A_cl(Y_0)
-                is_Y_0_stable = self.check_discrete_stability(self.A_cl)
+                self.update_K_and_A_cl(Y_0)
+                is_Y_0_stable = self.check_discrete_stability()
 
                 if is_Y_0_stable:
                     print(f"Generated random initial guess which is stable")
@@ -438,8 +461,8 @@ class DiscretePyDiffGame(PyDiffGame):
 
 
 if __name__ == '__main__':
-    A = np.array([[-0.1, 0.1],
-                  [0.11, 0.4]])
+    A = np.array([[-0.1, 0.11],
+                  [0.1, 0.4]])
     B = [np.array([[1, 0],
                    [0, 1]]),
          np.array([[0],
@@ -479,6 +502,7 @@ if __name__ == '__main__':
                                        T_f=T_f,
                                        data_points=data_points,
                                        show_legend=show_legend)
+    discrete_game.solve_game()
 
     # continuous_game = ContinuousPyDiffGame(A=A,
     #                                        B=B,
@@ -490,11 +514,9 @@ if __name__ == '__main__':
     #                                        T_f=T_f,
     #                                        data_points=data_points,
     #                                        show_legend=show_legend)
-    # P = game.solve_continuous_game()
+    # P = continuous_game.solve_game()
 
     # n = A.shape[0]
     # N = len(Q)
-
-    discrete_game.solve_game(num_of_simulations=1)
 
     # print([(P[-1][i * P_size:(i + 1) * P_size]).reshape(n, n) for i in range(N)])

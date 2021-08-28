@@ -9,8 +9,14 @@
   * [References](Math.md#references)
 
 ## What is this?
-`PyDiffGame` is a Python package that allows to solve equations arising in models that involve the use of differential 
-games for finding optimal controllers of a multi-objective system with multiple controlled objects.
+`PyDiffGame` is a Python Multi-Objective Control Systems Simulator based on Differential Games, specifically
+Nash Equilibrium. 
+
+Based on the article "Composition of Dynamic Control Objectives Based on Differential Games".
+
+[IEEE](https://ieeexplore.ieee.org/document/9480269)
+
+[Research Gate](https://www.researchgate.net/publication/353452024_Composition_of_Dynamic_Control_Objectives_Based_on_Differential_Games)
 
 ## Local Installation
 To clone Git repository locally run this from the command prompt:
@@ -54,7 +60,7 @@ corresponding call for `play_the_game`:
 
 ```python
 import numpy as np
-from PyDiffGame import PyDiffGame
+from src.PyDiffGame.PyDiffGame import ContinuousPyDiffGame, DiscretePyDiffGame
 
 A = np.array([[-2, 1],
               [1, 4]])
@@ -79,27 +85,37 @@ R = [np.array([[100, 0],
 cl = True
 x_0 = np.array([10, 20])
 T_f = 5
-P_f = [np.array([[10, 0],
-                 [0, 20]]),
-       np.array([[30, 0],
-                 [0, 40]]),
-       np.array([[50, 0],
-                 [0, 60]])]
+P_f = [np.array([[1, 0],
+                 [0, 200]]),
+       np.array([[3, 0],
+                 [0, 4]]),
+       np.array([[500, 0],
+                 [0, 600]])]
 data_points = 1000
 show_legend = True
 
-game = PyDiffGame(A=A,
-                  B=B,
-                  Q=Q,
-                  R=R,
-                  cl=cl,
-                  x_0=x_0,
-                  P_f=P_f,
-                  T_f=T_f,
-                  data_points=data_points,
-                  show_legend=show_legend)
+discrete_game = DiscretePyDiffGame(A=A,
+                                   B=B,
+                                   Q=Q,
+                                   R=R,
+                                   x_0=x_0,
+                                   P_f=P_f,
+                                   T_f=T_f,
+                                   data_points=data_points,
+                                   show_legend=show_legend)
+discrete_game.solve_game()
 
-P = game.solve_continuous_game()
+continuous_game = ContinuousPyDiffGame(A=A,
+                                       B=B,
+                                       Q=Q,
+                                       R=R,
+                                       cl=cl,
+                                       x_0=x_0,
+                                       P_f=P_f,
+                                       T_f=T_f,
+                                       data_points=data_points,
+                                       show_legend=show_legend)
+P = continuous_game.solve_game()
 
 n = A.shape[0]
 P_size = n ** 2
