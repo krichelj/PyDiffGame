@@ -52,7 +52,7 @@ class PyDiffGame(ABC):
         self.show_legend = show_legend
 
         self.forward_time = np.linspace(0, self.T_f, self.data_points)
-        self.backward_time = reversed(self.forward_time)
+        self.backward_time = list(reversed(self.forward_time))
         self.n = A.shape[0]
         self.N = len(B)
         self.P_size = self.n ** 2
@@ -123,23 +123,18 @@ class PyDiffGame(ABC):
 
         return P_f
 
-    @abstractmethod
-    def update_P(self, **args):
+    def update_P_from_last_Z(self, **args):
         pass
 
-    @abstractmethod
-    def update_A_cl(self, **args):
+    def update_A_cl_from_last_Z(self, **args):
         pass
 
-    @abstractmethod
     def is_closed_loop_stable(self) -> bool:
         pass
 
-    @abstractmethod
     def solve_game(self, **args):
         pass
 
-    @abstractmethod
     def simulate_state_space(self, **args):
         pass
 
@@ -192,9 +187,10 @@ class ContinuousPyDiffGame(PyDiffGame):
         self.cl = cl
         self.dx_dt = None
 
-    def update_P(self):
+    def update_P_from_last_Z(self):
+        y_0 = np.ravel(self.P_f)
         self.P = odeint(func=ContinuousPyDiffGame.solve_N_coupled_diff_riccati,
-                        y0=np.ravel(self.P_f),
+                        y0=y_0,
                         t=self.backward_time,
                         args=(self.A,
                               self.A_t,
@@ -231,7 +227,7 @@ class ContinuousPyDiffGame(PyDiffGame):
 
             while not convergence:
                 self.backward_time = np.linspace(self.T_f, self.T_f - delta_T, delta_T_points)
-                self.update_P()
+                self.update_P_from_last_Z()
                 self.P_f = self.P[-1]
 
                 P_matrix_norm = norm(self.P_f)
@@ -247,7 +243,7 @@ class ContinuousPyDiffGame(PyDiffGame):
                 self.T_f -= delta_T
 
         else:
-            self.update_P()
+            self.update_P_from_last_Z()
 
             self.plot(t=self.backward_time,
                       mat=self.P,
@@ -317,12 +313,6 @@ class ContinuousPyDiffGame(PyDiffGame):
 
 
 class DiscretePyDiffGame(PyDiffGame):
-    def __init__(self, A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
-                 x_0: Optional[np.ndarray] = None, T_f: Optional[Union[float, int]] = None,
-                 P_f: Optional[List[np.ndarray]] = None, data_points: int = 1000, show_legend: bool = True):
-
-        super().__init__(A, B, Q, R, x_0, T_f, P_f, data_points, show_legend)
-        self.Z = None
     """
     Discrete differential game base class
 
@@ -335,7 +325,14 @@ class DiscretePyDiffGame(PyDiffGame):
 
     """
 
-    def update_K(self):
+    def __init__(self, A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
+                 x_0: Optional[np.ndarray] = None, T_f: Optional[Union[float, int]] = None,
+                 P_f: Optional[List[np.ndarray]] = None, data_points: int = 1000, show_legend: bool = True):
+
+        super().__init__(A, B, Q, R, x_0, T_f, P_f, data_points, show_legend)
+        self.Z = None
+
+    def update_K_from_last_Z(self):
         self.K = []
 
         for i in range(self.N):
@@ -354,16 +351,16 @@ class DiscretePyDiffGame(PyDiffGame):
 
         return stability
 
-    def update_P(self):
+    def update_P_from_last_Z(self):
         self.P = [self.Z[i * self.n:(i + 1) * self.n, :] for i in range(self.N)]
 
-    def update_A_cl(self):
+    def update_A_cl_from_last_Z(self):
         self.A_cl = self.A - sum([B_i @ K_i for B_i, K_i in zip(self.B, self.K)])
 
-    def update_parameters(self):
-        self.update_P()
-        self.update_K()
-        self.update_A_cl()
+    def update_parameters_from_last_Z(self):
+        self.update_P_from_last_Z()
+        self.update_K_from_last_Z()
+        self.update_A_cl_from_last_Z()
 
     def update_Z(self):
         Z_P = []
@@ -404,17 +401,17 @@ class DiscretePyDiffGame(PyDiffGame):
         # print(f"On iteration {j}, the system is {'NOT ' if not is_Y_stable else ''}stable")
         self.plot(t=self.forward_time, mat=x_T, is_P=False)
 
-    def initialize_Z(self, random_values_multiplier: float = 100):
-        self.P = []
-        self.K = []
+    def initialize_Z(self, random_values_multiplier: float = 1):
+        P = []
+        K = []
 
         for i in range(self.N):
             B_i_columns_num = self.B[i].shape[1]
-            self.P += [random_values_multiplier * (np.random.rand(self.n, self.n) - 0.5 * np.ones((self.n, self.n)))]
-            self.K += [random_values_multiplier * (np.random.rand(B_i_columns_num, self.n) -
+            P += [random_values_multiplier * (np.random.rand(self.n, self.n) - 0.5 * np.ones((self.n, self.n)))]
+            K += [random_values_multiplier * (np.random.rand(B_i_columns_num, self.n) -
                                                    0.5 * np.ones((B_i_columns_num, self.n)))]
 
-        self.Z = np.concatenate((*self.P, *self.K), axis=0)
+        self.Z = np.concatenate((*P, *K), axis=0)
 
     def solve_game(self, num_of_simulations: int = 1):
         """
@@ -436,12 +433,12 @@ class DiscretePyDiffGame(PyDiffGame):
             j += 1
             self.Z = Z.reshape((self.Z_row_num, self.n))
 
-            self.update_parameters()
+            self.update_parameters_from_last_Z()
             self.update_Z()
             is_Z_stable = self.is_closed_loop_stable()
             print(f"On iteration {j}, the system is {'NOT ' if not is_Z_stable else ''}stable")
 
-            return self.Z.ravel()
+            return Z.ravel()
 
         # is_stable = False
         # is_Z_0_stable = False
@@ -449,7 +446,7 @@ class DiscretePyDiffGame(PyDiffGame):
         for _ in range(num_of_simulations):
             # while not is_Z_0_stable:
             self.initialize_Z()
-            self.update_A_cl()
+            self.update_A_cl_from_last_Z()
             is_Z_0_stable = self.is_closed_loop_stable()
 
             if is_Z_0_stable:
@@ -464,28 +461,28 @@ class DiscretePyDiffGame(PyDiffGame):
 
 
 if __name__ == '__main__':
-    A = np.array([[-0.1, 0.2],
-                  [0.2, 0.4]])
+    A = np.array([[.1, .2],
+                  [.3, .5]])
     B = [np.array([[1, 0],
                    [0, 1]]),
          np.array([[0],
                    [1]]),
          np.array([[1],
                    [0]])]
-    Q = [np.array([[1, 0],
-                   [0, 1]]),
+    Q = [np.array([[100, 5],
+                   [0, 100]]),
          np.array([[1, 0],
                    [0, 10]]),
-         np.array([[10, 0],
-                   [0, 1]])
+         np.array([[10, 2],
+                   [4, 1]])
          ]
-    R = [np.array([[100, 0],
-                   [0, 200]]),
+    R = [np.array([[50, 0],
+                   [0, 50]]),
          np.array([[5]]),
          np.array([[7]])]
 
     cl = True
-    x_0 = np.array([10, 20])
+    x_0 = np.array([100, 80])
     T_f = 5
     P_f = [np.array([[1, 0],
                      [0, 200]]),
@@ -493,31 +490,36 @@ if __name__ == '__main__':
                      [0, 4]]),
            np.array([[500, 0],
                      [0, 600]])]
-    data_points = 1000
     show_legend = True
 
-    discrete_game = DiscretePyDiffGame(A=A,
-                                       B=B,
-                                       Q=Q,
-                                       R=R,
-                                       x_0=x_0,
-                                       P_f=P_f,
-                                       T_f=T_f,
-                                       data_points=data_points,
-                                       show_legend=show_legend)
-    discrete_game.solve_game(num_of_simulations=1)
+    for data_points in [i * 15 for i in range(1, 5)]:
+    # data_points = 10
+    #
+    #
+        continuous_game = ContinuousPyDiffGame(A=A,
+                                               B=B,
+                                               Q=Q,
+                                               R=R,
+                                               cl=cl,
+                                               x_0=x_0,
+                                               P_f=P_f,
+                                               T_f=T_f,
+                                               data_points=data_points,
+                                               show_legend=show_legend)
+        P = continuous_game.solve_game()
 
-    # continuous_game = ContinuousPyDiffGame(A=A,
-    #                                        B=B,
-    #                                        Q=Q,
-    #                                        R=R,
-    #                                        cl=cl,
-    #                                        x_0=x_0,
-    #                                        P_f=P_f,
-    #                                        T_f=T_f,
-    #                                        data_points=data_points,
-    #                                        show_legend=show_legend)
-    # P = continuous_game.solve_game()
+        discrete_game = DiscretePyDiffGame(A=A,
+                                           B=B,
+                                           Q=Q,
+                                           R=R,
+                                           x_0=x_0,
+                                           P_f=P_f,
+                                           T_f=T_f,
+                                           data_points=data_points,
+                                           show_legend=show_legend)
+        discrete_game.solve_game(num_of_simulations=1)
+
+
 
     # n = A.shape[0]
     # N = len(Q)
