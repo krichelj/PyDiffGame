@@ -6,7 +6,7 @@ from scipy.integrate import odeint
 import warnings
 from typing import List, Optional, Union, Tuple
 from scipy.optimize import fsolve
-from abc import ABC
+from abc import ABC, abstractmethod
 
 
 class PyDiffGame(ABC):
@@ -65,8 +65,11 @@ class PyDiffGame(ABC):
         self.S_matrices = [self.B[i] @ inv(self.R[i]) @ self.B[i].T for i in range(self.N)]
         self.P_rows_num = self.N * self.n
         K_rows_num = sum([b.shape[1] for b in self.B])
-        self.Y_row_num = self.P_rows_num + K_rows_num
-        self.A_cl = self.A
+        self.Z_row_num = self.P_rows_num + K_rows_num
+
+        self.A_cl = np.empty_like(self.A)
+        self.P = []
+        self.K = []
 
     def check_input(self):
         """
@@ -120,9 +123,23 @@ class PyDiffGame(ABC):
 
         return P_f
 
+    @abstractmethod
+    def update_P(self, **args):
+        pass
+
+    @abstractmethod
+    def update_A_cl(self, **args):
+        pass
+
+    @abstractmethod
+    def is_closed_loop_stable(self) -> bool:
+        pass
+
+    @abstractmethod
     def solve_game(self, **args):
         pass
 
+    @abstractmethod
     def simulate_state_space(self, **args):
         pass
 
@@ -173,9 +190,20 @@ class ContinuousPyDiffGame(PyDiffGame):
 
         super().__init__(A, B, Q, R, x_0, T_f, P_f, data_points, show_legend)
         self.cl = cl
+        self.dx_dt = None
 
-    def solve_game(self, epsilon: float = 10e-8, delta_T: float = 5, delta_T_points: int = None) \
-            -> np.ndarray:
+    def update_P(self):
+        self.P = odeint(func=ContinuousPyDiffGame.solve_N_coupled_diff_riccati,
+                        y0=np.ravel(self.P_f),
+                        t=self.backward_time,
+                        args=(self.A,
+                              self.A_t,
+                              self.S_matrices,
+                              self.Q,
+                              self.cl),
+                        tfirst=True)
+
+    def solve_game(self, epsilon: float = 10e-8, delta_T: float = 5, delta_T_points: int = None):
         """
         Differential game main evolution method for the continuous case
 
@@ -193,7 +221,6 @@ class ContinuousPyDiffGame(PyDiffGame):
         P : numpy 2-d array, of shape(n, n) or of shape(n, n)
             Solution to the continuous-time set of Riccati equations
         """
-        P = np.array([])
 
         if not delta_T_points:
             delta_T_points = self.data_points
@@ -204,17 +231,8 @@ class ContinuousPyDiffGame(PyDiffGame):
 
             while not convergence:
                 self.backward_time = np.linspace(self.T_f, self.T_f - delta_T, delta_T_points)
-                P = odeint(func=ContinuousPyDiffGame.solve_N_coupled_diff_riccati,
-                           y0=np.ravel(self.P_f),
-                           t=self.backward_time,
-                           args=(self.A,
-                                 self.A_t,
-                                 self.S_matrices,
-                                 self.Q,
-                                 self.cl),
-                           tfirst=True)
-
-                self.P_f = P[-1]
+                self.update_P()
+                self.P_f = self.P[-1]
 
                 P_matrix_norm = norm(self.P_f)
                 last_Ps.append(P_matrix_norm)
@@ -229,28 +247,18 @@ class ContinuousPyDiffGame(PyDiffGame):
                 self.T_f -= delta_T
 
         else:
-            P = odeint(func=ContinuousPyDiffGame.solve_N_coupled_diff_riccati,
-                       y0=np.ravel(self.P_f),
-                       t=self.backward_time,
-                       args=(self.A,
-                             self.A_t,
-                             self.S_matrices,
-                             self.Q,
-                             self.cl),
-                       tfirst=True)
+            self.update_P()
 
             self.plot(t=self.backward_time,
-                      mat=P,
+                      mat=self.P,
                       is_P=True)
 
         if self.x_0 is not None:
-            x = self.simulate_state_space(self.forward_time, P)
+            x = self.simulate_state_space()
 
             self.plot(t=self.forward_time,
                       mat=x,
                       is_P=False)
-
-        return P
 
     def get_dxdt(self, x: np.ndarray, P_matrices: List[np.ndarray]):
         self.A_cl = self.A - sum([a @ b for a, b in zip(self.S_matrices, P_matrices)])
@@ -286,13 +294,13 @@ class ContinuousPyDiffGame(PyDiffGame):
                 dPdt = np.concatenate((dPdt, dPidt), axis=0)
         return np.ravel(dPdt)
 
-    def simulate_state_space(self, t: np.ndarray, P: np.ndarray) -> np.array:
-        j = len(P) - 1
+    def simulate_state_space(self) -> np.array:
+        j = len(self.P) - 1
 
         def state_diff_eqn(x: np.ndarray, _):
             nonlocal j
 
-            P_matrices_j = [(P[j][i * self.P_size:(i + 1) * self.P_size]).reshape(self.n, self.n)
+            P_matrices_j = [(self.P[j][i * self.P_size:(i + 1) * self.P_size]).reshape(self.n, self.n)
                             for i in range(self.N)]
             dxdt = self.get_dxdt(x, P_matrices_j)
 
@@ -302,12 +310,19 @@ class ContinuousPyDiffGame(PyDiffGame):
             return np.ravel(dxdt)
 
         x = odeint(state_diff_eqn,
-                   self.x_0, t)
+                   self.x_0,
+                   self.forward_time)
 
         return x
 
 
 class DiscretePyDiffGame(PyDiffGame):
+    def __init__(self, A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
+                 x_0: Optional[np.ndarray] = None, T_f: Optional[Union[float, int]] = None,
+                 P_f: Optional[List[np.ndarray]] = None, data_points: int = 1000, show_legend: bool = True):
+
+        super().__init__(A, B, Q, R, x_0, T_f, P_f, data_points, show_legend)
+        self.Z = None
     """
     Discrete differential game base class
 
@@ -319,54 +334,44 @@ class DiscretePyDiffGame(PyDiffGame):
     J_i = sum_{k=1}^infty [ x[k]^T Q_i x[k] + sum_{j=1}^N u_j[k]^T R_{ij} u_j[k] ]
 
     """
-    def get_K_i(self, Y: np.array, i: int) -> np.array:
-        K_i_offset = sum([self.B[j].shape[1] for j in range(i)]) if i else 0
-        first_K_i_index = self.P_rows_num + K_i_offset
-        second_K_i_index = first_K_i_index + self.B[i].shape[1]
-        K_i = Y[first_K_i_index:second_K_i_index, :]
 
-        return K_i
+    def update_K(self):
+        self.K = []
 
-    def get_K(self, Y: np.array) -> List[np.array]:
-        return [self.get_K_i(Y, i) for i in range(self.N)]
+        for i in range(self.N):
+            K_i_offset = sum([self.B[j].shape[1] for j in range(i)]) if i else 0
+            first_K_i_index = self.P_rows_num + K_i_offset
+            second_K_i_index = first_K_i_index + self.B[i].shape[1]
+            K_i = self.Z[first_K_i_index:second_K_i_index, :]
 
-    def update_K_and_A_cl(self, Y: np.array):
-        K = self.get_K(Y)
-        self.A_cl = self.A - sum([self.B[i] @ K[i] for i in range(self.N)])
+            self.K += [K_i]
 
-    def check_discrete_stability(self) -> bool:
+    def is_closed_loop_stable(self) -> bool:
         closed_loop_eigenvalues = eigvals(self.A_cl)
         closed_loop_eigenvalues_absolute_values = [abs(eig) for eig in closed_loop_eigenvalues]
+        print(closed_loop_eigenvalues_absolute_values)
         stability = all([eig_norm < 1 for eig_norm in closed_loop_eigenvalues_absolute_values])
 
-        # print(f'A_k:\n{A_k}\nEigenvalues:\n{closed_loop_eigenvalues_absolute_values}')
         return stability
 
-    def get_discrete_parameters(self, Y: np.array) -> Tuple[List[np.array], List[np.array], np.array]:
+    def update_P(self):
+        self.P = [self.Z[i * self.n:(i + 1) * self.n, :] for i in range(self.N)]
 
-        Y = Y.reshape((self.Y_row_num, self.n))
+    def update_A_cl(self):
+        self.A_cl = self.A - sum([B_i @ K_i for B_i, K_i in zip(self.B, self.K)])
 
-        P = []
-        K = []
-        A_k = self.A
+    def update_parameters(self):
+        self.update_P()
+        self.update_K()
+        self.update_A_cl()
 
-        for i in range(self.N):
-            P_i = Y[i * self.n:(i + 1) * self.n, :]
-            P += [P_i]
-            K_i = self.get_K_i(Y, i)
-            K += [K_i]
-
-            A_k = A_k - self.B[i] @ K_i
-
-        return P, K, A_k
-
-    def evaluate_discrete_equations(self, P: List[np.array], K: List[np.array], A_k: np.array) -> np.array:
-        equations_P = []
-        equations_K = []
+    def update_Z(self):
+        Z_P = []
+        Z_K = []
 
         for i in range(self.N):
-            K_i = K[i]
-            P_i = P[i]
+            K_i = self.K[i]
+            P_i = self.P[i]
             R_ii = self.R[i]
             Q_i = self.Q[i]
             B_i = self.B[i]
@@ -375,20 +380,17 @@ class DiscretePyDiffGame(PyDiffGame):
             coefficient = R_ii + B_i_T_P_i @ B_i
             inv_coefficient = inv(coefficient)
             coefficient = inv_coefficient @ B_i_T_P_i
-            A_k_i = A_k + B_i @ K_i
+            A_cl_i = self.A_cl + B_i @ K_i
 
-            equation_K_i = K_i - coefficient @ A_k_i
-            equations_K += [equation_K_i]
+            equation_K_i = K_i - coefficient @ A_cl_i
+            Z_K += [equation_K_i]
 
-            equation_P_i = Q_i + K_i.T @ R_ii @ K_i - P_i + A_k.T @ P_i @ A_k
-            equations_P += [equation_P_i]
+            equation_P_i = Q_i + K_i.T @ R_ii @ K_i - P_i + self.A_cl.T @ P_i @ self.A_cl
+            Z_P += [equation_P_i]
 
-        equations = np.concatenate((*equations_P, *equations_K), axis=0).ravel()
+        self.Z = np.concatenate((*Z_P, *Z_K), axis=0)
 
-        return equations
-
-    def simulate_state_space(self, Y: np.array):
-        self.update_K_and_A_cl(Y)
+    def simulate_state_space(self):
         x_0 = self.x_0.reshape((self.n, 1))
 
         x_t = x_0
@@ -402,13 +404,17 @@ class DiscretePyDiffGame(PyDiffGame):
         # print(f"On iteration {j}, the system is {'NOT ' if not is_Y_stable else ''}stable")
         self.plot(t=self.forward_time, mat=x_T, is_P=False)
 
-    def generate_Y_0(self) -> np.array:
-        random_values_multiplier = 1
-        P_0 = [random_values_multiplier * np.random.rand(self.n, self.n) for _ in range(self.N)]
-        K_0 = [random_values_multiplier * np.random.rand(b.shape[1], self.n) for b in self.B]
-        Y_0 = np.concatenate((*P_0, *K_0), axis=0)
+    def initialize_Z(self, random_values_multiplier: float = 100):
+        self.P = []
+        self.K = []
 
-        return Y_0
+        for i in range(self.N):
+            B_i_columns_num = self.B[i].shape[1]
+            self.P += [random_values_multiplier * (np.random.rand(self.n, self.n) - 0.5 * np.ones((self.n, self.n)))]
+            self.K += [random_values_multiplier * (np.random.rand(B_i_columns_num, self.n) -
+                                                   0.5 * np.ones((B_i_columns_num, self.n)))]
+
+        self.Z = np.concatenate((*self.P, *self.K), axis=0)
 
     def solve_game(self, num_of_simulations: int = 1):
         """
@@ -424,45 +430,42 @@ class DiscretePyDiffGame(PyDiffGame):
         warnings.filterwarnings('ignore', 'The iteration is not making good progress')
         j = 0
 
-        def get_equations(Y: np.array):
+        def get_equations(Z: np.array):
             nonlocal j
 
             j += 1
-            P, K, A_k = self.get_discrete_parameters(Y.ravel())
-            Y = self.evaluate_discrete_equations(P, K, A_k)
-            is_Y_stable = self.check_discrete_stability()
-            # print(f"On iteration {j}, the system is {'NOT ' if not is_Y_stable else ''}stable")
+            self.Z = Z.reshape((self.Z_row_num, self.n))
 
-            return Y
+            self.update_parameters()
+            self.update_Z()
+            is_Z_stable = self.is_closed_loop_stable()
+            print(f"On iteration {j}, the system is {'NOT ' if not is_Z_stable else ''}stable")
 
-        Y = None
+            return self.Z.ravel()
+
         # is_stable = False
-        is_Y_0_stable = False
+        # is_Z_0_stable = False
 
         for _ in range(num_of_simulations):
-            while not is_Y_0_stable:
-                Y_0 = self.generate_Y_0()
+            # while not is_Z_0_stable:
+            self.initialize_Z()
+            self.update_A_cl()
+            is_Z_0_stable = self.is_closed_loop_stable()
 
-                self.update_K_and_A_cl(Y_0)
-                is_Y_0_stable = self.check_discrete_stability()
+            if is_Z_0_stable:
+                print(f"Generated random initial guess which is stable")
 
-                if is_Y_0_stable:
-                    print(f"Generated random initial guess which is stable")
+            self.Z = fsolve(get_equations, self.Z)
+            self.Z = np.array(self.Z).reshape((self.Z_row_num, self.n))
+            j = 0
 
-                Y = fsolve(get_equations, Y_0)
-                j = 0
-                Y = np.array(Y).reshape((self.Y_row_num, self.n))
-
-                # A_k = self.get_A_k(Y)
-                # is_stable = self.check_discrete_stability(A_k)
-
-            self.simulate_state_space(Y)
-            is_Y_0_stable = False
+            self.simulate_state_space()
+            # is_Z_0_stable = False
 
 
 if __name__ == '__main__':
-    A = np.array([[-0.1, 0.11],
-                  [0.1, 0.4]])
+    A = np.array([[-0.1, 0.2],
+                  [0.2, 0.4]])
     B = [np.array([[1, 0],
                    [0, 1]]),
          np.array([[0],
@@ -502,7 +505,7 @@ if __name__ == '__main__':
                                        T_f=T_f,
                                        data_points=data_points,
                                        show_legend=show_legend)
-    discrete_game.solve_game()
+    discrete_game.solve_game(num_of_simulations=1)
 
     # continuous_game = ContinuousPyDiffGame(A=A,
     #                                        B=B,
