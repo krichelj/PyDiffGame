@@ -1,4 +1,7 @@
-# PyDiffGame
+<p align="center">
+    <img alt="Logo" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/logo.png"/>
+</p>
+
   * [What is this?](#what-is-this)
   * [Local Installation](#local-installation)
   * [Required Input](#input-Parameters)
@@ -130,8 +133,12 @@ The output will be:
 
 This will result in the following plot for the Riccati equation solution:
 
-<img src="https://github.com/krichelj/PyDiffGame/blob/master/images/tut1_riccati.png" width="640" alt="EKF pic">
+<p align="center">
+    <img alt="Logo" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/tut1_riccati.png"/>
+</p>
 
 with the corresponding state space simulation:
 
-<img src="https://github.com/krichelj/PyDiffGame/blob/master/images/tut1_state.png" width="640" alt="EKF pic">
+<p align="center">
+    <img alt="State space simulation" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/tut1_state.png"/>
+</p>
