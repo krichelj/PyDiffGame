@@ -6,23 +6,23 @@
   * [Local Installation](#local-installation)
   * [Required Input](#input-Parameters)
 
-## Additional Information
+# Additional Information
   * [Mathematical Description](Math.md)
   * [Supported Scenarios](Scenarios.md)
   * [References](Math.md#references)
 
-## What is this?
+# What is this?
 `PyDiffGame` is a Python Multi-Objective Control Systems Simulator based on Nash Equilibrium Differential Game. 
 Based on the article "_Composition of Dynamic Control Objectives Based on Differential Games_" 
 ([IEEE](https://ieeexplore.ieee.org/document/9480269) | 
 [Research Gate](https://www.researchgate.net/publication/353452024_Composition_of_Dynamic_Control_Objectives_Based_on_Differential_Games))
-## Local Installation
+# Local Installation
 To clone Git repository locally run this from the command prompt:
 ```
 git clone https://github.com/krichelj/PyDiffGame.git
 ```
 
-## Input Parameters
+# Input Parameters
 
 The package contains a file named `PyDiffGame.py` and a class of the same name.
 An object of the class represents an instance of differential game. Once the object is created,
@@ -51,7 +51,7 @@ The input parameters to instantiate a `PyDiffGame` object are:
 * `show_legend` : boolean
 >Indicates whether to display a legend in the plots (True) or not (False)
 > 
-## Tutorial
+# Tutorial
 
 Let us consider the following input parameters for the instantiation of a `PyDiffGame` object and 
 corresponding call for `play_the_game`:
@@ -141,4 +141,14 @@ with the corresponding state space simulation:
 
 <p align="center">
     <img alt="State space simulation" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/tut1_state.png"/>
+</p>
+
+# Acknowledgments
+This research was supported in part by the Helmsley Charitable Trust through the Agricultural, Biological and Cognitive Robotics Initiative and by the Marcus Endowment Fund both at Ben-Gurion University of the Negev, Israel.
+This research was also supported by The Israeli Smart Transportation Research Center (ISTRC) by The Technion and Bar-Ilan Universities, Israel.
+
+<p float="left">
+  <img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/Logo_ISTRC_Green_English.jpg" width="100" />
+  <img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/BGU-logo-round.png" width="100" />
+  <img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/logo_abc.png" width="100" />
 </p>
