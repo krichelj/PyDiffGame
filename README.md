@@ -9,15 +9,10 @@
   * [References](Math.md#references)
 
 ## What is this?
-`PyDiffGame` is a Python Multi-Objective Control Systems Simulator based on Differential Games, specifically
-Nash Equilibrium. 
-
-Based on the article "Composition of Dynamic Control Objectives Based on Differential Games".
-
-[IEEE](https://ieeexplore.ieee.org/document/9480269)
-
-[Research Gate](https://www.researchgate.net/publication/353452024_Composition_of_Dynamic_Control_Objectives_Based_on_Differential_Games)
-
+`PyDiffGame` is a Python Multi-Objective Control Systems Simulator based on Nash Equilibrium Differential Game. 
+Based on the article "_Composition of Dynamic Control Objectives Based on Differential Games_" 
+([IEEE](https://ieeexplore.ieee.org/document/9480269) | 
+[Research Gate](https://www.researchgate.net/publication/353452024_Composition_of_Dynamic_Control_Objectives_Based_on_Differential_Games))
 ## Local Installation
 To clone Git repository locally run this from the command prompt:
 ```
@@ -32,21 +27,21 @@ the method that calls for the game to begin is `play_the_game`.
 All the constants are defined in the [Mathematical Description](Math.md) section.
 The input parameters to instantiate a `PyDiffGame` object are:
 
-* `A` : numpy 2-d array, of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}n,n">)
+* `A` : numpy 2-d array, of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{red}n,n">)
 >The system dynamics matrix
-* `B` : list of numpy 2-d arrays, of len(<img src="https://render.githubusercontent.com/render/math?math=\color{white}N">), each matrix <img src="https://render.githubusercontent.com/render/math?math=\color{white}B_j"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}M,k_j">), <img src="https://render.githubusercontent.com/render/math?math=\color{white}j=1...N">
+* `B` : list of numpy 2-d arrays, of len(<img src="https://render.githubusercontent.com/render/math?math=\color{red}N">), each matrix <img src="https://render.githubusercontent.com/render/math?math=\color{red}B_i"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{red}n, k_j">), <img src="https://render.githubusercontent.com/render/math?math=\color{red}i=1...N">
 >System input matrices for each control objective
-* `Q` : list of numpy 2-d arrays, of len(<img src="https://render.githubusercontent.com/render/math?math=\color{white}N">), each matrix <img src="https://render.githubusercontent.com/render/math?math=\color{white}Q_j"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}M,M">), <img src="https://render.githubusercontent.com/render/math?math=\color{white}j=1...N">
+* `Q` : list of numpy 2-d arrays, of len(<img src="https://render.githubusercontent.com/render/math?math=\color{red}N">), each matrix <img src="https://render.githubusercontent.com/render/math?math=\color{red}Q_i"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{red}n, n">), <img src="https://render.githubusercontent.com/render/math?math=\color{red}i=1...N">
 >Cost function state weights for each control objective
-* `R` : list of numpy 2-d arrays, of len(<img src="https://render.githubusercontent.com/render/math?math=\color{white}N">), each matrix <img src="https://render.githubusercontent.com/render/math?math=\color{white}R_{j}"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}k_j,k_j">), <img src="https://render.githubusercontent.com/render/math?math=\color{white}j=1...N">
+* `R` : list of numpy 2-d arrays, of len(<img src="https://render.githubusercontent.com/render/math?math=\color{red}N">), each matrix <img src="https://render.githubusercontent.com/render/math?math=\color{red}R_{i}"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{red}k_j,k_j">), <img src="https://render.githubusercontent.com/render/math?math=\color{red}j=1...N">
 >Cost function input weights for each control objective
 * `cl` : boolean
 >Indicates whether to render the closed (True) or open (False) loop behaviour
 * `T_f` : positive float, optional, default = 5
 >System dynamics horizon. Should be given in the case of finite horizon
-* `x_0` : numpy 1-d array, of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}n">), optional
+* `x_0` : numpy 1-d array, of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{red}n">), optional
 >Initial state vector
-* `P_f` : list of numpy 2-d arrays, of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{white}n, n">), optional, default = solution of scipy's `solve_continuous_are`
+* `P_f` : list of numpy 2-d arrays, of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{red}n, n">), optional, default = solution of scipy's `solve_continuous_are`
 >Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
 * `data_points` : positive int, optional, default = 1000
 >Number of data points to evaluate the Riccati equation matrix. Should be given in the case of finite horizon
@@ -60,7 +55,7 @@ corresponding call for `play_the_game`:
 
 ```python
 import numpy as np
-from src.PyDiffGame.PyDiffGame import ContinuousPyDiffGame, DiscretePyDiffGame
+from PyDiffGame import ContinuousPyDiffGame, DiscretePyDiffGame
 
 A = np.array([[-2, 1],
               [1, 4]])

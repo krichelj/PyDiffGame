@@ -7,7 +7,12 @@ import warnings
 from typing import List, Optional, Union, Tuple
 from scipy.optimize import fsolve
 from abc import ABC, abstractmethod
-import quadpy
+from quadpy import quad
+
+data_points_default = 1000
+epsilon_default = 1/(10**3)
+delta_T_default = 0.5
+last_norms_number_default = 3
 
 
 class PyDiffGame(ABC):
@@ -33,22 +38,28 @@ class PyDiffGame(ABC):
         Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
     data_points: positive int, optional, default = 1000
         Number of data points to evaluate the Riccati equation matrix. Should be given in the case of finite horizon
-    show_legend: boolean
+    show_legend: boolean, optional, default = True
         Indicates whether to display a legend in the plots (True) or not (False)
-    epsilon: float
+    epsilon: float, optional, default = 10e-8
         The convergence threshold for numerical convergence
-    delta_T: float
+    delta_T: float, optional, default = 0.5
         Sampling interval
+    last_norms_number: int, optional, default = 5
+        The number of last matrix norms to consider for convergence
     """
 
     def __init__(self, A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
                  x_0: Optional[np.ndarray] = None, T_f: Optional[Union[float, int]] = None,
-                 P_f: Optional[List[np.ndarray]] = None, data_points: int = 1000, show_legend: bool = True,
-                 epsilon: float = 10e-8, delta_T: float = 0.5):
+                 P_f: Optional[List[np.ndarray]] = None, data_points: int = data_points_default,
+                 show_legend: bool = True, epsilon: float = epsilon_default, delta_T: float = delta_T_default,
+                 last_norms_number: int = last_norms_number_default):
 
-        # input parameters
+        # input and shape parameters
         self.A = A
         self.B = B
+        self.n = self.A.shape[0]
+        self.N = len(self.B)
+        self.P_size = self.n ** 2
         self.Q = Q
         self.R = R
         self.x_0 = x_0
@@ -59,10 +70,7 @@ class PyDiffGame(ABC):
         self.show_legend = show_legend
 
         self.forward_time = np.linspace(0, self.T_f, self.data_points)
-        self.backward_time = list(reversed(self.forward_time))
-        self.n = A.shape[0]
-        self.N = len(B)
-        self.P_size = self.n ** 2
+        self.backward_time = np.array(list(reversed(self.forward_time)))
 
         self.check_input()
 
@@ -79,6 +87,9 @@ class PyDiffGame(ABC):
 
         self.epsilon = epsilon
         self.delta_T = delta_T
+        self.x = self.x_0
+        self.last_norms_number = last_norms_number
+        self.converged = False
 
     def check_input(self):
         """
@@ -90,26 +101,26 @@ class PyDiffGame(ABC):
         """
 
         if self.A.shape != (self.n, self.n):
-            raise ValueError('A must be a square 2-d numpy array with shape MxM')
+            raise ValueError('A must be a square 2-d numpy array with shape nxn')
         if any([B_i.shape[0] != self.n for B_i in self.B]):
-            raise ValueError('B must be a list of 2-d numpy arrays with M rows')
+            raise ValueError('B must be a list of 2-d numpy arrays with n rows')
         if not all([B_i.shape[1] == R_i.shape[0] == R_i.shape[1]
                     and np.all(eigvals(R_i) >= 0) for B_i, R_i in zip(self.B, self.R)]):
             raise ValueError('R must be a list of square 2-d positive definite numpy arrays with shape '
                              'corresponding to the second dimensions of the arrays in B')
         if any([Q_i.shape != (self.n, self.n) for Q_i in self.Q]):
-            raise ValueError('Q must be a list of square 2-d positive semi-definite numpy arrays with shape MxM')
+            raise ValueError('Q must be a list of square 2-d positive semi-definite numpy arrays with shape nxn')
         if any([np.all(eigvals(Q_i) < 0) for Q_i in self.Q]):
             if all([np.all(eigvals(Q_i) >= -1e-15) for Q_i in self.Q]):
                 warnings.warn("Warning: there is a matrix in Q that has negative (but really small) eigenvalues")
             else:
                 raise ValueError('Q must contain positive semi-definite numpy arrays')
         if self.x_0 is not None and self.x_0.shape != (self.n,):
-            raise ValueError('x_0 must be a 1-d numpy array with length M')
+            raise ValueError('x_0 must be a 1-d numpy array with length n')
         if self.T_f and self.T_f <= 0:
             raise ValueError('T_f must be a positive real number')
-        if not all([P_i.shape[0] == P_i.shape[1] == self.n for P_i in self.P_f]):
-            raise ValueError('P_f must be a list of 2-d positive semi-definite numpy arrays with shape MxM')
+        if not all([P_f_i.shape[0] == P_f_i.shape[1] == self.n for P_f_i in self.P_f]):
+            raise ValueError('P_f must be a list of 2-d positive semi-definite numpy arrays with shape nxn')
         if not all([eig >= 0 for eig_set in [eigvals(P_f_i) for P_f_i in self.P_f] for eig in eig_set]):
             if all([eig >= -1e-15 for eig_set in [eigvals(P_f_i) for P_f_i in self.P_f] for eig in eig_set]):
                 warnings.warn("Warning: there is a matrix in P_f that has negative (but really small) eigenvalues")
@@ -120,24 +131,15 @@ class PyDiffGame(ABC):
 
     def get_care_P_f(self) -> np.array:
         """
-        Tests Lyapunov stability of the closed loop
+        Evaluates the algebraic Riccati equation
 
         Returns
         ----------
         P_f: list of numpy 2-d arrays, of len(N), of shape(n, n), solution of scipy's solve_continuous_are
             Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
         """
-        P_f = np.zeros((self.N * self.P_size,))
 
-        for i in range(self.N):
-            P_f_i = solve_continuous_are(self.A, self.B[i], self.Q[i], self.R[i]).reshape((self.P_size,))
-
-            if i == 0:
-                P_f = P_f_i
-            else:
-                P_f = np.concatenate((P_f, P_f_i), axis=0)
-
-        return P_f
+        return [solve_continuous_are(self.A, B_i, Q_i, R_ii) for B_i, Q_i, R_ii in zip(self.B, self.Q, self.R)]
 
     @abstractmethod
     def update_P_from_last_state(self, **args):
@@ -164,6 +166,24 @@ class PyDiffGame(ABC):
             Indicates whether the system has Lyapunov stability or not
         """
         pass
+
+    def converge_DREs_to_AREs(self):
+        last_norms = []
+
+        while not self.converged:
+            self.backward_time = np.linspace(self.T_f, self.T_f - self.delta_T, self.data_points)
+            self.update_P_from_last_state()
+            self.P_f = self.P[-1]
+            last_norms += [norm(self.P_f)]
+
+            if len(last_norms) > self.last_norms_number:
+                last_norms.pop(0)
+
+            if len(last_norms) == self.last_norms_number:
+                self.converged = all([abs(norm_i - norm_i1) < self.epsilon for norm_i, norm_i1
+                                      in zip(last_norms, last_norms[1:])])
+
+            self.T_f -= self.delta_T
 
     @abstractmethod
     def solve_game(self, **args):
@@ -205,7 +225,6 @@ class ContinuousPyDiffGame(PyDiffGame):
     """
     Continuous differential game base class
 
-
     Considers the system:
     dx(t)/dt = Ax(t) + sum_{j=1}^N B_j v_j(t)
 
@@ -223,8 +242,9 @@ class ContinuousPyDiffGame(PyDiffGame):
 
     def __init__(self, A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
                  cl: bool, x_0: Optional[np.ndarray] = None, T_f: Optional[Union[float, int]] = None,
-                 P_f: Optional[List[np.ndarray]] = None, data_points: int = 1000, show_legend: bool = True,
-                 epsilon: float = 10e-8, delta_T: float = 0.5):
+                 P_f: Optional[List[np.ndarray]] = None, data_points: int = data_points_default,
+                 show_legend: bool = True, epsilon: float = epsilon_default, delta_T: float = delta_T_default,
+                 last_norms_number: int = last_norms_number_default):
 
         super().__init__(A=A,
                          B=B,
@@ -236,32 +256,45 @@ class ContinuousPyDiffGame(PyDiffGame):
                          data_points=data_points,
                          show_legend=show_legend,
                          epsilon=epsilon,
-                         delta_T=delta_T)
+                         delta_T=delta_T,
+                         last_norms_number=last_norms_number)
 
-        def solve_N_coupled_diff_riccati(_, P: np.ndarray):
-
-            P_matrices = [(P[i * self.P_size:(i + 1) * self.P_size]).reshape(self.n, self.n) for i in range(self.N)]
-            SP_sum = sum(a @ b for a, b in zip(self.S_matrices, P_matrices))
-            dPdt = np.zeros((self.P_size,))
-
-            for i in range(self.N):
-                P_i = P_matrices[i]
-                Q_i = Q[i]
-
-                dPidt = - self.A_t @ P_i - P_i @ A - Q_i + P_i @ SP_sum
-
-                if cl:
-                    PS_sum = (SP_sum - self.S_matrices[i] @ P_matrices[i]).transpose()
-                    dPidt = dPidt + PS_sum @ P_i
-
-                dPidt = dPidt.reshape(self.P_size)
-                dPdt = dPidt if i == 0 else np.concatenate((dPdt, dPidt), axis=0)
-
-            return np.ravel(dPdt)
-
-        self.ode_func = solve_N_coupled_diff_riccati
         self.cl = cl
         self.dx_dt = None
+
+        def solve_N_coupled_diff_riccati(_: float, P_t: np.ndarray):
+            """
+            ODEInt Solver function
+
+            Parameters
+            ----------
+            _: float
+                Integration point in time
+            P_t: numpy 2-d array of shape(n, n)
+                Current integrated solution
+            """
+            P_t_matrices = [(P_t[i * self.P_size:(i + 1) * self.P_size]).reshape(self.n, self.n) for i in range(self.N)]
+            SP_sum = sum([S_i @ P_t_i for S_i, P_t_i in zip(self.S_matrices, P_t_matrices)])
+            dP_tdt = np.zeros((self.P_size,))
+
+            for i in range(self.N):
+                P_t_i = P_t_matrices[i]
+                Q_i = Q[i]
+
+                dP_t_idt = - self.A_t @ P_t_i - P_t_i @ A - Q_i + P_t_i @ SP_sum
+
+                if self.cl:
+                    PS_sum_i = (SP_sum - self.S_matrices[i] @ P_t_matrices[i]).T
+                    dP_t_idt = dP_t_idt + PS_sum_i @ P_t_i
+
+                dP_t_idt = dP_t_idt.reshape(self.P_size)
+                dP_tdt = dP_t_idt if i == 0 else np.concatenate((dP_tdt, dP_t_idt), axis=0)
+
+            dP_tdt = np.ravel(dP_tdt)
+
+            return dP_tdt
+
+        self.ode_func = solve_N_coupled_diff_riccati
 
     def update_P_from_last_state(self):
         y_0 = np.ravel(self.P_f)
@@ -281,28 +314,7 @@ class ContinuousPyDiffGame(PyDiffGame):
         """
 
         if self.infinite_horizon:
-            last_three_norms = []
-            convergence = False
-
-            while not convergence:
-                self.backward_time = np.linspace(self.T_f, self.T_f - self.delta_T, self.data_points)
-                self.update_P_from_last_state()
-                self.P_f = self.P[-1]
-
-                P_matrix_norm = norm(self.P_f)
-                last_three_norms.append(P_matrix_norm)
-
-                if len(last_three_norms) > 3:
-                    last_three_norms.pop(0)
-                elif len(last_three_norms) == 3:
-                    first, second, third = last_three_norms
-                    last_two = abs(third - second) < self.epsilon
-                    first_two = abs(second - first) < self.epsilon
-
-                    if last_two and first_two:
-                        convergence = True
-
-                self.T_f -= self.delta_T
+            self.converge_DREs_to_AREs()
         else:
             self.update_P_from_last_state()
 
@@ -313,10 +325,10 @@ class ContinuousPyDiffGame(PyDiffGame):
         if self.x_0 is not None:
             is_stable = self.is_closed_loop_stable()
             print(f"The system is {'NOT ' if not is_stable else ''}stable")
-            x = self.simulate_state_space()
+            self.x = self.simulate_state_space()
 
             self.plot(t=self.forward_time,
-                      mat=x,
+                      mat=self.x,
                       is_P=False)
 
     def update_A_cl_from_last_state(self, P_matrices: List[np.ndarray]):
@@ -355,9 +367,9 @@ class ContinuousPyDiffGame(PyDiffGame):
 
             return np.ravel(dxdt)
 
-        x = odeint(state_diff_eqn,
-                   self.x_0,
-                   self.forward_time)
+        x = odeint(func=state_diff_eqn,
+                   y0=self.x_0,
+                   t=self.forward_time)
 
         return x
 
@@ -372,23 +384,18 @@ class DiscretePyDiffGame(PyDiffGame):
 
     with the infinite-horizon cost functions:
     J_i = sum_{k=1}^infty [ x[k]^T Q_i x[k] + sum_{j=1}^N u_j[k]^T R_{ij} u_j[k] ]
-
     """
 
     def __init__(self, A: np.ndarray, B: List[np.ndarray], Q: List[np.ndarray], R: List[np.ndarray],
                  x_0: Optional[np.ndarray] = None, T_f: Optional[Union[float, int]] = None,
-                 P_f: Optional[List[np.ndarray]] = None, data_points: int = 1000, show_legend: bool = True,
-                 epsilon: float = 10e-8, delta_T: float = 0.5):
+                 P_f: Optional[List[np.ndarray]] = None, data_points: int = data_points_default,
+                 show_legend: bool = True, epsilon: float = epsilon_default, delta_T: float = delta_T_default,
+                 last_norms_number: int = last_norms_number_default):
 
         e_A = expm(A)
         A_discrete = fractional_matrix_power(e_A, delta_T)
 
-        def integral(T):
-            e_AT = [fractional_matrix_power(e_A, t) for t in T]
-            e_AT = np.array(e_AT).swapaxes(0, 2)
-            return e_AT
-
-        e_AT, err = quadpy.quad(integral, 0, delta_T)
+        e_AT, err = quad(lambda T: np.array([fractional_matrix_power(e_A, t) for t in T]).swapaxes(0, 2), 0, delta_T)
         B_discrete = [e_AT @ B_i for B_i in B]
 
         super().__init__(A=A_discrete,
@@ -401,7 +408,8 @@ class DiscretePyDiffGame(PyDiffGame):
                          data_points=data_points,
                          show_legend=show_legend,
                          epsilon=epsilon,
-                         delta_T=delta_T)
+                         delta_T=delta_T,
+                         last_norms_number=last_norms_number)
         self.Z = None
 
     def update_K_from_last_Z(self):
@@ -533,8 +541,8 @@ class DiscretePyDiffGame(PyDiffGame):
 
 
 if __name__ == '__main__':
-    A = np.array([[-2, 1],
-                  [1, 4]])
+    A = np.array([[-0.2, 10],
+                  [8, -0.6]])
     B = [np.array([[1, 0],
                    [0, 1]]),
          np.array([[0],
@@ -548,8 +556,8 @@ if __name__ == '__main__':
          np.array([[10, 0],
                    [0, 1]])
          ]
-    R = [np.array([[100, 0],
-                   [0, 200]]),
+    R = [np.array([[10, 0],
+                   [0, 20]]),
          np.array([[5]]),
          np.array([[7]])]
 
@@ -562,28 +570,28 @@ if __name__ == '__main__':
                      [0, 40]]),
            np.array([[50, 0],
                      [0, 60]])]
+    data_points = 1000
     show_legend = True
 
-    for data_points in [i * 200 for i in range(1, 2)]:
-        continuous_game = ContinuousPyDiffGame(A=A,
-                                               B=B,
-                                               Q=Q,
-                                               R=R,
-                                               cl=cl,
-                                               x_0=x_0,
-                                               P_f=P_f,
-                                               T_f=T_f,
-                                               data_points=data_points,
-                                               show_legend=show_legend)
-        P = continuous_game.solve_game()
-
-        discrete_game = DiscretePyDiffGame(A=A,
+    # for data_points in [i * 200 for i in range(1, 2)]:
+    continuous_game = ContinuousPyDiffGame(A=A,
                                            B=B,
                                            Q=Q,
                                            R=R,
+                                           cl=cl,
                                            x_0=x_0,
                                            P_f=P_f,
                                            T_f=T_f,
                                            data_points=data_points,
                                            show_legend=show_legend)
-        discrete_game.solve_game(num_of_simulations=1)
+    P = continuous_game.solve_game()
+
+    # discrete_game = DiscretePyDiffGame(A=A,
+    #                                    B=B,
+    #                                    Q=Q,
+    #                                    R=R,
+    #                                    x_0=x_0,
+    #                                    # T_f=T_f,
+    #                                    data_points=data_points,
+    #                                    show_legend=show_legend)
+    # discrete_game.solve_game(num_of_simulations=1)
