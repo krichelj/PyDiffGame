@@ -1,4 +1,4 @@
-## Mathematical Description
+# Mathematical Description
 This package receives control parameters for <img src="https://render.githubusercontent.com/render/math?math=\color{red}N \in \mathbb{N}"> control objectives acting upon a state vector:
 
 <img src="https://render.githubusercontent.com/render/math?math=\color{red}\mathbf{x} \in \mathbb{R}^{n}\ : \  n \in  \mathbb{N}">
