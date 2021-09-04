@@ -176,9 +176,7 @@ class PyDiffGame(ABC):
     def converge_DREs_to_AREs(self):
         """
         In case of infinite-horizon, this method solves the game as backwards convergence of the differential
-        finite-horizon game for repeated consecutive steps until the matrix norm
-
-
+        finite-horizon game for repeated consecutive steps until the matrix norm converges
         """
         last_norms = []
 
@@ -598,12 +596,12 @@ if __name__ == '__main__':
                                            show_legend=show_legend)
     P = continuous_game.solve_game()
 
-    discrete_game = DiscretePyDiffGame(A=A,
-                                       B=B,
-                                       Q=Q,
-                                       R=R,
-                                       x_0=x_0,
-                                       # T_f=T_f,
-                                       data_points=data_points,
-                                       show_legend=show_legend)
-    discrete_game.solve_game(num_of_simulations=1)
+    # discrete_game = DiscretePyDiffGame(A=A,
+    #                                    B=B,
+    #                                    Q=Q,
+    #                                    R=R,
+    #                                    x_0=x_0,
+    #                                    # T_f=T_f,
+    #                                    data_points=data_points,
+    #                                    show_legend=show_legend)
+    # discrete_game.solve_game(num_of_simulations=1)
