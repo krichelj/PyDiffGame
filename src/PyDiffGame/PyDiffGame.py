@@ -149,11 +149,14 @@ class PyDiffGame(ABC):
         pass
 
     @abstractmethod
-    def update_A_cl_from_last_state(self, **args):
+    def update_K_from_last_state(self, **args):
+        pass
+
+    def update_A_cl_from_last_state(self):
         """
         Updates the closed-loop control dynamics after forward propagation of the state through time
         """
-        pass
+        self.A_cl = self.A - sum([B_i @ K_i for B_i, K_i in zip(self.B, self.K)])
 
     @abstractmethod
     def is_closed_loop_stable(self) -> bool:
@@ -317,7 +320,6 @@ class ContinuousPyDiffGame(PyDiffGame):
             self.converge_DREs_to_AREs()
         else:
             self.update_P_from_last_state()
-
             self.plot(t=self.backward_time,
                       mat=self.P,
                       is_P=True)
@@ -331,8 +333,9 @@ class ContinuousPyDiffGame(PyDiffGame):
                       mat=self.x,
                       is_P=False)
 
-    def update_A_cl_from_last_state(self, P_matrices: List[np.ndarray]):
-        self.A_cl = self.A - sum([a @ b for a, b in zip(self.S_matrices, P_matrices)])
+    def update_K_from_last_state(self, t: int):
+        P_t = [(self.P[t][i * self.P_size:(i + 1) * self.P_size]).reshape(self.n, self.n) for i in range(self.N)]
+        self.K = [inv(R_i) @ B_i.T @ P_i for R_i, B_i, P_i in zip(self.R, self.B, P_t)]
 
     def is_closed_loop_stable(self) -> bool:
         """
@@ -346,26 +349,26 @@ class ContinuousPyDiffGame(PyDiffGame):
         num_of_zeros = [int(v) for v in closed_loop_eigenvalues_real_values].count(0)
         non_positive_eigenvalues = all([eig_real_value <= 0 for eig_real_value in closed_loop_eigenvalues_real_values])
         at_most_one_zero_eigenvalue = num_of_zeros <= 1
-
+        print(closed_loop_eigenvalues_real_values)
         stability = non_positive_eigenvalues and at_most_one_zero_eigenvalue
 
         return stability
 
     def simulate_state_space(self) -> np.array:
-        j = len(self.P) - 1
+        t = len(self.P) - 1
 
         def state_diff_eqn(x: np.ndarray, _):
-            nonlocal j
+            nonlocal t
 
-            P_matrices_j = [(self.P[j][i * self.P_size:(i + 1) * self.P_size]).reshape(self.n, self.n)
-                            for i in range(self.N)]
-            self.update_A_cl_from_last_state(P_matrices_j)
+            self.update_K_from_last_state(t)
+            self.update_A_cl_from_last_state()
             dxdt = self.A_cl @ x
+            dxdt = dxdt.ravel()
 
-            if j > 0:
-                j -= 1
+            if t > 0:
+                t -= 1
 
-            return np.ravel(dxdt)
+            return dxdt
 
         x = odeint(func=state_diff_eqn,
                    y0=self.x_0,
@@ -412,7 +415,7 @@ class DiscretePyDiffGame(PyDiffGame):
                          last_norms_number=last_norms_number)
         self.Z = None
 
-    def update_K_from_last_Z(self):
+    def update_K_from_last_state(self):
         self.K = []
 
         for i in range(self.N):
@@ -434,12 +437,9 @@ class DiscretePyDiffGame(PyDiffGame):
     def update_P_from_last_state(self):
         self.P = [self.Z[i * self.n:(i + 1) * self.n, :] for i in range(self.N)]
 
-    def update_A_cl_from_last_state(self):
-        self.A_cl = self.A - sum([B_i @ K_i for B_i, K_i in zip(self.B, self.K)])
-
     def update_parameters_from_last_Z(self):
         self.update_P_from_last_state()
-        self.update_K_from_last_Z()
+        self.update_K_from_last_state()
         self.update_A_cl_from_last_state()
 
     def update_Z(self):
@@ -492,6 +492,7 @@ class DiscretePyDiffGame(PyDiffGame):
                                               0.5 * np.ones((B_i_columns_num, self.n)))]
 
         self.Z = np.concatenate((*P, *K), axis=0)
+        self.update_A_cl_from_last_state()
 
     def solve_game(self, num_of_simulations: int = 1):
         """
@@ -526,10 +527,8 @@ class DiscretePyDiffGame(PyDiffGame):
         for _ in range(num_of_simulations):
             # while not is_Z_0_stable:
             self.initialize_Z()
-            self.update_A_cl_from_last_state()
-            is_Z_0_stable = self.is_closed_loop_stable()
 
-            if is_Z_0_stable:
+            if self.is_closed_loop_stable():
                 print(f"Generated random initial guess which is stable")
 
             self.Z = fsolve(get_equations, self.Z)
@@ -541,8 +540,8 @@ class DiscretePyDiffGame(PyDiffGame):
 
 
 if __name__ == '__main__':
-    A = np.array([[-0.2, 10],
-                  [8, -0.6]])
+    A = np.array([[-4, 6],
+                  [2, 10]])
     B = [np.array([[1, 0],
                    [0, 1]]),
          np.array([[0],
@@ -580,8 +579,8 @@ if __name__ == '__main__':
                                            R=R,
                                            cl=cl,
                                            x_0=x_0,
-                                           P_f=P_f,
-                                           T_f=T_f,
+                                           # P_f=P_f,
+                                           # T_f=T_f,
                                            data_points=data_points,
                                            show_legend=show_legend)
     P = continuous_game.solve_game()
