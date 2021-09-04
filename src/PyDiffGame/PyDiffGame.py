@@ -150,6 +150,9 @@ class PyDiffGame(ABC):
 
     @abstractmethod
     def update_K_from_last_state(self, **args):
+        """
+        Updates the controllers K after forward propagation of the state through time
+        """
         pass
 
     def update_A_cl_from_last_state(self):
@@ -171,6 +174,12 @@ class PyDiffGame(ABC):
         pass
 
     def converge_DREs_to_AREs(self):
+        """
+        In case of infinite-horizon, this method solves the game as backwards convergence of the differential
+        finite-horizon game for repeated consecutive steps until the matrix norm
+
+
+        """
         last_norms = []
 
         while not self.converged:
@@ -191,7 +200,7 @@ class PyDiffGame(ABC):
     @abstractmethod
     def solve_game(self, **args):
         """
-        Propagate the game through time, solve it and display the state plot wth respect to time
+        Propagates the game through time, solves for it and plots the state plot wth respect to time
         """
         pass
 
@@ -217,6 +226,9 @@ class PyDiffGame(ABC):
         plt.show()
 
     def plot_state_space(self):
+        """
+        Plots the state plot wth respect to time
+        """
         self.plot(t=self.forward_time,
                   mat=self.x,
                   is_P=False)
@@ -224,7 +236,7 @@ class PyDiffGame(ABC):
     @abstractmethod
     def simulate_and_plot_state_space(self, **args):
         """
-        Propagate the game through time, solve it and display the state plot wth respect to time
+        Propagates the game through time, solves for it and plots the state plot wth respect to time
         """
         pass
 
