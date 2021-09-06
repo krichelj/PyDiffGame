@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.linalg import eigvals, inv, norm
 import matplotlib.pyplot as plt
-from scipy.linalg import solve_continuous_are, expm, fractional_matrix_power
+from scipy.linalg import solve_continuous_are, expm
 from scipy.integrate import odeint
 import warnings
 from typing import List, Optional, Union, Tuple
@@ -76,12 +76,8 @@ class PyDiffGame(ABC):
 
         # additional parameters
         self.A_t = A.T
-        self.S_matrices = [self.B[i] @ inv(self.R[i]) @ self.B[i].T for i in range(self.N)]
-        self.P_rows_num = self.N * self.n
-        K_rows_num = sum([b.shape[1] for b in self.B])
-        self.Z_row_num = self.P_rows_num + K_rows_num
-
         self.A_cl = np.empty_like(self.A)
+        self.A_cl_T = np.empty_like(self.A_cl)
         self.P = []
         self.K = []
 
@@ -155,11 +151,12 @@ class PyDiffGame(ABC):
         """
         pass
 
+    @abstractmethod
     def update_A_cl_from_last_state(self):
         """
         Updates the closed-loop control dynamics after forward propagation of the state through time
         """
-        self.A_cl = self.A - sum([B_i @ K_i for B_i, K_i in zip(self.B, self.K)])
+        pass
 
     @abstractmethod
     def is_closed_loop_stable(self) -> bool:
@@ -202,7 +199,7 @@ class PyDiffGame(ABC):
         """
         pass
 
-    def plot(self, t: np.ndarray, mat:  Union[Tuple[np.array, dict], np.array], is_P: bool):
+    def plot(self, t: np.ndarray, mat: Union[Tuple[np.array, dict], np.array], is_P: bool):
         """
         Displays plots for the state variables with respect to time and the convergence of the values of P
         """
@@ -277,6 +274,7 @@ class ContinuousPyDiffGame(PyDiffGame):
                          delta_T=delta_T,
                          last_norms_number=last_norms_number)
 
+        self.S_matrices = [self.B[i] @ inv(self.R[i]) @ self.B[i].T for i in range(self.N)]
         self.cl = cl
         self.dx_dt = None
 
@@ -299,9 +297,9 @@ class ContinuousPyDiffGame(PyDiffGame):
                 P_t_i = P_t[i]
                 Q_i = Q[i]
 
-                dP_t_idt = - self.A_t @ P_t_i - P_t_i @ A - Q_i + P_t_i @ SP_sum
+                dP_t_idt = - self.A_t @ P_t_i - P_t_i @ A - Q_i + P_t_i @ SP_sum  # open-loop
 
-                if self.cl:
+                if self.cl:  # closed-loop
                     PS_sum_i = (SP_sum - self.S_matrices[i] @ P_t[i]).T
                     dP_t_idt = dP_t_idt + PS_sum_i @ P_t_i
 
@@ -313,6 +311,10 @@ class ContinuousPyDiffGame(PyDiffGame):
             return dP_tdt
 
         self.ode_func = solve_N_coupled_diff_riccati
+
+    def update_A_cl_from_last_state(self):
+        self.A_cl = self.A - sum([B_i @ K_i for B_i, K_i in zip(self.B, self.K)])
+        self.A_cl_T = self.A_cl.T
 
     def update_P_from_last_state(self):
         y_0 = np.ravel(self.P_f)
@@ -406,14 +408,8 @@ class DiscretePyDiffGame(PyDiffGame):
                  show_legend: bool = True, epsilon: float = epsilon_default, delta_T: float = delta_T_default,
                  last_norms_number: int = last_norms_number_default):
 
-        e_A = expm(A)
-        A_discrete = fractional_matrix_power(e_A, delta_T)
-
-        e_AT, err = quad(lambda T: np.array([fractional_matrix_power(e_A, t) for t in T]).swapaxes(0, 2), 0, delta_T)
-        B_discrete = [e_AT @ B_i for B_i in B]
-
-        super().__init__(A=A_discrete,
-                         B=B_discrete,
+        super().__init__(A=A,
+                         B=B,
                          Q=Q,
                          R=R,
                          x_0=x_0,
@@ -424,7 +420,23 @@ class DiscretePyDiffGame(PyDiffGame):
                          epsilon=epsilon,
                          delta_T=delta_T,
                          last_norms_number=last_norms_number)
+
+        delta_A = self.delta_T * self.A
+        self.A_tilda = expm(delta_A)
+        e_AT, err = quad(lambda T: np.array([expm(t * self.A) for t in T]).swapaxes(0, 2), 0, delta_T)
+        self.B_tilda = e_AT
+        self.B_tilda_T = self.B_tilda.T
+
+        self.P_rows_num = self.N * self.n
+        K_rows_num = sum([b.shape[1] for b in self.B])
+        self.Z_row_num = self.P_rows_num + K_rows_num
+
         self.Z = None
+
+    def update_A_cl_from_last_state(self):
+        B_K_sum = sum([B_i @ K_i for B_i, K_i in zip(self.B, self.K)])
+        self.A_cl = self.A_tilda - self.B_tilda @ B_K_sum
+        self.A_cl_T = self.A_cl.T
 
     def update_K_from_last_state(self):
         self.K = []
@@ -457,23 +469,18 @@ class DiscretePyDiffGame(PyDiffGame):
         Z_P = []
         Z_K = []
 
-        for i in range(self.N):
-            K_i = self.K[i]
-            P_i = self.P[i]
-            R_ii = self.R[i]
-            Q_i = self.Q[i]
-            B_i = self.B[i]
-            B_i_T_P_i = B_i.T @ P_i
+        for K_i, P_i, R_ii, Q_i, B_i in zip(self.K, self.P, self.R, self.Q, self.B):
+            B_i_T = B_i.T
 
-            coefficient = R_ii + B_i_T_P_i @ B_i
+            coefficient = R_ii + B_i_T @ self.B_tilda_T @ P_i @ self.B_tilda @ B_i
             inv_coefficient = inv(coefficient)
-            coefficient = inv_coefficient @ B_i_T_P_i
-            A_cl_i = self.A_cl + B_i @ K_i
+            coefficient = inv_coefficient @ B_i_T @ self.B_tilda_T @ P_i
+            A_cl_i = self.A_cl + self.B_tilda @ B_i @ K_i
 
             equation_K_i = K_i - coefficient @ A_cl_i
             Z_K += [equation_K_i]
 
-            equation_P_i = Q_i + K_i.T @ R_ii @ K_i - P_i + self.A_cl.T @ P_i @ self.A_cl
+            equation_P_i = Q_i + K_i.T @ R_ii @ K_i + self.A_cl_T @ P_i @ self.A_cl - P_i
             Z_P += [equation_P_i]
 
         self.Z = np.concatenate((*Z_P, *Z_K), axis=0)
@@ -503,7 +510,7 @@ class DiscretePyDiffGame(PyDiffGame):
                                               0.5 * np.ones((B_i_columns_num, self.n)))]
 
         self.Z = np.concatenate((*P, *K), axis=0)
-        self.update_A_cl_from_last_state()
+        self.update_parameters_from_last_Z()
 
     def solve_game(self, num_of_simulations: int = 1):
         """
@@ -532,11 +539,7 @@ class DiscretePyDiffGame(PyDiffGame):
 
             return Z.ravel()
 
-        # is_stable = False
-        # is_Z_0_stable = False
-
         for _ in range(num_of_simulations):
-            # while not is_Z_0_stable:
             self.initialize_Z()
 
             if self.is_closed_loop_stable():
@@ -547,12 +550,11 @@ class DiscretePyDiffGame(PyDiffGame):
             j = 0
 
             self.simulate_and_plot_state_space()
-            # is_Z_0_stable = False
 
 
 if __name__ == '__main__':
-    A = np.array([[-4, 6],
-                  [2, 10]])
+    A = np.array([[-2, 1],
+                  [1, 4]])
     B = [np.array([[1, 0],
                    [0, 1]]),
          np.array([[0],
@@ -566,20 +568,20 @@ if __name__ == '__main__':
          np.array([[10, 0],
                    [0, 1]])
          ]
-    R = [np.array([[10, 0],
-                   [0, 20]]),
+    R = [np.array([[100, 0],
+                   [0, 200]]),
          np.array([[5]]),
          np.array([[7]])]
 
     cl = True
     x_0 = np.array([10, 20])
     T_f = 5
-    P_f = [np.array([[10, 0],
-                     [0, 20]]),
-           np.array([[30, 0],
-                     [0, 40]]),
-           np.array([[50, 0],
-                     [0, 60]])]
+    P_f = [np.array([[1, 0],
+                     [0, 2]]),
+           np.array([[3, 0],
+                     [0, 4]]),
+           np.array([[5, 0],
+                     [0, 6]])]
     data_points = 1000
     show_legend = True
 
@@ -590,8 +592,8 @@ if __name__ == '__main__':
                                            R=R,
                                            cl=cl,
                                            x_0=x_0,
-                                           P_f=P_f,
-                                           T_f=T_f,
+                                           # P_f=P_f,
+                                           # T_f=T_f,
                                            data_points=data_points,
                                            show_legend=show_legend)
     P = continuous_game.solve_game()
