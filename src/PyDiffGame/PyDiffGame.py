@@ -13,8 +13,9 @@ from quadpy import quad
 
 # globals
 
+T_f_default = 10
 data_points_default = 1000
-epsilon_default = 1 / (10 ** 3)
+epsilon_default = 1 / (10 ** 8)
 delta_T_default = 0.5
 last_norms_number_default = 5
 
@@ -68,7 +69,7 @@ class PyDiffGame(ABC):
         self._R = R
         self._x_0 = x_0
         self._infinite_horizon = T_f is None
-        self._T_f = 20 if self._infinite_horizon else T_f
+        self._T_f = T_f_default if self._infinite_horizon else T_f
         self._P_f = self._get_are_P_f() if P_f is None else P_f
         self._data_points = data_points
         self.__show_legend = show_legend
@@ -202,7 +203,7 @@ class PyDiffGame(ABC):
         """
         pass
 
-    def _plot(self, t: np.ndarray, mat: Union[Tuple[np.array, dict], np.array], is_P: bool):
+    def _plot(self, t: np.ndarray, mat: Union[Tuple[np.array, dict], np.array], is_P: bool, title: str = None):
         """
         Displays plots for the state variables with respect to time and the convergence of the values of P
         """
@@ -212,6 +213,9 @@ class PyDiffGame(ABC):
         plt.figure(dpi=130)
         plt.plot(t, mat)
         plt.xlabel('Time')
+
+        if title:
+            plt.title(title)
 
         if self.__show_legend:
             legend = tuple(
@@ -229,7 +233,8 @@ class PyDiffGame(ABC):
         """
         self._plot(t=self._forward_time,
                    mat=self._x,
-                   is_P=False)
+                   is_P=False,
+                   title=f'{self._data_points} sampling points')
 
     @abstractmethod
     def _simulate_state_space(self):
@@ -364,8 +369,10 @@ class ContinuousPyDiffGame(PyDiffGame):
                        is_P=True)
 
         if self._x_0 is not None:
-            is_stable = self._is_closed_loop_stable()
-            print(f"The system is {'NOT ' if not is_stable else ''}stable")
+            if self.debug:
+                is_stable = self._is_closed_loop_stable()
+                print(f"The system is {'NOT ' if not is_stable else ''}stable")
+
             self._simulate_and_plot_state_space()
 
     def _update_controllers_from_last_state(self, t: int):
@@ -435,6 +442,8 @@ class DiscretePyDiffGame(PyDiffGame):
             A = A_tilda
             B_tilda = e_AT
             B = [B_tilda @ B_i for B_i in B]
+            Q = [delta_T * Q_i for Q_i in Q]
+            R = [delta_T * R_i for R_i in R]
 
         super().__init__(A=A,
                          B=B,
@@ -457,8 +466,6 @@ class DiscretePyDiffGame(PyDiffGame):
             psi_k_previous = psi_k_previous.reshape((self._N,
                                                      self._psi_rows_num,
                                                      self._n))
-            k = k_1 - 1
-            A_cl_k = self._A_cl[k]
             P_k_1 = self._P[k_1]
             psi_k = np.zeros_like(psi_k_previous)
 
@@ -470,17 +477,15 @@ class DiscretePyDiffGame(PyDiffGame):
                 B_i = self._B[i]
                 B_i_T = B_i.T
 
-                A_cl_t_i = self._A
+                A_cl_k_i = self._A
 
                 for j in range(self._N):
                     if j != i:
                         B_j = self._B[j]
                         psi_k_previous_j = psi_k_previous[j, self._get_psi_i_indices(j)]
-                        A_cl_t_i = A_cl_t_i - B_j @ psi_k_previous_j
+                        A_cl_k_i = A_cl_k_i - B_j @ psi_k_previous_j
 
-                # A_cl_t_i = A_cl_k + B_i @ psi_k_previous_i
-
-                psi_k_i = psi_k_previous_i - inv(R_ii + B_i_T @ P_k_1_i @ B_i) @ B_i_T @ P_k_1_i @ A_cl_t_i
+                psi_k_i = psi_k_previous_i - inv(R_ii + B_i_T @ P_k_1_i @ B_i) @ B_i_T @ P_k_1_i @ A_cl_k_i
                 psi_k[i_indices] = psi_k_i
 
             return psi_k.ravel()
@@ -658,7 +663,7 @@ if __name__ == '__main__':
          np.array([[7]])]
 
     cl = True
-    x_0 = np.array([10, 20])
+    x_0 = np.array([100, -200])
     T_f = 5
     P_f = [np.array([[1, 0],
                      [0, 2]]),
@@ -666,30 +671,30 @@ if __name__ == '__main__':
                      [0, 4]]),
            np.array([[5, 0],
                      [0, 6]])]
-    data_points = 1000
+    # data_points = 1000
     show_legend = True
 
-    # for data_points in [i * 200 for i in range(1, 2)]:
-    continuous_game = ContinuousPyDiffGame(A=A,
+    for data_points in [i * 100 for i in range(2, 10)]:
+        continuous_game = ContinuousPyDiffGame(A=A,
+                                               B=B,
+                                               Q=Q,
+                                               R=R,
+                                               cl=cl,
+                                               x_0=x_0,
+                                               # P_f=P_f,
+                                               # T_f=T_f,
+                                               data_points=data_points,
+                                               show_legend=show_legend)
+        continuous_game.solve_game()
+
+        discrete_game = DiscretePyDiffGame(A=A,
                                            B=B,
                                            Q=Q,
                                            R=R,
-                                           cl=cl,
+                                           is_input_discrete=False,
                                            x_0=x_0,
-                                           P_f=P_f,
-                                           T_f=T_f,
+                                           # T_f=T_f,
                                            data_points=data_points,
-                                           show_legend=show_legend)
-    P = continuous_game.solve_game()
-
-    discrete_game = DiscretePyDiffGame(A=A,
-                                       B=B,
-                                       Q=Q,
-                                       R=R,
-                                       is_input_discrete=False,
-                                       x_0=x_0,
-                                       T_f=T_f,
-                                       data_points=data_points,
-                                       show_legend=show_legend,
-                                       debug=True)
-    discrete_game.solve_game(num_of_simulations=1)
+                                           show_legend=show_legend,
+                                           debug=False)
+        discrete_game.solve_game(num_of_simulations=1)
