@@ -24,6 +24,11 @@ class PyDiffGame(ABC):
     """
     Differential game abstract base class
 
+    Notes
+    ----------
+    See constructor for size parameters
+
+
     Parameters
     ----------
     A: numpy 2-d array of shape(n, n)
@@ -36,7 +41,7 @@ class PyDiffGame(ABC):
         Cost function input weights for each control objective
     x_0: numpy 1-d array of shape(n), optional
         Initial state vector
-    T_f: positive float, optional, default = 5
+    T_f: positive float, optional, default = 10
         System dynamics horizon. Should be given in the case of finite horizon
     P_f: numpy array of numpy 2-d arrays of len(N), each matrix P_f_j of shape(n, n), optional,
         default = solution of scipy's solve_continuous_are
@@ -45,7 +50,7 @@ class PyDiffGame(ABC):
         Number of data points to evaluate the Riccati equation matrix. Should be given in the case of finite horizon
     show_legend: boolean, optional, default = True
         Indicates whether to display a legend in the plots (True) or not (False)
-    epsilon: float, optional, default = 10e-8
+    epsilon: float, optional, default = 1 / (10 ** 8)
         The convergence threshold for numerical convergence
     delta_T: float, optional, default = 0.5
         Sampling interval
@@ -185,6 +190,7 @@ class PyDiffGame(ABC):
         Solves the game as backwards convergence of the differential
         finite-horizon game for repeated consecutive steps until the matrix norm converges
         """
+
         last_norms = []
 
         while not self.__converged:
@@ -298,9 +304,17 @@ class PyDiffGame(ABC):
         return self._R
 
     def __len__(self):
+        """
+        We define the length of a differential game to be its number of objectives
+        """
+
         return self._N
 
     def __eq__(self, other):
+        """
+        We define two differential games equal iff the system dynamics and cost matrices are equal
+        """
+
         return all([s == o for s, o in zip([self.A, self.B, self.Q, self.R], [other.A, other.B, other.Q, other.R])])
 
 
@@ -349,7 +363,7 @@ class ContinuousPyDiffGame(PyDiffGame):
 
         def __solve_N_coupled_diff_riccati(_: float, P_t: np.ndarray) -> np.array:
             """
-            ODEInt Solver function
+            ODEInt Riccati Equations Solver function
 
             Parameters
             ----------
@@ -428,6 +442,7 @@ class ContinuousPyDiffGame(PyDiffGame):
 
         Re(eig) <= 0 forall eigenvalues of A_cl and there is at most one real eigenvalue at the origin
         """
+
         closed_loop_eigenvalues = eigvals(self._A_cl)
         closed_loop_eigenvalues_real_values = [eig.real for eig in closed_loop_eigenvalues]
         num_of_zeros = [int(v) for v in closed_loop_eigenvalues_real_values].count(0)
@@ -446,13 +461,13 @@ class ContinuousPyDiffGame(PyDiffGame):
 
             self._update_psi_from_last_state(t)
             self._update_A_cl_from_last_state()
-            dxdt = self._A_cl @ x
-            dxdt = dxdt.ravel()
+            dx_dt = self._A_cl @ x
+            dx_dt = dx_dt.ravel()
 
             if t > 0:
                 t -= 1
 
-            return dxdt
+            return dx_dt
 
         self._x = odeint(func=state_diff_eqn,
                          y0=self._x_0,
