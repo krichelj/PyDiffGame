@@ -101,7 +101,7 @@ discrete_game = DiscretePyDiffGame(A=A,
                                    T_f=T_f,
                                    data_points=data_points,
                                    show_legend=show_legend)
-discrete_game.solve_game()
+discrete_game.solve_game_and_plot_state_space()
 
 continuous_game = ContinuousPyDiffGame(A=A,
                                        B=B,
@@ -113,7 +113,7 @@ continuous_game = ContinuousPyDiffGame(A=A,
                                        T_f=T_f,
                                        data_points=data_points,
                                        show_legend=show_legend)
-P = continuous_game.solve_game()
+P = continuous_game.solve_game_and_plot_state_space()
 
 n = A.shape[0]
 P_size = n ** 2

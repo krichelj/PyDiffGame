@@ -28,17 +28,17 @@ class PyDiffGame(ABC):
     ----------
     A: numpy 2-d array of shape(n, n)
         The system dynamics matrix
-    B: list of numpy 2-d arrays of len(N), each matrix B_j of shape(n, k_j)
+    B: numpy array of numpy 2-d arrays of len(N), each matrix B_j of shape(n, k_j)
         System input matrices for each control objective
-    Q: list of numpy 2-d arrays of len(N), each matrix Q_j of shape(n, M)
+    Q: numpy array of numpy 2-d arrays of len(N), each matrix Q_j of shape(n, M)
         Cost function state weights for each control objective
-    R: list of numpy 2-d arrays of len(N), each matrix R_j of shape(k_j, k_j)
+    R: numpy array of numpy 2-d arrays of len(N), each matrix R_j of shape(k_j, k_j)
         Cost function input weights for each control objective
-    T_f: positive float, optional, default = 5
-        System dynamics horizon. Should be given in the case of finite horizon
     x_0: numpy 1-d array of shape(n), optional
         Initial state vector
-    P_f: list of numpy 2-d arrays of len(N), each matrix P_f_j of shape(n, n), optional,
+    T_f: positive float, optional, default = 5
+        System dynamics horizon. Should be given in the case of finite horizon
+    P_f: numpy array of numpy 2-d arrays of len(N), each matrix P_f_j of shape(n, n), optional,
         default = solution of scipy's solve_continuous_are
         Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
     data_points: positive int, optional, default = 1000
@@ -51,6 +51,8 @@ class PyDiffGame(ABC):
         Sampling interval
     last_norms_number: int, optional, default = 5
         The number of last matrix norms to consider for convergence
+    debug: bool
+        Indicates whether to display debug information or not
     """
 
     def __init__(self, A: np.ndarray, B: list[np.ndarray], Q: list[np.ndarray], R: list[np.ndarray],
@@ -131,11 +133,11 @@ class PyDiffGame(ABC):
     @abstractmethod
     def _get_are_P_f(self) -> np.array:
         """
-        Evaluates the algebraic Riccati equations to use as initial guesses for fsolve and odeint
+        Solves the algebraic Riccati equations to use as initial guesses for fsolve and odeint
 
         Returns
         ----------
-        P_f: list of numpy 2-d arrays, of len(N), of shape(n, n), solution of scipy's solve_are
+        P_f: numpy array of numpy 2-d arrays, of len(N), of shape(n, n), solution of scipy's solve_are
             Final condition for the Riccati equation matrix
         """
 
@@ -160,7 +162,7 @@ class PyDiffGame(ABC):
     @abstractmethod
     def _update_A_cl_from_last_state(self, **args):
         """
-        Updates the closed-loop control dynamics after forward propagation of the state through time
+        Updates the closed-loop control dynamics with the updated controllers
         """
 
         pass
@@ -203,7 +205,7 @@ class PyDiffGame(ABC):
     @abstractmethod
     def _solve_finite_horizon(self):
         """
-        Solves the finite horizon case
+        Solves for the finite horizon case
         """
 
         pass
@@ -215,23 +217,6 @@ class PyDiffGame(ABC):
         """
 
         pass
-
-    def solve_game(self):
-        """
-        Propagates the game through time, solves for it and plots the state plot wth respect to time
-        """
-
-        if self._infinite_horizon:
-            self._solve_infinite_horizon()
-        else:
-            self._solve_finite_horizon()
-
-        if self._x_0 is not None:
-            if self.debug:
-                is_stable = self._is_A_cl_stable()
-                print(f"The system is {'NOT ' if not is_stable else ''}stable")
-
-            self._simulate_and_plot_state_space()
 
     def _plot(self, t: np.ndarray, mat: Union[tuple[np.array, dict], np.array], is_P: bool, title: str = None):
         """
@@ -258,7 +243,7 @@ class PyDiffGame(ABC):
         plt.grid()
         plt.show()
 
-    def _plot_state_space(self):
+    def __plot_state_space(self):
         """
         Plots the state plot wth respect to time
         """
@@ -278,13 +263,45 @@ class PyDiffGame(ABC):
 
         pass
 
-    def _simulate_and_plot_state_space(self):
+    def solve_game_and_plot_state_space(self):
         """
         Propagates the game through time, solves for it and plots the state plot wth respect to time
         """
 
-        self._simulate_state_space()
-        self._plot_state_space()
+        if self._infinite_horizon:
+            self._solve_infinite_horizon()
+        else:
+            self._solve_finite_horizon()
+
+        if self._x_0 is not None:
+            if self.debug:
+                is_stable = self._is_A_cl_stable()
+                print(f"The system is {'NOT ' if not is_stable else ''}stable")
+
+            self._simulate_state_space()
+            self.__plot_state_space()
+
+    @property
+    def A(self):
+        return self._A
+
+    @property
+    def B(self):
+        return self._B
+
+    @property
+    def Q(self):
+        return self._Q
+
+    @property
+    def R(self):
+        return self._R
+
+    def __len__(self):
+        return self._N
+
+    def __eq__(self, other):
+        return all([s == o for s, o in zip([self.A, self.B, self.Q, self.R], [other.A, other.B, other.Q, other.R])])
 
 
 class ContinuousPyDiffGame(PyDiffGame):
@@ -330,7 +347,7 @@ class ContinuousPyDiffGame(PyDiffGame):
         self.__cl = cl
         self.__dx_dt = None
 
-        def __solve_N_coupled_diff_riccati(_: float, P_t: np.ndarray):
+        def __solve_N_coupled_diff_riccati(_: float, P_t: np.ndarray) -> np.array:
             """
             ODEInt Solver function
 
@@ -338,8 +355,13 @@ class ContinuousPyDiffGame(PyDiffGame):
             ----------
             _: float
                 Integration point in time
-            P_t: numpy 2-d array of shape(n, n)
+            P_t: numpy array of numpy 2-d arrays, of len(N), of shape(n, n)
                 Current integrated solution
+
+            Returns
+            ----------
+            dP_tdt: numpy array of numpy 2-d arrays, of len(N), of shape(n, n)
+                Current calculated value for the time-derivative of the matrices P_t
             """
             P_t = [(P_t[i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n) for i in range(self._N)]
             SP_sum = sum([S_i @ P_t_i for S_i, P_t_i in zip(self.__S_matrices, P_t)])
@@ -366,18 +388,18 @@ class ContinuousPyDiffGame(PyDiffGame):
 
     def _get_are_P_f(self) -> np.array:
         """
-        Evaluates the algebraic Riccati equation
+        Evaluates the continuous-time algebraic Riccati equation
 
         Returns
         ----------
-        P_f: list of numpy 2-d arrays, of len(N), of shape(n, n), solution of scipy's solve_continuous_are
-            Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
+        P_f: numpy array of numpy 2-d arrays, of len(N), of shape(n, n), solution of scipy's solve_continuous_are
+            Final condition for the Riccati equation matrix
         """
 
         return [solve_continuous_are(self._A, B_i, Q_i, R_ii) for B_i, Q_i, R_ii in zip(self._B, self._Q, self._R)]
 
     def _update_A_cl_from_last_state(self):
-        self._A_cl = self._A - sum([B_i @ K_i for B_i, K_i in zip(self._B, self._psi)])
+        self._A_cl = self._A - sum([B_i @ psi_i for B_i, psi_i in zip(self._B, self._psi)])
 
     def _update_P_from_last_state(self):
         y_0 = np.ravel(self._P_f)
@@ -482,6 +504,11 @@ class DiscretePyDiffGame(PyDiffGame):
                 The previous estimation for the controllers
             k_1: int
                 The k+1 index
+
+            Returns
+            ----------
+            dP_tdt: list of numpy 2-d arrays, of len(N), of shape(n, n)
+                Current calculated value for the time-derivative of the matrices P_t
             """
             psi_k_previous = psi_k_previous.reshape((self._N,
                                                      self.__psi_rows_num,
@@ -490,7 +517,7 @@ class DiscretePyDiffGame(PyDiffGame):
             psi_k = np.zeros_like(psi_k_previous)
 
             for i in range(self._N):
-                i_indices = (i, self._get_psi_i_indices(i))
+                i_indices = (i, self.__get_psi_i_shape(i))
                 psi_k_previous_i = psi_k_previous[i_indices]
                 P_k_1_i = P_k_1[i]
                 R_ii = self._R[i]
@@ -502,7 +529,7 @@ class DiscretePyDiffGame(PyDiffGame):
                 for j in range(self._N):
                     if j != i:
                         B_j = self._B[j]
-                        psi_k_previous_j = psi_k_previous[j, self._get_psi_i_indices(j)]
+                        psi_k_previous_j = psi_k_previous[j, self.__get_psi_i_shape(j)]
                         A_cl_k_i = A_cl_k_i - B_j @ psi_k_previous_j
 
                 psi_k_i = psi_k_previous_i - inv(R_ii + B_i_T @ P_k_1_i @ B_i) @ B_i_T @ P_k_1_i @ A_cl_k_i
@@ -515,11 +542,11 @@ class DiscretePyDiffGame(PyDiffGame):
     def __discretize_game(self):
         """
         The input to the discrete game can either given in continuous or discrete form.
-        If it is not in discrete form, the game gets discretized in the following manner:
+        If it is not in discrete form, the game gets discretized using this method in the following manner:
         A = exp(delta_T A)
-        B_j = int_0^delta_T exp(tA) dt B_j
-
+        B_j = int_{t=0}^delta_T exp(tA) dt B_j
         """
+
         A_tilda = np.exp(self._delta_T * self._A)
         e_AT, err = quad(lambda T: np.array([np.exp(t * self._A) for t in T]).swapaxes(0, 2).swapaxes(0, 1),
                          0,
@@ -533,17 +560,25 @@ class DiscretePyDiffGame(PyDiffGame):
 
     def _get_are_P_f(self) -> np.array:
         """
-        Evaluates the algebraic Riccati equation
+        Evaluates the discrete-time algebraic Riccati equation
 
         Returns
         ----------
-        P_f: list of numpy 2-d arrays, of len(N), of shape(n, n), solution of scipy's solve_continuous_are
-            Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
+        P_f: list of numpy 2-d arrays, of len(N), of shape(n, n), solution of scipy's solve_discrete_are
+            Final condition for the Riccati equation matrix
         """
 
         return [solve_discrete_are(self._A, B_i, Q_i, R_ii) for B_i, Q_i, R_ii in zip(self._B, self._Q, self._R)]
 
-    def _get_psi_i_indices(self, i: int) -> range:
+    def __get_psi_i_shape(self, i: int) -> range:
+        """
+        Returns the i'th controller shape indices
+
+        Parameters
+        ----------
+        i: int
+            The desired controller index
+        """
         psi_i_offset = sum([self._B[j].shape[1] for j in range(i)]) if i else 0
         first_psi_i_index = psi_i_offset
         second_psi_i_index = first_psi_i_index + self._B[i].shape[1]
@@ -551,17 +586,8 @@ class DiscretePyDiffGame(PyDiffGame):
         return range(first_psi_i_index, second_psi_i_index)
 
     def _update_A_cl_from_last_state(self, k: int):
-        A_cl_k = self._A
         psi_k = self._psi[k]
-
-        for i in range(self._N):
-            psi_k_i = psi_k[i, self._get_psi_i_indices(i)]
-            A_cl_k = A_cl_k - self._B[i] @ psi_k_i
-
-        self._A_cl[k] = A_cl_k
-
-    def _get_backwards_t_1_index(self, t: float) -> int:
-        return int(np.where(self._backward_time == t)[0])
+        self._A_cl[k] = self._A - sum([self._B[i] @ psi_k[i, self.__get_psi_i_shape(i)] for i in range(self._N)])
 
     def _update_psi_from_last_state(self, k_1: int):
         psi_k_1 = self._psi[k_1]
@@ -601,7 +627,7 @@ class DiscretePyDiffGame(PyDiffGame):
         P_k = np.zeros_like(P_k_1)
 
         for i in range(self._N):
-            psi_k_i = psi_k[i, self._get_psi_i_indices(i)]
+            psi_k_i = psi_k[i, self.__get_psi_i_shape(i)]
             P_k_1_i = P_k_1[i]
             R_ii = self._R[i]
             Q_i = self._Q[i]
@@ -620,7 +646,7 @@ class DiscretePyDiffGame(PyDiffGame):
             self._x[k] = x_k_1
             x_k = x_k_1
 
-    def _initialize(self):
+    def __initialize(self):
         self._P = np.random.rand(self._data_points,
                                  self._N,
                                  self._n,
@@ -654,7 +680,7 @@ class DiscretePyDiffGame(PyDiffGame):
         J_i = sum_{k=1}^infty [ x[k]^T Q_i x[k] + sum_{j=1}^N u_j[k]^T R_{ij} u_j[k] ]
 
         """
-        self._initialize()
+        self.__initialize()
 
         for backwards_index, t in enumerate(self._backward_time[:-1]):
             k_1 = self._data_points - 1 - backwards_index
@@ -722,7 +748,7 @@ if __name__ == '__main__':
                                                # T_f=T_f,
                                                data_points=data_points,
                                                show_legend=show_legend)
-        continuous_game.solve_game()
+        continuous_game.solve_game_and_plot_state_space()
 
         discrete_game = DiscretePyDiffGame(A=A,
                                            B=B,
@@ -734,4 +760,4 @@ if __name__ == '__main__':
                                            data_points=data_points,
                                            show_legend=show_legend,
                                            debug=False)
-        discrete_game.solve_game()
+        discrete_game.solve_game_and_plot_state_space()
