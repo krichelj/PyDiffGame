@@ -94,7 +94,7 @@ def low_level_angular_rate_controller(x, p, q, r, T, Plast):
     R = [R1, R2, R3]
     P_sol = Plast
     reduced_X = np.array(x) - np.array([p, q, r])
-    reduced_X_tr = reduced_X._forward_time
+    reduced_X_tr = reduced_X.forward_time
     inv_Rs = [inv(r) for r in R]
     B_t = [b.T for b in B]
     U_angular = np.array([- r @ b @ p @ reduced_X_tr for r, b, p in zip(inv_Rs, B_t, P_sol)]).reshape(3, )
@@ -347,7 +347,7 @@ def get_higher_level_control2(state, st, a_y):
     Plast = [(Plast[i * P_size:(i + 1) * P_size]).reshape(M, M) for i in range(N)]
 
     inv_Rs = [inv(r) for r in R]
-    B_t = [b._forward_time for b in Bs]
+    B_t = [b.forward_time for b in Bs]
 
     U_Agenda1 = - inv_Rs[0] @ B_t[0] @ Plast[0] @ np.array(
         [-phi_tilda[0], -vp_y, -vp_x, -p_y_tilda[0], -h_d[0], -p_z_tilda[0], -v_d[0], sum_theta, sum_theta_2])
@@ -356,7 +356,7 @@ def get_higher_level_control2(state, st, a_y):
 
     Us = [U_Agenda1, U_Agenda2]
 
-    U_all_Out = dividing_matrix @ np.concatenate(Us).ravel()._forward_time
+    U_all_Out = dividing_matrix @ np.concatenate(Us).ravel().forward_time
     p_r, q_r, r_r, t_r = U_all_Out
 
     tilda_state = np.array(
@@ -503,7 +503,7 @@ for a_y in quad_rotor_omega_D_dynamic.keys():
     y2 = quad_rotor_state_PD_dynamic[a_y][t02:t2, 3]
 
     ax.step(x1, y1, linewidth=1)
-    ax._plot(x2, y2, linewidth=1)
+    ax.plot(x2, y2, linewidth=1)
     plt.xlabel('$t \ [sec]$', fontsize=14)
     plt.grid()
 
@@ -516,7 +516,7 @@ for a_y in quad_rotor_omega_D_dynamic.keys():
     axins.set_xlim(xlim)
     axins.set_ylim(ylim)
     axins.step(x1, y1, linewidth=1)
-    axins._plot(x2, y2, linewidth=1)
+    axins.plot(x2, y2, linewidth=1)
     plt.grid()
 
     fig.legend(['$\\dot{\\theta}_d \\ \\left[ \\frac{rad}{sec} \\right]$',
