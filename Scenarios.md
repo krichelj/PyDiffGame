@@ -10,12 +10,10 @@ The following scenarios assume no coupling weighting for the inputs of the agend
 
 In such cases the following Riccati equation arise:
 
-<img src="https://render.githubusercontent.com/render/math?math=\color{red}\frac{dP_i}{dt} = - A^T P_i - P_i A - Q_i %2B P_i \sum_{j=1}^N S_j P_j  \ , \ P_i(T_f) = P_{f_i} \ : \ \forall 1 \leq i \leq N">
-<img src="https://render.githubusercontent.com/render/math?math=\color{red}S_j = B_j R_{j}^{-1} B_j^T \ : \ \forall 1 \leq j \leq N">
+<img src="https://render.githubusercontent.com/render/math?math=\color{red}\frac{dP_i}{dt} = - A^T P_i - P_i A - Q_i %2B P_i \sum_{j=1}^N B_j R_{jj}^{-1} B_j^T P_j  \ , \ P_i(T_f) = P_{f_i} \ : \ \forall 1 \leq i \leq N">
 
 ## Closed Loop Finite Horizon
 
 In such cases the following Riccati equation arise:
 
-<img src="https://render.githubusercontent.com/render/math?math=\color{red}\frac{dP_i}{dt} = - A^T P_i - P_i A - Q_i %2B P_i \big(\sum_{j=1}^N S_j P_j\big)  %2B \big(\sum_{\substack{j=1 \\ j \neq i}}^NP_jS_j\big)  P_i \ , \ P_i(T_f) = P_{f_i} \ : \ \forall 1 \leq i \leq N">
-<img src="https://render.githubusercontent.com/render/math?math=\color{red}S_j = B_j R_{j}^{-1} B_j^T \ : \ \forall 1 \leq j \leq N">
+<img src="https://render.githubusercontent.com/render/math?math=\color{red}\frac{dP_i}{dt} = - A^T P_i - P_i A - Q_i %2B P_i \sum_{j=1}^N B_j R_{jj}^{-1} B_j^T P_j  %2B \big(\sum_{\substack{j=1 \\ j \neq i}}^N P_j B_j R_{jj}^{-1} B_j^T\big)  P_i \ , \ P_i(T_f) = P_{f_i} \ : \ \forall 1 \leq i \leq N">
