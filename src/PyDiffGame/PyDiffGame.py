@@ -466,7 +466,7 @@ class ContinuousPyDiffGame(PyDiffGame):
 
         In the continuous-time case, the matrices P_i can be solved for, unrelated to the controllers psi_i.
         Then when simulating the state space progression, the controllers psi_i can be computed as functions of P_i
-        for each time interval.
+        for each time interval
         """
 
         self._update_P_from_last_state()
@@ -644,8 +644,19 @@ class DiscretePyDiffGame(PyDiffGame):
         self._A = A_tilda
         B_tilda = e_AT
         self._B = [B_tilda @ B_i for B_i in self._B]
-        self._Q = [self._delta_T * Q_i for Q_i in self._Q]  # TODO: add Simpson's approximation
+        self._Q = [self._delta_T * Q_i for Q_i in self._Q]
         self._R = [self._delta_T * R_i for R_i in self._R]
+
+    def __simpson_integrate_Q(self):
+
+        Q = np.array(self._Q)
+        self._Q = np.zeros((self._data_points,
+                            self._N,
+                            self._n,
+                            self._n))
+        self._Q[0] = 1 / 3 * Q
+        self._Q[1::2] = 4 / 3 * Q
+        self._Q[::2] = 2 / 3 * Q
 
     def __initialize_finite_horizon(self):
         """
@@ -656,6 +667,7 @@ class DiscretePyDiffGame(PyDiffGame):
             4. The resulting closed-loop dynamics matrix A_cl for the last sampling point is updated
             5. The state is initialized with its initial value, if given
          """
+
         self._P = np.random.rand(self._data_points,
                                  self._N,
                                  self._n,
@@ -667,9 +679,10 @@ class DiscretePyDiffGame(PyDiffGame):
         self._A_cl = np.zeros((self._data_points,
                                self._n,
                                self._n))
-        self._P[-1] = np.array(self._Q).reshape((self._N,
-                                                 self._n,
-                                                 self._n))
+        self.__simpson_integrate_Q()
+        self._P[-1] = np.array(self._Q[-1]).reshape((self._N,
+                                                     self._n,
+                                                     self._n))
         self._update_A_cl_from_last_state(k=-1)
         self._x = np.zeros((self._data_points,
                             self._n))
@@ -762,15 +775,16 @@ class DiscretePyDiffGame(PyDiffGame):
         P_k_1 = self._P[k_1]
         psi_k = self._psi[k]
         A_cl_k = self._A_cl[k]
+        Q_k = self._Q[k]
         P_k = np.zeros_like(P_k_1)
 
         for i in range(self._N):
             psi_k_i = psi_k[i, self.__get_psi_i_shape(i)]
             P_k_1_i = P_k_1[i]
             R_ii = self._R[i]
-            Q_i = self._Q[i]
+            Q_k_i = Q_k[i]
 
-            P_k[i] = A_cl_k.T @ P_k_1_i @ A_cl_k + psi_k_i.T @ R_ii @ psi_k_i + Q_i
+            P_k[i] = A_cl_k.T @ P_k_1_i @ A_cl_k + psi_k_i.T @ R_ii @ psi_k_i + Q_k_i
 
         self._P[k] = P_k
 
