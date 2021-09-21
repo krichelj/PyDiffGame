@@ -227,7 +227,6 @@ class PyDiffGame(ABC):
     def _update_A_cl_from_last_state(self, **args):
         """
         Updates the closed-loop control dynamics with the updated controllers based on the relation:
-
         A_cl = A - sum_{i=1}^N B_i psi_i
         """
 
@@ -290,8 +289,7 @@ class PyDiffGame(ABC):
 
         if self._x_0 is not None:
             if self._debug:
-                is_stable = self._is_A_cl_stable()
-                print(f"The system is {'NOT ' if not is_stable else ''}stable")
+                print(f"The system is {'NOT ' if not self._is_A_cl_stable() else ''}stable")
 
             self._simulate_state_space()
             self.__plot_state_space()
@@ -335,8 +333,8 @@ class ContinuousPyDiffGame(PyDiffGame):
     """
     Continuous differential game base class
 
-    Considers the system:
 
+    Considers the system:
     dx(t)/dt = A x(t) + sum_{j=1}^N B_j v_j(t)
 
     Parameters
@@ -371,7 +369,7 @@ class ContinuousPyDiffGame(PyDiffGame):
 
         def __solve_N_coupled_diff_riccati(_: float, P_t: np.array) -> np.array:
             """
-            odeint Riccati Equations Solver function
+            odeint Coupled Differential Matrix Riccati Equations Solver function
 
             Parameters
             ----------
@@ -423,11 +421,13 @@ class ContinuousPyDiffGame(PyDiffGame):
 
     def _update_psi_from_last_state(self, t: int):
         """
-        In the continuous-time case, the matrices P_i can be solved for unrelated to the controllers psi_i,
-        and then the controllers psi_i can be computed as functions of P_i.
-        This is executed by the following rule:
-
+        After the matrices P_i are obtained, this method updates the controllers at time t by the rule:
         psi_i(t) = R^{-1}_ii B^T_i P_i(t)
+
+        Parameters
+        ----------
+        t: int
+            Current point in time
         """
 
         P_t = [(self._P[t][i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n) for i in range(self._N)]
@@ -436,7 +436,6 @@ class ContinuousPyDiffGame(PyDiffGame):
     def _update_A_cl_from_last_state(self):
         """
         Updates the closed-loop control dynamics with the updated controllers based on the relation:
-
         A_cl(t) = A - sum_{i=1}^N B_i psi_i(t)
         """
 
@@ -448,29 +447,26 @@ class ContinuousPyDiffGame(PyDiffGame):
         with P_f as the terminal condition
 
         For the open-loop case:
-
         dP_i(t)/dt = - A^T P_i(t) - P_i(t) A - Q_i + P_i(t) sum_{j=1}^N B_j R^{-1}_{jj} B^T_j P_j(t)
 
         and for the closed loop case:
-
         dP_idt = - A^T P_i(t) - P_i(t) A - Q_i + P_i(t) sum_{j=1}^N B_j R^{-1}_{jj} B^T_j P_j(t) +
                     [sum_{j=1, j!=i}^N P_j(t) B_j R^{-1}_{jj} B^T_j] P_i(t)
         """
 
-        y_0 = np.ravel(self._P_f)
         self._P = odeint(func=self.__ode_func,
-                         y0=y_0,
+                         y0=np.ravel(self._P_f),
                          t=self._backward_time,
                          tfirst=True)
 
     def _solve_finite_horizon(self):
         """
         Considers the following set of finite-horizon cost functions:
-
         J_i = x(T_f)^T F_i(T_f) x(T_f) + int_{t=0}^T_f [x(t)^T Q_i x(t) + sum_{j=1}^N u_j(t)^T R_{ij} u_j(t)] dt
 
-
-
+        In the continuous-time case, the matrices P_i can be solved for, unrelated to the controllers psi_i.
+        Then when simulating the state space progression, the controllers psi_i can be computed as functions of P_i
+        for each time interval.
         """
 
         self._update_P_from_last_state()
@@ -483,7 +479,6 @@ class ContinuousPyDiffGame(PyDiffGame):
     def _solve_infinite_horizon(self):
         """
         Considers the following finite-horizon cost functions:
-
         J_i = int_{t=0}^infty [x(t)^T Q_i x(t) + sum_{j=1}^N u_j(t)^T R_{ij} u_j(t)] dt
         """
 
@@ -493,7 +488,6 @@ class ContinuousPyDiffGame(PyDiffGame):
         """
         Tests Lyapunov stability of the closed loop:
         A continuous dynamic system governed by the matrix A_cl has Lyapunov stability iff:
-
         Re(eig) <= 0 forall eigenvalues of A_cl and there is at most one real eigenvalue at the origin
         """
 
@@ -510,8 +504,8 @@ class ContinuousPyDiffGame(PyDiffGame):
     def _simulate_state_space(self):
         """
         Propagates the game through time and solves for it by solving the continuous differential equation:
-
         dx(t)/dt = A_cl(t) x(t)
+        In each step, the controllers psi_i are calculated with the values of P_i evaluated beforehand.
         """
 
         t = len(self._P) - 1
@@ -554,11 +548,13 @@ class DiscretePyDiffGame(PyDiffGame):
     """
     Discrete differential game base class
 
+
     Considers the system:
+    x[k+1] = A_tilda x[k] + sum_{j=1}^N B_j_tilda v_j[k]
 
-    x[k+1] = A x[k] + sum_{j=1}^N B_j v_j[k]
-
-    where A and each B_j are in discrete form
+    where A_tilda and each B_j_tilda are in discrete form, meaning they correlate to a discrete system,
+    which, at the sampling points, is assumed to be equal to some equivalent continuous system of the form:
+    dx(t)/dt = A x(t) + sum_{j=1}^N B_j v_j(t)
     """
 
     def __init__(self, A: np.array, B: list[np.array], Q: list[np.array], R: list[np.array],
@@ -636,7 +632,6 @@ class DiscretePyDiffGame(PyDiffGame):
         """
         The input to the discrete game can either given in continuous or discrete form.
         If it is not in discrete form, the game gets discretized using this method in the following manner:
-
         A = exp(delta_T A)
         B_j = int_{t=0}^delta_T exp(tA) dt B_j
         """
@@ -652,7 +647,15 @@ class DiscretePyDiffGame(PyDiffGame):
         self._Q = [self._delta_T * Q_i for Q_i in self._Q]  # TODO: add Simpson's approximation
         self._R = [self._delta_T * R_i for R_i in self._R]
 
-    def __initialize(self):
+    def __initialize_finite_horizon(self):
+        """
+        Initializes the calculated parameters for the finite horizon case by the following steps:
+            1. The matrices P_i and controllers psi_i are initialized randomly for all sample points
+            2. The closed-loop dynamics matrix A_cl is first set to zero for all sample points
+            3. The terminal conditions P_f_i are set to Q_i
+            4. The resulting closed-loop dynamics matrix A_cl for the last sampling point is updated
+            5. The state is initialized with its initial value, if given
+         """
         self._P = np.random.rand(self._data_points,
                                  self._N,
                                  self._n,
@@ -702,9 +705,14 @@ class DiscretePyDiffGame(PyDiffGame):
 
     def _update_psi_from_last_state(self, k_1: int):
         """
-
-
+        After initializing, in order to solve for the controllers psi_i and matrices P_i,
+        we start by solving for the controllers by the update rule:
         psi_i(t) = R^{-1}_ii B^T_i P_i(t)
+
+        Parameters
+        ----------
+        k_1: int
+            The current k+1 sample index
         """
 
         psi_k_1 = self._psi[k_1]
@@ -729,19 +737,27 @@ class DiscretePyDiffGame(PyDiffGame):
     def _update_A_cl_from_last_state(self, k: int):
         """
         Updates the closed-loop control dynamics with the updated controllers based on the relation:
-
         A_cl[k] = A - sum_{i=1}^N B_i psi_i[k]
 
         Parameters
         ----------
         k: int
-            The current sample index
+            The current k'th sample index
         """
 
         psi_k = self._psi[k]
         self._A_cl[k] = self._A - sum([self._B[i] @ psi_k[i, self.__get_psi_i_shape(i)] for i in range(self._N)])
 
     def _update_P_from_last_state(self, k_1: int):
+        """
+        Updates the matrices P_i with
+        A_cl[k] = A - sum_{i=1}^N B_i psi_i[k]
+
+        Parameters
+        ----------
+        k_1: int
+            The current k'th sample index
+        """
         k = k_1 - 1
         P_k_1 = self._P[k_1]
         psi_k = self._psi[k]
@@ -759,6 +775,11 @@ class DiscretePyDiffGame(PyDiffGame):
         self._P[k] = P_k
 
     def _is_A_cl_stable(self, k: int) -> bool:
+        """
+        Tests Lyapunov stability of the closed loop:
+        A discrete dynamic system governed by the matrix A_cl has Lyapunov stability iff:
+        |eig| <= 1 forall eigenvalues of A_cl
+        """
         A_cl_k = self._A_cl[k]
         A_cl_k_eigenvalues = eigvals(A_cl_k)
         A_cl_k_eigenvalues_absolute_values = [abs(eig) for eig in A_cl_k_eigenvalues]
@@ -775,9 +796,7 @@ class DiscretePyDiffGame(PyDiffGame):
         Solves the system with the finite-horizon cost functions:
         J_i = sum_{k=1}^T_f [ x[k]^T Q_i x[k] + sum_{j=1}^N u_j[k]^T R_{ij} u_j[k] ]
 
-        In the discrete-time case, the matrices P_i have to be solved simultaneously with the controllers psi_i.
-        This is executed in the following order:
-        To initiate the process, first terminal values for P_i_f are set, then
+        In the discrete-time case, the matrices P_i have to be solved simultaneously with the controllers psi_i
         """
         pass
 
@@ -785,11 +804,8 @@ class DiscretePyDiffGame(PyDiffGame):
         """
         Solves the system with the infinite-horizon cost functions:
         J_i = sum_{k=1}^infty [ x[k]^T Q_i x[k] + sum_{j=1}^N u_j[k]^T R_{ij} u_j[k] ]
-
-
-
         """
-        self.__initialize()
+        self.__initialize_finite_horizon()
 
         for backwards_index, t in enumerate(self._backward_time[:-1]):
             k_1 = self._data_points - 1 - backwards_index
@@ -813,14 +829,19 @@ class DiscretePyDiffGame(PyDiffGame):
             self._update_P_from_last_state(k)
 
     def _simulate_state_space(self):
-        x_k = self._x_0
-        self._x[0] = x_k
+        """
+        Propagates the game through time and solves for it by solving the discrete difference equation:
+        x[k+1] = A_cl[k] x[k]
+        In each step, the controllers psi_i are calculated with the values of P_i evaluated beforehand.
+        """
+
+        x_1_k = self._x_0
 
         for k in range(1, self._data_points - 1):
             A_cl_k = self._A_cl[k]
-            x_k_1 = A_cl_k @ x_k
-            self._x[k] = x_k_1
-            x_k = x_k_1
+            x_k = A_cl_k @ x_1_k
+            self._x[k] = x_k
+            x_1_k = x_k
 
 
 if __name__ == '__main__':
