@@ -30,7 +30,7 @@ the method that calls for the game to begin is `play_the_game`.
 All the constants are defined in the [Mathematical Description](Math.md) section.
 The input parameters to instantiate a `PyDiffGame` object are:
 
-* `A` : numpy 2-d array, of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{red}n,n">)
+* `A` : numpy 2-d array, of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{yellow}n,n">)
 >The system dynamics matrix
 * `B` : list of numpy 2-d arrays, of len(<img src="https://render.githubusercontent.com/render/math?math=\color{red}N">), each matrix <img src="https://render.githubusercontent.com/render/math?math=\color{red}B_i"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{red}n, k_j">), <img src="https://render.githubusercontent.com/render/math?math=\color{red}i=1...N">
 >System input matrices for each control objective
