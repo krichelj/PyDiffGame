@@ -13,9 +13,9 @@ from quadpy import quad
 
 # globals
 
-T_f_default = 10
+T_f_default = 100
 data_points_default = 1000
-epsilon_default = 1 / (10 ** 8)
+epsilon_default = 1 / (10 ** 3)
 delta_T_default = 0.5
 last_norms_number_default = 5
 
@@ -106,8 +106,8 @@ class PyDiffGame(ABC):
             raise ValueError('A must be a square 2-d numpy array with shape nxn')
         if any([B_i.shape[0] != self._n for B_i in self._B]):
             raise ValueError('B must be a list of 2-d numpy arrays with n rows')
-        if not all([B_i.shape[1] == R_i.shape[0] == R_i.shape[1]
-                    and np.all(eigvals(R_i) >= 0) for B_i, R_i in zip(self._B, self._R)]):
+        if not all([B_i.shape[1] == (R_i.shape[0] == R_i.shape[1] if R_i.ndim > 1 else R_i.shape[0])
+                    and (np.all(eigvals(R_i) >= 0) if R_i.ndim > 1 else True) for B_i, R_i in zip(self._B, self._R)]):
             raise ValueError('R must be a list of square 2-d positive definite numpy arrays with shape '
                              'corresponding to the second dimensions of the arrays in B')
         if any([Q_i.shape != (self._n, self._n) for Q_i in self._Q]):
@@ -124,10 +124,7 @@ class PyDiffGame(ABC):
         if not all([P_f_i.shape[0] == P_f_i.shape[1] == self._n for P_f_i in self._P_f]):
             raise ValueError('P_f must be a list of 2-d positive semi-definite numpy arrays with shape nxn')
         if not all([eig >= 0 for eig_set in [eigvals(P_f_i) for P_f_i in self._P_f] for eig in eig_set]):
-            if all([eig >= -1e-15 for eig_set in [eigvals(P_f_i) for P_f_i in self._P_f] for eig in eig_set]):
-                warnings.warn("Warning: there is a matrix in P_f that has negative (but really small) eigenvalues")
-            else:
-                raise ValueError('P_f must contain positive semi-definite numpy arrays')
+            warnings.warn("Warning: there is a matrix in P_f that has negative eigenvalues. Convergence may not occur")
         if self._data_points <= 0:
             raise ValueError('The number of data points must be a positive integer')
 
@@ -199,7 +196,7 @@ class PyDiffGame(ABC):
                    mat=self._x,
                    is_P=False,
                    title=f"{('Continuous' if isinstance(self, ContinuousPyDiffGame) else 'Discrete')}, "
-                         f"{('Infinite' if self.__infinite_horizon else 'Finite')} Horizon Game, "
+                         f"{('Infinite' if self.__infinite_horizon else 'Finite')} Horizon, {self._N}-Player Game, "
                          f"{self._data_points} sampling points")
 
     @abstractmethod
@@ -363,7 +360,8 @@ class ContinuousPyDiffGame(PyDiffGame):
                          last_norms_number=last_norms_number,
                          debug=debug)
 
-        S_matrices = [self._B[i] @ inv(self._R[i]) @ self._B[i].T for i in range(self._N)]
+        S_matrices = [(B_i @ inv(R_i) @ B_i.T if R_i.ndim > 1 else 1/R_i * B_i @ B_i.T)
+                      for B_i, R_i in zip(self._B, self._R)]
         self.__cl = cl
         self.__dx_dt = None
 
@@ -431,7 +429,8 @@ class ContinuousPyDiffGame(PyDiffGame):
         """
 
         P_t = [(self._P[t][i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n) for i in range(self._N)]
-        self._psi = [inv(R_ii) @ B_i.T @ P_i for R_ii, B_i, P_i in zip(self._R, self._B, P_t)]
+        self._psi = [(inv(R_ii) @ B_i.T if R_ii.ndim > 1 else 1/R_ii * B_i.T) @ P_i
+                     for R_ii, B_i, P_i in zip(self._R, self._B, P_t)]
 
     def _update_A_cl_from_last_state(self):
         """
@@ -648,7 +647,15 @@ class DiscretePyDiffGame(PyDiffGame):
         self._R = [self._delta_T * R_i for R_i in self._R]
 
     def __simpson_integrate_Q(self):
+        """
+        Use Simpson's approximation for the definite integral of the state cost function term:
+        x(t) ^T Q_f_i x(t) + int_{t=0}^T_f x(t) ^T Q_i x(t) ~ sum_{k=0)^K  x(t) ^T Q_i_k x(t)
 
+        where:
+        Q_i_0 = 1 / 3 * Q_i
+        Q_i_1, ..., Q_i_K-1 = 4 / 3 * Q_i
+        Q_i_2, ..., Q_i_K-2 = 2 / 3 * Q_i
+        """
         Q = np.array(self._Q)
         self._Q = np.zeros((self._data_points,
                             self._N,
@@ -784,7 +791,8 @@ class DiscretePyDiffGame(PyDiffGame):
             R_ii = self._R[i]
             Q_k_i = Q_k[i]
 
-            P_k[i] = A_cl_k.T @ P_k_1_i @ A_cl_k + psi_k_i.T @ R_ii @ psi_k_i + Q_k_i
+            P_k[i] = A_cl_k.T @ P_k_1_i @ A_cl_k + (psi_k_i.T @ R_ii if R_ii.ndim > 1 else psi_k_i.T * 1/R_ii)\
+                     @ psi_k_i + Q_k_i
 
         self._P[k] = P_k
 
@@ -859,39 +867,26 @@ class DiscretePyDiffGame(PyDiffGame):
 
 
 if __name__ == '__main__':
-    A = np.array([[-2, 1],
-                  [1, 4]])
-    B = [np.array([[1, 0],
-                   [0, 1]]),
-         np.array([[0],
-                   [1]]),
-         np.array([[1],
-                   [0]])]
-    Q = [np.array([[1, 0],
-                   [0, 1]]),
-         np.array([[1, 0],
-                   [0, 10]]),
-         np.array([[10, 0],
-                   [0, 1]])
-         ]
-    R = [np.array([[100, 0],
-                   [0, 200]]),
-         np.array([[5]]),
-         np.array([[7]])]
-
+    r = 0.1
+    s = 2
     cl = True
-    x_0 = np.array([100, -200])
-    T_f = 5
-    P_f = [np.array([[1, 0],
-                     [0, 2]]),
-           np.array([[3, 0],
-                     [0, 4]]),
-           np.array([[5, 0],
-                     [0, 6]])]
-    # data_points = 1000
+    x_0 = np.array([20, 1])
+
+    data_points = 1000
     show_legend = True
-    #
-    for data_points in [i * 100 for i in range(2, 10)]:
+
+    for N in [2, 4, 10, 100]:
+        beta = [1] * N
+        c = [1] * N
+        p = 80
+        A = np.array([[-1 / 2 * r - s * (1 + sum(beta)), s * (p + sum([beta_i * c_i for beta_i, c_i in zip(beta, c)]))],
+                      [0, -1 / 2 * r]])
+        B = [np.array([[-s * beta_i],
+                       [0]]) for beta_i in beta]
+        Q = [1 / 2 * np.array([[-1, c_i],
+                               [c_i, -c_i ** 2]]) for c_i in c]
+        R = [np.array([1 / 2])] * N
+
         continuous_game = ContinuousPyDiffGame(A=A,
                                                B=B,
                                                Q=Q,
@@ -904,14 +899,14 @@ if __name__ == '__main__':
                                                show_legend=show_legend)
         continuous_game.solve_game_and_plot_state_space()
 
-        discrete_game = DiscretePyDiffGame(A=A,
-                                           B=B,
-                                           Q=Q,
-                                           R=R,
-                                           is_input_discrete=False,
-                                           x_0=x_0,
-                                           # T_f=T_f,
-                                           data_points=data_points,
-                                           show_legend=show_legend,
-                                           debug=False)
-        discrete_game.solve_game_and_plot_state_space()
+        # discrete_game = DiscretePyDiffGame(A=A,
+        #                                    B=B,
+        #                                    Q=Q,
+        #                                    R=R,
+        #                                    is_input_discrete=False,
+        #                                    x_0=x_0,
+        #                                    # T_f=T_f,
+        #                                    data_points=data_points,
+        #                                    show_legend=show_legend,
+        #                                    debug=False)
+        # discrete_game.solve_game_and_plot_state_space()
