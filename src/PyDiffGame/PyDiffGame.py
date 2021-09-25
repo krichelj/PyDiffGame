@@ -11,13 +11,8 @@ from scipy.optimize import fsolve
 from abc import ABC, abstractmethod
 from quadpy import quad
 
-# globals
 
-T_f_default = 100
-data_points_default = 1000
-epsilon_default = 10 ** (-5)
-delta_T_default = 0.1
-last_norms_number_default = 10
+# globals
 
 
 class PyDiffGame(ABC):
@@ -56,6 +51,12 @@ class PyDiffGame(ABC):
         Indicates whether to display debug information or not
     """
 
+    __T_f_default = 100
+    _data_points_default = 1000
+    _epsilon_default = 10 ** (-5)
+    _delta_T_default = 0.1
+    _last_norms_number_default = 10
+
     def __init__(self,
                  A: np.array,
                  B: list[np.array],
@@ -64,11 +65,11 @@ class PyDiffGame(ABC):
                  x_0: np.array = None,
                  T_f: float = None,
                  P_f: list[np.array] = None,
-                 data_points: int = data_points_default,
+                 data_points: int = _data_points_default,
                  show_legend: bool = True,
-                 epsilon: float = epsilon_default,
-                 delta_T: float = delta_T_default,
-                 last_norms_number: int = last_norms_number_default,
+                 epsilon: float = _epsilon_default,
+                 delta_T: float = _delta_T_default,
+                 last_norms_number: int = _last_norms_number_default,
                  debug: bool = False):
 
         self.__continuous = isinstance(self, ContinuousPyDiffGame)
@@ -83,7 +84,7 @@ class PyDiffGame(ABC):
         self._R = R
         self._x_0 = x_0
         self.__infinite_horizon = T_f is None or P_f is None
-        self._T_f = T_f_default if T_f is None else T_f
+        self._T_f = PyDiffGame.__T_f_default if T_f is None else T_f
         self._P_f = self.__get_are_P_f() if P_f is None else P_f
         self._data_points = data_points
         self.__show_legend = show_legend
@@ -117,7 +118,7 @@ class PyDiffGame(ABC):
             raise ValueError('A must be a square 2-d numpy array with shape nxn')
         if any([B_i.shape[0] != self._n for B_i in self._B]):
             raise ValueError('B must be a list of 2-d numpy arrays with n rows')
-        if not all([B_i.shape[1] == R_i.shape[0] == R_i.shape[1] if R_i.ndim > 1 else B_i.shape[1] == R_i.shape[0]
+        if not all([(B_i.shape[1] == R_i.shape[0] == R_i.shape[1] if R_i.ndim > 1 else B_i.shape[1] == R_i.shape[0])
                     and (np.all(eigvals(R_i) > 0) if R_i.ndim > 1 else R_i > 0) for B_i, R_i in zip(self._B, self._R)]):
             raise ValueError('R must be a list of square 2-d positive definite numpy arrays with shape '
                              'corresponding to the second dimensions of the arrays in B')
@@ -247,7 +248,7 @@ class PyDiffGame(ABC):
         """
 
         A_cl = self._A - sum([self._B[i] @ self._get_psi_i(i, k) if k is not None else self._get_psi_i(i)
-                                    for i in range(self._N)])
+                              for i in range(self._N)])
         if k is not None:
             self._A_cl[k] = A_cl
         else:
@@ -373,11 +374,11 @@ class ContinuousPyDiffGame(PyDiffGame):
                  x_0: np.array = None,
                  T_f: float = None,
                  P_f: list[np.array] = None,
-                 data_points: int = data_points_default,
+                 data_points: int = PyDiffGame._data_points_default,
                  show_legend: bool = True,
-                 epsilon: float = epsilon_default,
-                 delta_T: float = delta_T_default,
-                 last_norms_number: int = last_norms_number_default,
+                 epsilon: float = PyDiffGame._epsilon_default,
+                 delta_T: float = PyDiffGame._delta_T_default,
+                 last_norms_number: int = PyDiffGame._last_norms_number_default,
                  debug: bool = False):
 
         super().__init__(A=A,
@@ -582,11 +583,11 @@ class DiscretePyDiffGame(PyDiffGame):
                  x_0: np.array = None,
                  T_f: Union[float, int] = None,
                  P_f: list[np.array] = None,
-                 data_points: int = data_points_default,
+                 data_points: int = PyDiffGame._data_points_default,
                  show_legend: bool = True,
-                 epsilon: float = epsilon_default,
-                 delta_T: float = delta_T_default,
-                 last_norms_number: int = last_norms_number_default,
+                 epsilon: float = PyDiffGame._epsilon_default,
+                 delta_T: float = PyDiffGame._delta_T_default,
+                 last_norms_number: int = PyDiffGame._last_norms_number_default,
                  debug: bool = False):
 
         super().__init__(A=A,
