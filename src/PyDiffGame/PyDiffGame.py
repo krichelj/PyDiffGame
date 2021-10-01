@@ -51,10 +51,10 @@ class PyDiffGame(ABC):
         Indicates whether to display debug information or not
     """
 
-    __T_f_default = 100
+    __T_f_default = 5
     _data_points_default = 1000
-    _epsilon_default = 10 ** (-5)
-    _delta_T_default = 0.1
+    _epsilon_default = 10 ** (-8)
+    _delta_T_default = 0.5
     _last_norms_number_default = 10
 
     def __init__(self,
@@ -361,7 +361,7 @@ class ContinuousPyDiffGame(PyDiffGame):
 
     Parameters
     ----------
-    cl: boolean
+    cl: boolean, optional, default = True
         Indicates whether to generate the closed (True) or open (False) loop behaviour
     """
 
@@ -370,7 +370,7 @@ class ContinuousPyDiffGame(PyDiffGame):
                  B: list[np.array],
                  Q: list[np.array],
                  R: list[np.array],
-                 cl: bool,
+                 cl: bool = True,
                  x_0: np.array = None,
                  T_f: float = None,
                  P_f: list[np.array] = None,
@@ -572,6 +572,11 @@ class DiscretePyDiffGame(PyDiffGame):
     where A_tilda and each B_j_tilda are in discrete form, meaning they correlate to a discrete system,
     which, at the sampling points, is assumed to be equal to some equivalent continuous system of the form:
     dx(t)/dt = A x(t) + sum_{j=1}^N B_j v_j(t)
+
+    Parameters
+    ----------
+    is_input_discrete: boolean, optional, default = False
+        Indicates whether the input matrices A, B, Q, R are in discrete form or whether they need to be discretized
     """
 
     def __init__(self,
@@ -579,7 +584,7 @@ class DiscretePyDiffGame(PyDiffGame):
                  B: list[np.array],
                  Q: list[np.array],
                  R: list[np.array],
-                 is_input_discrete: bool,
+                 is_input_discrete: bool = False,
                  x_0: np.array = None,
                  T_f: Union[float, int] = None,
                  P_f: list[np.array] = None,
