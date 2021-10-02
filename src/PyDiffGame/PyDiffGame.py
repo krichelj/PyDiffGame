@@ -12,9 +12,6 @@ from abc import ABC, abstractmethod
 from quadpy import quad
 
 
-# globals
-
-
 class PyDiffGame(ABC):
     """
     Differential game abstract base class
@@ -211,7 +208,7 @@ class PyDiffGame(ABC):
                          f"{('Infinite' if self.__infinite_horizon else 'Finite')} Horizon, {self._N}-Player Game, "
                          f"{self._data_points} sampling points")
 
-    def __get_are_P_f(self) -> np.array:
+    def __get_are_P_f(self) -> list[np.array]:
         """
         Solves the uncoupled set of algebraic Riccati equations to use as initial guesses for fsolve and odeint
 
@@ -247,7 +244,7 @@ class PyDiffGame(ABC):
             The current k'th sample index, in case the controller is time-dependant
         """
 
-        A_cl = self._A - sum([self._B[i] @ self._get_psi_i(i, k) if k is not None else self._get_psi_i(i)
+        A_cl = self._A - sum([self._B[i] @ (self._get_psi_i(i, k) if k is not None else self._get_psi_i(i))
                               for i in range(self._N)])
         if k is not None:
             self._A_cl[k] = A_cl
@@ -395,7 +392,7 @@ class ContinuousPyDiffGame(PyDiffGame):
                          last_norms_number=last_norms_number,
                          debug=debug)
 
-        S_matrices = [(B_i @ inv(R_i) @ B_i.T if R_i.ndim > 1 else 1 / R_i * B_i @ B_i.T)
+        S_matrices = [B_i @ inv(R_i) @ B_i.T if R_i.ndim > 1 else 1 / R_i * B_i @ B_i.T
                       for B_i, R_i in zip(self._B, self._R)]
         self.__cl = cl
         self.__dx_dt = None
