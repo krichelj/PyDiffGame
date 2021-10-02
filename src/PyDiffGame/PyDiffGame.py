@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
 from scipy.integrate import odeint
 import warnings
-from typing import Union
+from typing import Union, Callable
 from scipy.optimize import fsolve
 from abc import ABC, abstractmethod
 from quadpy import quad
@@ -88,7 +88,7 @@ class PyDiffGame(ABC):
         self._forward_time = np.linspace(0, self._T_f, self._data_points)
         self._backward_time = self._forward_time[::-1]
 
-        self.__check_input()
+        self.__verify_input()
 
         # additional parameters
         self._A_cl = np.empty_like(self._A)
@@ -102,7 +102,7 @@ class PyDiffGame(ABC):
         self.__converged = False
         self._debug = debug
 
-    def __check_input(self):
+    def __verify_input(self):
         """
         Input checking method
 
@@ -159,6 +159,19 @@ class PyDiffGame(ABC):
                                         in zip(last_norms, last_norms[1:])])
 
             self._T_f -= self._delta_T
+
+    @staticmethod
+    def _post_convergence(method: Callable):
+        """
+        A decorator static-method to apply on methods that can only be called after convergence
+        """
+
+        def __verify_convergence(self: PyDiffGame):
+            if not self.__converged:
+                raise RuntimeError('Must first simulate the differential game')
+            return method
+
+        return __verify_convergence
 
     def _plot(self, t: np.array, mat: np.array, is_P: bool, title: str = None):
         """
@@ -810,6 +823,7 @@ class DiscretePyDiffGame(PyDiffGame):
         A discrete dynamic system governed by the matrix A_cl has Lyapunov stability iff:
         |eig| <= 1 forall eigenvalues of A_cl
         """
+
         A_cl_k = self._A_cl[k]
         A_cl_k_eigenvalues = eigvals(A_cl_k)
         A_cl_k_eigenvalues_absolute_values = [abs(eig) for eig in A_cl_k_eigenvalues]
