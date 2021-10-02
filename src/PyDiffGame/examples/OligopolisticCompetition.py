@@ -58,7 +58,7 @@ class OligopolisticCompetition(ContinuousPyDiffGame):
             raise ValueError('c must be of length N')
 
     @PyDiffGame._post_convergence
-    def get_steady_state_price(self):
+    def print_steady_state_price(self):
         numerator_sum = 0
         denominator_sum = 0
 
@@ -76,7 +76,7 @@ class OligopolisticCompetition(ContinuousPyDiffGame):
 
         p_s = (self.__p - numerator_sum) / (1 + denominator_sum)
 
-        return p_s
+        print(p_s)
 
     @PyDiffGame._post_convergence
     def simulate_p(self):
@@ -146,7 +146,7 @@ x_0 = np.array([80, 1])
 T_f = 5
 epsilon = 10 ** (-3)
 
-for N in [2, 4, 10]:
+for N in [2]:
     beta = [1] * N
     c = [1] * N
     oc = OligopolisticCompetition(N=N,
@@ -159,6 +159,6 @@ for N in [2, 4, 10]:
                                   T_f=T_f,
                                   epsilon=epsilon
                                   )
-    # oc.solve_game_and_plot_state_space()
-    # oc.get_steady_state_price()
+    oc.solve_game_and_plot_state_space()
+    oc.print_steady_state_price()
     oc.simulate_p()
