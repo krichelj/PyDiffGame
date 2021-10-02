@@ -169,7 +169,7 @@ class PyDiffGame(ABC):
         def __verify_convergence(self: PyDiffGame):
             if not self.__converged:
                 raise RuntimeError('Must first simulate the differential game')
-            return method
+            method(self)
 
         return __verify_convergence
 
