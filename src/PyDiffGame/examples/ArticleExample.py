@@ -21,7 +21,6 @@ R = [np.array([[100, 0],
      np.array([[5]]),
      np.array([[7]])]
 
-cl = True
 x_0 = np.array([10, 20])
 T_f = 5
 P_f = [np.array([[10, 0],
@@ -30,29 +29,24 @@ P_f = [np.array([[10, 0],
                  [0, 40]]),
        np.array([[50, 0],
                  [0, 60]])]
-data_points = 1000
-show_legend = True
 
 continuous_game = ContinuousPyDiffGame(A=A,
                                        B=B,
                                        Q=Q,
                                        R=R,
-                                       cl=cl,
                                        x_0=x_0,
                                        P_f=P_f,
-                                       T_f=T_f,
-                                       data_points=data_points,
-                                       show_legend=show_legend)
+                                       T_f=T_f,)
 continuous_game.solve_game_and_plot_state_space()
 
 
-discrete_game = DiscretePyDiffGame(A=A,
-                                   B=B,
-                                   Q=Q,
-                                   R=R,
-                                   x_0=x_0,
-                                   # P_f=P_f,
-                                   # T_f=T_f,
-                                   data_points=data_points,
-                                   show_legend=show_legend)
-discrete_game.solve_game_and_plot_state_space()
+# discrete_game = DiscretePyDiffGame(A=A,
+#                                    B=B,
+#                                    Q=Q,
+#                                    R=R,
+#                                    x_0=x_0,
+#                                    # P_f=P_f,
+#                                    # T_f=T_f,
+#                                    data_points=data_points,
+#                                    show_legend=show_legend)
+# discrete_game.solve_game_and_plot_state_space()

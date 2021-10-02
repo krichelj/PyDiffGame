@@ -51,7 +51,7 @@ class PyDiffGame(ABC):
     __T_f_default = 5
     _data_points_default = 1000
     _epsilon_default = 10 ** (-8)
-    _delta_T_default = 0.5
+    _delta_T_default = 0.1
     _last_norms_number_default = 10
 
     def __init__(self,
@@ -99,7 +99,7 @@ class PyDiffGame(ABC):
         self._delta_T = delta_T
         self._x = self._x_0
         self.__last_norms_number = last_norms_number
-        self.__converged = False
+        self._converged = False
         self._debug = debug
 
     def __verify_input(self):
@@ -145,7 +145,7 @@ class PyDiffGame(ABC):
 
         last_norms = []
 
-        while not self.__converged:
+        while not self._converged:
             self._backward_time = np.linspace(self._T_f, self._T_f - self._delta_T, self._data_points)
             self._update_P_from_last_state()
             self._P_f = self._P[-1]
@@ -155,24 +155,24 @@ class PyDiffGame(ABC):
                 last_norms.pop(0)
 
             if len(last_norms) == self.__last_norms_number:
-                self.__converged = all([abs(norm_i - norm_i1) < self.__epsilon for norm_i, norm_i1
-                                        in zip(last_norms, last_norms[1:])])
+                self._converged = all([abs(norm_i - norm_i1) < self.__epsilon for norm_i, norm_i1
+                                       in zip(last_norms, last_norms[1:])])
 
             self._T_f -= self._delta_T
 
-    @staticmethod
     def _post_convergence(method: Callable):
         """
         A decorator static-method to apply on methods that can only be called after convergence
         """
 
-        def __verify_convergence(self: PyDiffGame):
-            if not self.__converged:
+        def verify_convergence(self: PyDiffGame, *args, **kwargs):
+            if not self.converged:
                 raise RuntimeError('Must first simulate the differential game')
-            method(self)
+            method(self, *args, **kwargs)
 
-        return __verify_convergence
+        return verify_convergence
 
+    @_post_convergence
     def _plot(self, t: np.array, mat: np.array, is_P: bool, title: str = None):
         """
         Displays plots for the state variables with respect to time and the convergence of the values of P
@@ -209,6 +209,7 @@ class PyDiffGame(ABC):
         plt.grid()
         plt.show()
 
+    @_post_convergence
     def __plot_state_space(self):
         """
         Plots the state plot wth respect to time
@@ -293,6 +294,24 @@ class PyDiffGame(ABC):
 
         pass
 
+    @_post_convergence
+    def _plot_finite_horizon(self):
+        """
+        Plots the convergence of the values for the matrices P_i
+        """
+
+        self._plot(t=self._backward_time,
+                   mat=self._P,
+                   is_P=True)
+
+    def _solve_and_plot_finite_horizon(self):
+        """
+        Solves for the finite horizon case and plots the convergence of the values for the matrices P_i
+        """
+
+        self._solve_finite_horizon()
+        self._plot_finite_horizon()
+
     @abstractmethod
     def _solve_infinite_horizon(self):
         """
@@ -302,6 +321,7 @@ class PyDiffGame(ABC):
         pass
 
     @abstractmethod
+    @_post_convergence
     def _simulate_state_space(self):
         """
         Propagates the game through time and solves for it
@@ -317,7 +337,7 @@ class PyDiffGame(ABC):
         if self.__infinite_horizon:
             self._solve_infinite_horizon()
         else:
-            self._solve_finite_horizon()
+            self._solve_and_plot_finite_horizon()
 
         if self._x_0 is not None:
             if self._debug:
@@ -346,6 +366,10 @@ class PyDiffGame(ABC):
     def forward_time(self):
         return self._forward_time
 
+    @property
+    def converged(self):
+        return self._converged
+
     def __len__(self) -> int:
         """
         We define the length of a differential game to be its number of objectives
@@ -359,6 +383,8 @@ class PyDiffGame(ABC):
         """
 
         return all([s == o for s, o in zip([self.A, self.B, self.Q, self.R], [other.A, other.B, other.Q, other.R])])
+
+    _post_convergence = staticmethod(_post_convergence)
 
 
 class ContinuousPyDiffGame(PyDiffGame):
@@ -497,11 +523,12 @@ class ContinuousPyDiffGame(PyDiffGame):
         """
 
         self._update_P_from_last_state()
-
-        # plot the convergence of the values of the P matrices
-        self._plot(t=self._backward_time,
-                   mat=self._P,
-                   is_P=True)
+        self._converged = True
+        #
+        # # plot the convergence of the values of the P matrices
+        # self._plot(t=self._backward_time,
+        #            mat=self._P,
+        #            is_P=True)
 
     def _solve_infinite_horizon(self):
         """
@@ -528,6 +555,7 @@ class ContinuousPyDiffGame(PyDiffGame):
 
         return stability
 
+    @PyDiffGame._post_convergence
     def _simulate_state_space(self):
         """
         Propagates the game through time and solves for it by solving the continuous differential equation:
@@ -860,7 +888,7 @@ class DiscretePyDiffGame(PyDiffGame):
             if self._debug:
                 print('#' * 30 + f' t = {round(t, 3)} ' + '#' * 30)
 
-            self._update_psi_from_last_state(k_1)
+            self._update_psi_from_last_state(k_1=k_1)
 
             if self._debug:
                 print(f'psi_k+1:\n{self._psi[k_1]}')
@@ -874,6 +902,7 @@ class DiscretePyDiffGame(PyDiffGame):
 
             self._update_P_from_last_state(k)
 
+    @PyDiffGame._post_convergence
     def _simulate_state_space(self):
         """
         Propagates the game through time and solves for it by solving the discrete difference equation:
