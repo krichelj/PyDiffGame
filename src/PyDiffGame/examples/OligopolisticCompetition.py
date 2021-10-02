@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.integrate import odeint
-from PyDiffGame import ContinuousPyDiffGame
+from PyDiffGame import PyDiffGame, ContinuousPyDiffGame
 
 
 class OligopolisticCompetition(ContinuousPyDiffGame):
@@ -12,7 +12,8 @@ class OligopolisticCompetition(ContinuousPyDiffGame):
                  c: np.array,
                  p: float,
                  x_0: np.array = None,
-                 T_f: float = 5):
+                 T_f: float = 5,
+                 epsilon: float = PyDiffGame._epsilon_default):
         self.__r = r
         self.__s = s
         self.__beta = beta
@@ -34,7 +35,8 @@ class OligopolisticCompetition(ContinuousPyDiffGame):
                          R=R,
                          cl=True,
                          x_0=x_0,
-                         T_f=T_f)
+                         T_f=T_f,
+                         epsilon=epsilon)
 
         self.__check_input()
 
@@ -140,7 +142,8 @@ r = 0.1
 s = 2
 p = 85
 x_0 = np.array([80, 1])
-T_f = 1
+T_f = 5
+epsilon = 10 ** (-3)
 
 for N in [2, 4, 10]:
     beta = [1] * N
@@ -152,7 +155,9 @@ for N in [2, 4, 10]:
                                   c=c,
                                   p=p,
                                   x_0=x_0,
-                                  T_f=T_f)
+                                  T_f=T_f,
+                                  epsilon=epsilon
+                                  )
     oc.solve_game_and_plot_state_space()
-    oc.get_steady_state_price()
+    # oc.get_steady_state_price()
     oc.simulate_p()
