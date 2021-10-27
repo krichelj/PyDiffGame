@@ -1,13 +1,12 @@
 import numpy as np
 from numpy import pi
-
-# import matplotlib.animation as animation
-# import matplotlib.pyplot as plt
-# import matplotlib.patches as patches
-# import matplotlib.lines as lines
-# from scipy.integrate import solve_ivp
-# import scipy.linalg as linalg
-# from time import time
+import matplotlib.animation as animation
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import matplotlib.lines as lines
+from scipy.integrate import solve_ivp
+import scipy.linalg as linalg
+from time import time
 
 from PyDiffGame import ContinuousPyDiffGame
 
@@ -20,14 +19,15 @@ from PyDiffGame import ContinuousPyDiffGame
 # ax.grid()
 
 # animation parameters
-origin = (0, 0)
+# origin = (0, 0)
 dt = 0.02
 frames = 200
 t_span = [0.0, frames * dt]
-m1 = 0.3
-m2 = 0.2
-g = 9.8
-L = 0.5
+
+m1 = 500
+m2 = 10
+g = 9.81
+L = 15
 l = L / 2  # CoM of uniform rod
 I = 1 / 12 * m2 * (L ** 2)
 b = 1  # dampening coefficient
@@ -55,22 +55,22 @@ B = np.array([[0, 0],
               [0, 0],
               [B21, B22],
               [B31, B32]])
-#
-# C = np.array([[1, 0, 0, 0],
-#               [0, 1, 0, 0]])
 
 Q = np.array([[1, 0, 0, 0],
               [0, 10, 0, 0],
               [0, 0, 1, 0],
               [0, 0, 0, 1]])
 
-R = np.array([[0.0001, 0],
-              [0, 0.0001]])
+R_constant = 0.001
 
-# P = np.matrix(linalg.solve_continuous_are(A, B, Q, R))
-# K = np.matrix(linalg.inv(R) * (B.T * P))
+R = np.array([[R_constant, 0],
+              [0, R_constant]])
+
+P = np.matrix(linalg.solve_continuous_are(A, B, Q, R))
+K = np.matrix(linalg.inv(R) * (B.T * P))
 # eigVals, eigVecs = linalg.eig(A - B * K)[0:2]
-# ss = np.array([0., 0., 0., 0.])
+ss = np.array([0., 0., 0., 0.])
+
 
 # print(f"eigVecs:\n{eigVecs}")
 # print(f"eigVals:\n{eigVals}")
@@ -102,20 +102,25 @@ R = np.array([[0.0001, 0],
 #                     (m2 * l * C) / denominator) * u(i)
 #
 #     return ss
-#
-#
-initial = np.array([20,  # x
-                    pi/4,  # theta
-                    -10,  # x_dot
+
+
+initial = np.array([200,  # x
+                    pi * (1 - 2 / 3),  # theta
+                    -100,  # x_dot
                     0])  # theta_dot
-final = np.array([1,  # x
+final = np.array([0,  # x
                   pi,  # theta
                   0,  # x_dot
                   0]  # theta_dot
                  )
 # u = lambda x: np.matmul(-K, (x - final))
 # ts = np.linspace(t_span[0], t_span[1], frames)
-# pendulum_state = solve_ivp(stateSpace, t_span, initial, t_eval=ts, rtol=1e-8)
+# pendulum_state = solve_ivp(fun=stateSpace,
+#                            t_span=t_span,
+#                            y0=initial,
+#                            t_eval=ts,
+#                            rtol=1e-8
+#                            )
 #
 #
 # def init():
@@ -156,21 +161,25 @@ one_player_game = ContinuousPyDiffGame(A=A,
                                        Q=[Q],
                                        R=[R],
                                        x_0=initial,
-                                       x_T=final
+                                       x_T=final,
+                                       T_f=30
                                        )
 one_player_game.solve_game_and_simulate_state_space()
 
-M1 = np.array([[1, 1],
-               [1, 1]])
-M2 = np.array([[1, 1],
-               [0, 1]])
+M1 = np.array([[10, 0],
+               [0, 10]])
+M2 = np.array([[1],
+               [1]])
 
-B = [B @ M1, B @ M2]
+B = [B @ M1,
+     B @ M2]
 
 two_player_game = ContinuousPyDiffGame(A=A,
                                        B=B,
-                                       Q=[Q, Q],
-                                       R=[R] * 2,
+                                       Q=[Q] * 2,
+                                       R=[R, np.array([R_constant])],
                                        x_0=initial,
+                                       x_T=final,
+                                       T_f=30
                                        )
 two_player_game.solve_game_and_simulate_state_space()

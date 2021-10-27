@@ -52,9 +52,9 @@ class PyDiffGame(ABC):
 
     __T_f_default = 5
     _data_points_default = 1000
-    _epsilon_default = 10 ** (-8)
+    _epsilon_default = 10 ** (-3)
     _delta_T_default = 0.1
-    _last_norms_number_default = 10
+    _last_norms_number_default = 3
 
     def __init__(self,
                  A: np.array,
