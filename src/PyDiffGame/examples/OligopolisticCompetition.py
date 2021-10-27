@@ -13,7 +13,7 @@ class OligopolisticCompetition(ContinuousPyDiffGame):
                  p: float,
                  x_0: np.array = None,
                  T_f: float = 5,
-                 epsilon: float = PyDiffGame._epsilon_default):
+                 epsilon: float = 10 ** (-3)):
         self.__r = r
         self.__s = s
         self.__beta = beta
@@ -144,7 +144,6 @@ s = 2
 p = 85
 x_0 = np.array([80, 1])
 T_f = 5
-epsilon = 10 ** (-3)
 
 for N in [2]:
     beta = [1] * N
@@ -157,8 +156,7 @@ for N in [2]:
                                   p=p,
                                   x_0=x_0,
                                   T_f=T_f,
-                                  epsilon=epsilon
                                   )
-    oc.solve_game_and_plot_state_space()
+    oc.solve_game_and_simulate_state_space()
     oc.print_steady_state_price()
     oc.simulate_p()
