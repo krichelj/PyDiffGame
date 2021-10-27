@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
 from scipy.integrate import odeint
 import warnings
-from typing import Union, Callable
+from typing import Union, Callable, Any
 from scipy.optimize import fsolve
 from abc import ABC, abstractmethod
 from quadpy import quad
@@ -29,6 +29,8 @@ class PyDiffGame(ABC):
         Cost function input weights for each control objective
     x_0: numpy 1-d array of shape(n), optional
         Initial state vector
+    x_T: numpy 1-d array of shape(n), optional
+        Final state vector, in case of signal tracking
     T_f: positive float, optional, default = 10
         System dynamics horizon. Should be given in the case of finite horizon
     P_f: numpy array of numpy 2-d arrays of len(N), each matrix P_f_j of shape(n, n), optional,
@@ -60,6 +62,7 @@ class PyDiffGame(ABC):
                  Q: list[np.array],
                  R: list[np.array],
                  x_0: np.array = None,
+                 x_T: np.array = None,
                  T_f: float = None,
                  P_f: list[np.array] = None,
                  data_points: int = _data_points_default,
@@ -67,7 +70,9 @@ class PyDiffGame(ABC):
                  epsilon: float = _epsilon_default,
                  delta_T: float = _delta_T_default,
                  last_norms_number: int = _last_norms_number_default,
-                 debug: bool = False):
+                 force_finite_horizon: bool = False,
+                 debug: bool = False
+                 ):
 
         self.__continuous = isinstance(self, ContinuousPyDiffGame)
 
@@ -80,7 +85,8 @@ class PyDiffGame(ABC):
         self._Q = Q
         self._R = R
         self._x_0 = x_0
-        self.__infinite_horizon = T_f is None or P_f is None
+        self._x_T = x_T
+        self.__infinite_horizon = (not force_finite_horizon) and (T_f is None or P_f is None)
         self._T_f = PyDiffGame.__T_f_default if T_f is None else T_f
         self._P_f = self.__get_are_P_f() if P_f is None else P_f
         self._data_points = data_points
@@ -128,6 +134,8 @@ class PyDiffGame(ABC):
                 raise ValueError('Q must contain positive semi-definite numpy arrays')
         if self._x_0 is not None and self._x_0.shape != (self._n,):
             raise ValueError('x_0 must be a 1-d numpy array with length n')
+        if self._x_T is not None and self._x_T.shape != (self._n,):
+            raise ValueError('x_T must be a 1-d numpy array with length n')
         if self._T_f and self._T_f <= 0:
             raise ValueError('T_f must be a positive real number')
         if not all([P_f_i.shape[0] == P_f_i.shape[1] == self._n for P_f_i in self._P_f]):
@@ -160,12 +168,12 @@ class PyDiffGame(ABC):
 
             self._T_f -= self._delta_T
 
-    def _post_convergence(method: Callable):
+    def _post_convergence(method: Callable) -> Callable:
         """
         A decorator static-method to apply on methods that can only be called after convergence
         """
 
-        def verify_convergence(self: PyDiffGame, *args, **kwargs):
+        def verify_convergence(self: PyDiffGame, *args, **kwargs) -> Any:
             if not self.converged:
                 raise RuntimeError('Must first simulate the differential game')
             method(self, *args, **kwargs)
@@ -203,24 +211,31 @@ class PyDiffGame(ABC):
             legend = tuple(
                 ['${P' + str(i) + '}_{' + str(j) + str(k) + '}$' for i in V for j in U for k in U] if is_P else
                 ['${\mathbf{x}}_{' + str(j) + '}$' for j in U])
-            plt.legend(legend, loc='upper left' if is_P else 'best', ncol=int(self._n / 2),
-                       prop={'size': int(20 / self._n)})
+            plt.legend(legend, loc='upper left' if is_P else 'best',
+                       ncol=int(self._n / 2),
+                       prop={'size': int(40 / self._n)})
 
         plt.grid()
         plt.show()
 
-    @_post_convergence
-    def __plot_state_space(self):
+    def __plot_variables(self, mat):
         """
         Plots the state plot wth respect to time
         """
 
         self._plot(t=self._forward_time,
-                   mat=self._x,
+                   mat=mat,
                    is_P=False,
                    title=f"{('Continuous' if self.__continuous else 'Discrete')}, "
                          f"{('Infinite' if self.__infinite_horizon else 'Finite')} Horizon, {self._N}-Player Game, "
                          f"{self._data_points} sampling points")
+
+    def _plot_state_space(self):
+        self.__plot_variables(mat=self._x)
+
+    def _plot_Y(self, C: np.array):
+        Y = C @ self._x.T
+        self.__plot_variables(mat=Y.T)
 
     def __get_are_P_f(self) -> list[np.array]:
         """
@@ -294,8 +309,7 @@ class PyDiffGame(ABC):
 
         pass
 
-    @_post_convergence
-    def _plot_finite_horizon(self):
+    def _plot_finite_horizon_convergence(self):
         """
         Plots the convergence of the values for the matrices P_i
         """
@@ -310,7 +324,7 @@ class PyDiffGame(ABC):
         """
 
         self._solve_finite_horizon()
-        self._plot_finite_horizon()
+        self._plot_finite_horizon_convergence()
 
     @abstractmethod
     def _solve_infinite_horizon(self):
@@ -322,29 +336,33 @@ class PyDiffGame(ABC):
 
     @abstractmethod
     @_post_convergence
-    def _simulate_state_space(self):
+    def _solve_state_space(self):
         """
         Propagates the game through time and solves for it
         """
 
         pass
 
-    def solve_game_and_plot_state_space(self):
-        """
-        Propagates the game through time, solves for it and plots the state with respect to time
-        """
-
+    def solve_game(self):
         if self.__infinite_horizon:
             self._solve_infinite_horizon()
         else:
             self._solve_and_plot_finite_horizon()
 
+    def simulate_state_space(self):
         if self._x_0 is not None:
             if self._debug:
                 print(f"The system is {'NOT ' if not self.is_A_cl_stable() else ''}stable")
 
-            self._simulate_state_space()
-            self.__plot_state_space()
+            self._solve_state_space()
+            self._plot_state_space()
+
+    def solve_game_and_simulate_state_space(self):
+        """
+        Propagates the game through time, solves for it and plots the state with respect to time
+        """
+        self.solve_game()
+        self.simulate_state_space()
 
     @property
     def A(self):
@@ -408,6 +426,7 @@ class ContinuousPyDiffGame(PyDiffGame):
                  R: list[np.array],
                  cl: bool = True,
                  x_0: np.array = None,
+                 x_T: np.array = None,
                  T_f: float = None,
                  P_f: list[np.array] = None,
                  data_points: int = PyDiffGame._data_points_default,
@@ -415,13 +434,16 @@ class ContinuousPyDiffGame(PyDiffGame):
                  epsilon: float = PyDiffGame._epsilon_default,
                  delta_T: float = PyDiffGame._delta_T_default,
                  last_norms_number: int = PyDiffGame._last_norms_number_default,
-                 debug: bool = False):
+                 force_finite_horizon: bool = False,
+                 debug: bool = False
+                 ):
 
         super().__init__(A=A,
                          B=B,
                          Q=Q,
                          R=R,
                          x_0=x_0,
+                         x_T=x_T,
                          T_f=T_f,
                          P_f=P_f,
                          data_points=data_points,
@@ -429,6 +451,7 @@ class ContinuousPyDiffGame(PyDiffGame):
                          epsilon=epsilon,
                          delta_T=delta_T,
                          last_norms_number=last_norms_number,
+                         force_finite_horizon=force_finite_horizon,
                          debug=debug)
 
         S_matrices = [B_i @ inv(R_i) @ B_i.T if R_i.ndim > 1 else 1 / R_i * B_i @ B_i.T
@@ -556,7 +579,7 @@ class ContinuousPyDiffGame(PyDiffGame):
         return stability
 
     @PyDiffGame._post_convergence
-    def _simulate_state_space(self):
+    def _solve_state_space(self):
         """
         Propagates the game through time and solves for it by solving the continuous differential equation:
         dx(t)/dt = A_cl(t) x(t)
@@ -586,7 +609,7 @@ class ContinuousPyDiffGame(PyDiffGame):
 
             self._update_psi_from_last_state(t=t)
             self._update_A_cl_from_last_state()
-            dx_t_dt = self._A_cl @ x_t
+            dx_t_dt = self._A_cl @ ((x_t - self._x_T) if self._x_T is not None else x_t)
             dx_t_dt = dx_t_dt.ravel()
 
             if t:
@@ -631,7 +654,9 @@ class DiscretePyDiffGame(PyDiffGame):
                  epsilon: float = PyDiffGame._epsilon_default,
                  delta_T: float = PyDiffGame._delta_T_default,
                  last_norms_number: int = PyDiffGame._last_norms_number_default,
-                 debug: bool = False):
+                 force_finite_horizon: bool = False,
+                 debug: bool = False
+                 ):
 
         super().__init__(A=A,
                          B=B,
@@ -645,7 +670,9 @@ class DiscretePyDiffGame(PyDiffGame):
                          epsilon=epsilon,
                          delta_T=delta_T,
                          last_norms_number=last_norms_number,
-                         debug=debug)
+                         force_finite_horizon=force_finite_horizon,
+                         debug=debug
+                         )
 
         if not is_input_discrete:
             self.__discretize_game()
@@ -903,7 +930,7 @@ class DiscretePyDiffGame(PyDiffGame):
             self._update_P_from_last_state(k)
 
     @PyDiffGame._post_convergence
-    def _simulate_state_space(self):
+    def _solve_state_space(self):
         """
         Propagates the game through time and solves for it by solving the discrete difference equation:
         x[k+1] = A_cl[k] x[k]
