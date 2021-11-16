@@ -4,12 +4,12 @@ import numpy as np
 from numpy.linalg import eigvals, inv, norm
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
-from scipy.integrate import odeint
+from scipy.integrate import odeint, quad
 import warnings
 from typing import Union, Callable, Any
 from scipy.optimize import fsolve
 from abc import ABC, abstractmethod
-from quadpy import quad
+from quadpy import quad as quadpy
 
 
 class PyDiffGame(ABC):
@@ -99,7 +99,7 @@ class PyDiffGame(ABC):
         # additional parameters
         self._A_cl = np.empty_like(self._A)
         self._P = []
-        self._psi: list[np.array] = []
+        self._K: list[np.array] = []
 
         self.__epsilon = epsilon
         self._delta_T = delta_T
@@ -251,21 +251,21 @@ class PyDiffGame(ABC):
         return [are_solver(self._A, B_i, Q_i, R_ii) for B_i, Q_i, R_ii in zip(self._B, self._Q, self._R)]
 
     @abstractmethod
-    def _update_psi_from_last_state(self, *args):
+    def _update_K_from_last_state(self, *args):
         """
-        Updates the controllers psi after forward propagation of the state through time
+        Updates the controllers K after forward propagation of the state through time
         """
 
         pass
 
     @abstractmethod
-    def _get_psi_i(self, *args) -> np.array:
+    def _get_K_i(self, *args) -> np.array:
         pass
 
     def _update_A_cl_from_last_state(self, k: int = None):
         """
         Updates the closed-loop control dynamics with the updated controllers based on the relation:
-        A_cl = A - sum_{i=1}^N B_i psi_i
+        A_cl = A - sum_{i=1}^N B_i K_i
 
         Parameters
         ----------
@@ -273,7 +273,7 @@ class PyDiffGame(ABC):
             The current k'th sample index, in case the controller is time-dependant
         """
 
-        A_cl = self._A - sum([self._B[i] @ (self._get_psi_i(i, k) if k is not None else self._get_psi_i(i))
+        A_cl = self._A - sum([self._B[i] @ (self._get_K_i(i, k) if k is not None else self._get_K_i(i))
                               for i in range(self._N)])
         if k is not None:
             self._A_cl[k] = A_cl
@@ -364,6 +364,11 @@ class PyDiffGame(ABC):
         self.solve_game()
         self.simulate_state_space()
 
+    def calculate_J(self) -> np.array:
+        J = [quad(func=lambda x: x, a=0, b=self._T_f) for i in range(self._N)]
+
+        return np.array(J)
+
     @property
     def A(self):
         return self._A
@@ -379,6 +384,10 @@ class PyDiffGame(ABC):
     @property
     def R(self):
         return self._R
+
+    @property
+    def K(self):
+        return self._K
 
     @property
     def forward_time(self):
@@ -499,10 +508,10 @@ class ContinuousPyDiffGame(PyDiffGame):
 
         self.__ode_func = __solve_N_coupled_diff_riccati
 
-    def _update_psi_from_last_state(self, t: int):
+    def _update_K_from_last_state(self, t: int):
         """
         After the matrices P_i are obtained, this method updates the controllers at time t by the rule:
-        psi_i(t) = R^{-1}_ii B^T_i P_i(t)
+        K_i(t) = R^{-1}_ii B^T_i P_i(t)
 
         Parameters
         ----------
@@ -511,11 +520,11 @@ class ContinuousPyDiffGame(PyDiffGame):
         """
 
         P_t = [(self._P[t][i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n) for i in range(self._N)]
-        self._psi = [(inv(R_ii) @ B_i.T if R_ii.ndim > 1 else 1 / R_ii * B_i.T) @ P_i
-                     for R_ii, B_i, P_i in zip(self._R, self._B, P_t)]
+        self._K = [(inv(R_ii) @ B_i.T if R_ii.ndim > 1 else 1 / R_ii * B_i.T) @ P_i
+                   for R_ii, B_i, P_i in zip(self._R, self._B, P_t)]
 
-    def _get_psi_i(self, i: int) -> np.array:
-        return self._psi[i]
+    def _get_K_i(self, i: int) -> np.array:
+        return self._K[i]
 
     def _update_P_from_last_state(self):
         """
@@ -540,8 +549,8 @@ class ContinuousPyDiffGame(PyDiffGame):
         Considers the following set of finite-horizon cost functions:
         J_i = x(T_f)^T F_i(T_f) x(T_f) + int_{t=0}^T_f [x(t)^T Q_i x(t) + sum_{j=1}^N u_j(t)^T R_{ij} u_j(t)] dt
 
-        In the continuous-time case, the matrices P_i can be solved for, unrelated to the controllers psi_i.
-        Then when simulating the state space progression, the controllers psi_i can be computed as functions of P_i
+        In the continuous-time case, the matrices P_i can be solved for, unrelated to the controllers K_i.
+        Then when simulating the state space progression, the controllers K_i can be computed as functions of P_i
         for each time interval
         """
 
@@ -581,12 +590,12 @@ class ContinuousPyDiffGame(PyDiffGame):
     @PyDiffGame._post_convergence
     def _solve_state_space(self):
         """
-        Propagates the game through time and solves for it by solving the continuous differential equation:
+        Propagates the game forward through time and solves for it by solving the continuous differential equation:
         dx(t)/dt = A_cl(t) x(t)
-        In each step, the controllers psi_i are calculated with the values of P_i evaluated beforehand.
+        In each step, the controllers K_i are calculated with the values of P_i evaluated beforehand.
         """
 
-        t = len(self._P) - 1
+        t = 0
 
         def state_diff_eqn(x_t: np.array, _: float) -> np.array:
             """
@@ -607,13 +616,13 @@ class ContinuousPyDiffGame(PyDiffGame):
 
             nonlocal t
 
-            self._update_psi_from_last_state(t=t)
+            self._update_K_from_last_state(t=t)
             self._update_A_cl_from_last_state()
             dx_t_dt = self._A_cl @ ((x_t - self._x_T) if self._x_T is not None else x_t)
             dx_t_dt = dx_t_dt.ravel()
 
             if t:
-                t -= 1
+                t += 1
 
             return dx_t_dt
 
@@ -677,15 +686,15 @@ class DiscretePyDiffGame(PyDiffGame):
         if not is_input_discrete:
             self.__discretize_game()
 
-        self.__psi_rows_num = sum([B_i.shape[1] for B_i in self._B])
+        self.__K_rows_num = sum([B_i.shape[1] for B_i in self._B])
 
-        def __solve_for_psi_k(psi_k_previous: np.array, k_1: int) -> np.array:
+        def __solve_for_K_k(K_k_previous: np.array, k_1: int) -> np.array:
             """
             fsolve Controllers Solver function
 
             Parameters
             ----------
-            psi_k_previous: np.array
+            K_k_previous: np.array
                 The previous estimation for the controllers at the k'th sample point
             k_1: int
                 The k+1 index
@@ -696,15 +705,15 @@ class DiscretePyDiffGame(PyDiffGame):
                 Current calculated value for the time-derivative of the matrices P_t
             """
 
-            psi_k_previous = psi_k_previous.reshape((self._N,
-                                                     self.__psi_rows_num,
-                                                     self._n))
+            K_k_previous = K_k_previous.reshape((self._N,
+                                                 self.__K_rows_num,
+                                                 self._n))
             P_k_1 = self._P[k_1]
-            psi_k = np.zeros_like(psi_k_previous)
+            K_k = np.zeros_like(K_k_previous)
 
             for i in range(self._N):
-                i_indices = (i, self.__get_psi_i_shape(i))
-                psi_k_previous_i = psi_k_previous[i_indices]
+                i_indices = (i, self.__get_K_i_shape(i))
+                K_k_previous_i = K_k_previous[i_indices]
                 P_k_1_i = P_k_1[i]
                 R_ii = self._R[i]
                 B_i = self._B[i]
@@ -715,15 +724,15 @@ class DiscretePyDiffGame(PyDiffGame):
                 for j in range(self._N):
                     if j != i:
                         B_j = self._B[j]
-                        psi_k_previous_j = psi_k_previous[j, self.__get_psi_i_shape(j)]
-                        A_cl_k_i = A_cl_k_i - B_j @ psi_k_previous_j
+                        K_k_previous_j = K_k_previous[j, self.__get_K_i_shape(j)]
+                        A_cl_k_i = A_cl_k_i - B_j @ K_k_previous_j
 
-                psi_k_i = psi_k_previous_i - inv(R_ii + B_i_T @ P_k_1_i @ B_i) @ B_i_T @ P_k_1_i @ A_cl_k_i
-                psi_k[i_indices] = psi_k_i
+                K_k_i = K_k_previous_i - inv(R_ii + B_i_T @ P_k_1_i @ B_i) @ B_i_T @ P_k_1_i @ A_cl_k_i
+                K_k[i_indices] = K_k_i
 
-            return psi_k.ravel()
+            return K_k.ravel()
 
-        self.f_solve_func = __solve_for_psi_k
+        self.f_solve_func = __solve_for_K_k
 
     def __discretize_game(self):
         """
@@ -734,9 +743,9 @@ class DiscretePyDiffGame(PyDiffGame):
         """
 
         A_tilda = np.exp(self._delta_T * self._A)
-        e_AT, err = quad(lambda T: np.array([np.exp(t * self._A) for t in T]).swapaxes(0, 2).swapaxes(0, 1),
-                         0,
-                         self._delta_T)
+        e_AT, err = quadpy(lambda T: np.array([np.exp(t * self._A) for t in T]).swapaxes(0, 2).swapaxes(0, 1),
+                           0,
+                           self._delta_T)
 
         self._A = A_tilda
         B_tilda = e_AT
@@ -766,7 +775,7 @@ class DiscretePyDiffGame(PyDiffGame):
     def __initialize_finite_horizon(self):
         """
         Initializes the calculated parameters for the finite horizon case by the following steps:
-            1. The matrices P_i and controllers psi_i are initialized randomly for all sample points
+            1. The matrices P_i and controllers K_i are initialized randomly for all sample points
             2. The closed-loop dynamics matrix A_cl is first set to zero for all sample points
             3. The terminal conditions P_f_i are set to Q_i
             4. The resulting closed-loop dynamics matrix A_cl for the last sampling point is updated
@@ -777,10 +786,10 @@ class DiscretePyDiffGame(PyDiffGame):
                                  self._N,
                                  self._n,
                                  self._n)
-        self._psi = np.random.rand(self._data_points,
-                                   self._N,
-                                   self.__psi_rows_num,
-                                   self._n)
+        self._K = np.random.rand(self._data_points,
+                                 self._N,
+                                 self.__K_rows_num,
+                                 self._n)
         self._A_cl = np.zeros((self._data_points,
                                self._n,
                                self._n))
@@ -793,7 +802,7 @@ class DiscretePyDiffGame(PyDiffGame):
                             self._n))
         self._x[0] = self._x_0
 
-    def __get_psi_i_shape(self, i: int) -> range:
+    def __get_K_i_shape(self, i: int) -> range:
         """
         Returns the i'th controller shape indices
 
@@ -803,17 +812,17 @@ class DiscretePyDiffGame(PyDiffGame):
             The desired controller index
         """
 
-        psi_i_offset = sum([self._B[j].shape[1] for j in range(i)]) if i else 0
-        first_psi_i_index = psi_i_offset
-        second_psi_i_index = first_psi_i_index + self._B[i].shape[1]
+        K_i_offset = sum([self._B[j].shape[1] for j in range(i)]) if i else 0
+        first_K_i_index = K_i_offset
+        second_K_i_index = first_K_i_index + self._B[i].shape[1]
 
-        return range(first_psi_i_index, second_psi_i_index)
+        return range(first_K_i_index, second_K_i_index)
 
-    def _update_psi_from_last_state(self, k_1: int):
+    def _update_K_from_last_state(self, k_1: int):
         """
-        After initializing, in order to solve for the controllers psi_i and matrices P_i,
+        After initializing, in order to solve for the controllers K_i and matrices P_i,
         we start by solving for the controllers by the update rule:
-        psi_i(t) = R^{-1}_ii B^T_i P_i(t)
+        K_i(t) = R^{-1}_ii B^T_i P_i(t)
 
         Parameters
         ----------
@@ -821,32 +830,32 @@ class DiscretePyDiffGame(PyDiffGame):
             The current k+1 sample index
         """
 
-        psi_k_1 = self._psi[k_1]
-        psi_k_0 = np.random.rand(*psi_k_1.shape)
-        psi_k = fsolve(func=self.f_solve_func,
-                       x0=psi_k_0,
-                       args=tuple([k_1]))
-        psi_k_reshaped = np.array(psi_k).reshape((self._N,
-                                                  self.__psi_rows_num,
-                                                  self._n))
+        K_k_1 = self._K[k_1]
+        K_k_0 = np.random.rand(*K_k_1.shape)
+        K_k = fsolve(func=self.f_solve_func,
+                     x0=K_k_0,
+                     args=tuple([k_1]))
+        K_k_reshaped = np.array(K_k).reshape((self._N,
+                                              self.__K_rows_num,
+                                              self._n))
 
         if self._debug:
             k = k_1 - 1
-            f_psi_k = self.f_solve_func(psi_k_previous=psi_k, k_1=k)
-            close_to_zero_array = np.isclose(f_psi_k, np.zeros_like(psi_k))
+            f_K_k = self.f_solve_func(K_k_previous=K_k, k_1=k)
+            close_to_zero_array = np.isclose(f_K_k, np.zeros_like(K_k))
             is_close_to_zero = all(close_to_zero_array)
             print(f"The current solution is {'NOT ' if not is_close_to_zero else ''}close to zero"
-                  f"\npsi_k:\n{psi_k_reshaped}\nf_psi_k:\n{f_psi_k}")
+                  f"\nK_k:\n{K_k_reshaped}\nf_K_k:\n{f_K_k}")
 
-        self._psi[k_1 - 1] = psi_k_reshaped
+        self._K[k_1 - 1] = K_k_reshaped
 
-    def _get_psi_i(self, i: int, k: int) -> np.array:
-        return self._psi[k][i, self.__get_psi_i_shape(i)]
+    def _get_K_i(self, i: int, k: int) -> np.array:
+        return self._K[k][i, self.__get_K_i_shape(i)]
 
     def _update_P_from_last_state(self, k_1: int):
         """
         Updates the matrices P_i with
-        A_cl[k] = A - sum_{i=1}^N B_i psi_i[k]
+        A_cl[k] = A - sum_{i=1}^N B_i K_i[k]
 
         Parameters
         ----------
@@ -856,19 +865,19 @@ class DiscretePyDiffGame(PyDiffGame):
 
         k = k_1 - 1
         P_k_1 = self._P[k_1]
-        psi_k = self._psi[k]
+        K_k = self._K[k]
         A_cl_k = self._A_cl[k]
         Q_k = self._Q[k]
         P_k = np.zeros_like(P_k_1)
 
         for i in range(self._N):
-            psi_k_i = psi_k[i, self.__get_psi_i_shape(i)]
+            K_k_i = K_k[i, self.__get_K_i_shape(i)]
             P_k_1_i = P_k_1[i]
             R_ii = self._R[i]
             Q_k_i = Q_k[i]
 
-            P_k[i] = A_cl_k.T @ P_k_1_i @ A_cl_k + (psi_k_i.T @ R_ii if R_ii.ndim > 1 else psi_k_i.T * 1 / R_ii) \
-                     @ psi_k_i + Q_k_i
+            P_k[i] = A_cl_k.T @ P_k_1_i @ A_cl_k + (K_k_i.T @ R_ii if R_ii.ndim > 1 else K_k_i.T * 1 / R_ii) \
+                     @ K_k_i + Q_k_i
 
         self._P[k] = P_k
 
@@ -895,7 +904,7 @@ class DiscretePyDiffGame(PyDiffGame):
         Solves the system with the finite-horizon cost functions:
         J_i = sum_{k=1}^T_f [ x[k]^T Q_i x[k] + sum_{j=1}^N u_j[k]^T R_{ij} u_j[k] ]
 
-        In the discrete-time case, the matrices P_i have to be solved simultaneously with the controllers psi_i
+        In the discrete-time case, the matrices P_i have to be solved simultaneously with the controllers K_i
         """
 
         pass
@@ -915,10 +924,10 @@ class DiscretePyDiffGame(PyDiffGame):
             if self._debug:
                 print('#' * 30 + f' t = {round(t, 3)} ' + '#' * 30)
 
-            self._update_psi_from_last_state(k_1=k_1)
+            self._update_K_from_last_state(k_1=k_1)
 
             if self._debug:
-                print(f'psi_k+1:\n{self._psi[k_1]}')
+                print(f'K_k+1:\n{self._K[k_1]}')
 
             self._update_A_cl_from_last_state(k)
 
@@ -934,7 +943,7 @@ class DiscretePyDiffGame(PyDiffGame):
         """
         Propagates the game through time and solves for it by solving the discrete difference equation:
         x[k+1] = A_cl[k] x[k]
-        In each step, the controllers psi_i are calculated with the values of P_i evaluated beforehand.
+        In each step, the controllers K_i are calculated with the values of P_i evaluated beforehand.
         """
 
         x_1_k = self._x_0
