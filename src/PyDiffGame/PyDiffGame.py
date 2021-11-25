@@ -1,15 +1,16 @@
 # imports
 from __future__ import annotations
 import numpy as np
+import math
 from numpy.linalg import eigvals, inv, norm
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
-from scipy.integrate import odeint, quad
+from scipy.integrate import odeint
 import warnings
 from typing import Union, Callable, Any
 from scipy.optimize import fsolve
 from abc import ABC, abstractmethod
-from quadpy import quad as quadpy
+import quadpy
 
 
 class PyDiffGame(ABC):
@@ -364,10 +365,25 @@ class PyDiffGame(ABC):
         self.solve_game()
         self.simulate_state_space()
 
-    def calculate_J(self) -> np.array:
-        J = [quad(func=lambda x: x, a=0, b=self._T_f) for i in range(self._N)]
+    def calculate_costs(self, add_noise: bool = False) -> np.array:
 
-        return np.array(J)
+        def cost_function_as_quadratic_expression(i: int) -> int:
+            P_f_i = (self._P_f[i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n)
+
+            if add_noise:
+                costs = [int(self._x[-1].T @ (P_f_i +
+                                              np.random.normal(loc=0,
+                                                               scale=np.mean(P_f_i),
+                                                               size=P_f_i.shape)) @ self._x[-1])
+                         for _ in range(100000)]
+
+                return math.ceil(np.mean(costs))
+
+            return int(self._x[-1].T @ P_f_i @ self._x[-1])
+
+        J_quadratic = [cost_function_as_quadratic_expression(i) for i in range(self._N)]
+
+        return np.array(J_quadratic)
 
     @property
     def A(self):
@@ -743,9 +759,9 @@ class DiscretePyDiffGame(PyDiffGame):
         """
 
         A_tilda = np.exp(self._delta_T * self._A)
-        e_AT, err = quadpy(lambda T: np.array([np.exp(t * self._A) for t in T]).swapaxes(0, 2).swapaxes(0, 1),
-                           0,
-                           self._delta_T)
+        e_AT, err = quadpy.quad(f=lambda T: np.array([np.exp(t * self._A) for t in T]).swapaxes(0, 2).swapaxes(0, 1),
+                                a=0,
+                                b=self._delta_T)
 
         self._A = A_tilda
         B_tilda = e_AT
@@ -936,7 +952,7 @@ class DiscretePyDiffGame(PyDiffGame):
                 stable_k = self.is_A_cl_stable(k)
                 print(f"The system is {'NOT ' if not stable_k else ''}stable")
 
-            self._update_P_from_last_state(k)
+            self._update_P_from_last_state(k_1=k)
 
     @PyDiffGame._post_convergence
     def _solve_state_space(self):
