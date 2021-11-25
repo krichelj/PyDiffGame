@@ -173,7 +173,13 @@ one_player_game = ContinuousPyDiffGame(A=A,
                                        x_T=final,
                                        T_f=T_f
                                        )
-one_player_game.solve_game_and_simulate_state_space()
+
+# one_player_game.solve_game_and_simulate_state_space()
+# print(one_player_game.calculate_costs())
+
+# for _ in range(10):
+#     print(one_player_game.calculate_costs(add_noise=True))
+
 # simulate(one_player_game.K[0])
 M2 = np.array([[1],
                [1]])
@@ -192,4 +198,9 @@ for i in range(1, 10):
                                            T_f=T_f
                                            )
     two_player_game.solve_game_and_simulate_state_space()
-# simulate(two_player_game.K)
+    print(f'Iteration {i} cost: {two_player_game.calculate_costs()}')
+
+    for j in range(1, 10):
+        print(f'\tNoise in round {j} for iteration {i} cost: {two_player_game.calculate_costs(add_noise=True)}')
+
+# # simulate(two_player_game.K)
