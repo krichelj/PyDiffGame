@@ -1,5 +1,6 @@
 import numpy as np
-from PyDiffGame import ContinuousPyDiffGame, DiscretePyDiffGame
+from ContinuousPyDiffGame import ContinuousPyDiffGame
+from DiscretePyDiffGame import DiscretePyDiffGame
 
 A = np.array([[-2, 1],
               [1, 4]])
@@ -36,16 +37,17 @@ continuous_game = ContinuousPyDiffGame(A=A,
                                        R=R,
                                        x_0=x_0,
                                        P_f=P_f,
-                                       T_f=T_f,)
+                                       T_f=T_f
+                                       )
 continuous_game.solve_game_and_simulate_state_space()
 
 
-# discrete_game = DiscretePyDiffGame(A=A,
-#                                    B=B,
-#                                    Q=Q,
-#                                    R=R,
-#                                    x_0=x_0,
-#                                    # P_f=P_f,
-#                                    # T_f=T_f,
-#                                    )
-# discrete_game.solve_game_and_simulate_state_space()
+discrete_game = DiscretePyDiffGame(A=A,
+                                   B=B,
+                                   Q=Q,
+                                   R=R,
+                                   x_0=x_0,
+                                   # P_f=P_f,
+                                   # T_f=T_f,
+                                   )
+discrete_game.solve_game_and_simulate_state_space()
