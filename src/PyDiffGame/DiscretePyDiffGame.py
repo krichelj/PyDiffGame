@@ -34,7 +34,6 @@ class DiscretePyDiffGame(PyDiffGame):
                  x_0: np.array = None,
                  T_f: Union[float, int] = None,
                  P_f: list[np.array] = None,
-                 data_points: int = PyDiffGame._data_points_default,
                  show_legend: bool = True,
                  epsilon: float = PyDiffGame._epsilon_default,
                  delta_T: float = PyDiffGame._delta_T_default,
@@ -50,7 +49,6 @@ class DiscretePyDiffGame(PyDiffGame):
                          x_0=x_0,
                          T_f=T_f,
                          P_f=P_f,
-                         data_points=data_points,
                          show_legend=show_legend,
                          epsilon=epsilon,
                          delta_T=delta_T,
@@ -70,7 +68,7 @@ class DiscretePyDiffGame(PyDiffGame):
 
             Parameters
             ----------
-            K_k_previous: np.array
+            K_k_previous: numpy array
                 The previous estimation for the controllers at the k'th sample point
             k_1: int
                 The k+1 index
@@ -155,12 +153,12 @@ class DiscretePyDiffGame(PyDiffGame):
     def __initialize_finite_horizon(self):
         """
         Initializes the calculated parameters for the finite horizon case by the following steps:
-            1. The matrices P_i and controllers K_i are initialized randomly for all sample points
-            2. The closed-loop dynamics matrix A_cl is first set to zero for all sample points
-
-            3. The terminal conditions P_f_i are set to Q_i
-            4. The resulting closed-loop dynamics matrix A_cl for the last sampling point is updated
-            5. The state is initialized with its initial value, if given
+            - The matrices P_i and controllers K_i are initialized randomly for all sample points
+            - The closed-loop dynamics matrix A_cl is first set to zero for all sample points
+            -
+            - The terminal conditions P_f_i are set to Q_i
+            - The resulting closed-loop dynamics matrix A_cl for the last sampling point is updated
+            - The state is initialized with its initial value, if given
          """
 
         self._P = np.random.rand(self._data_points,
@@ -175,19 +173,19 @@ class DiscretePyDiffGame(PyDiffGame):
                                self._n,
                                self._n))
 
-        Q = np.array(self._Q)
-        self._Q = np.zeros((self._data_points,
-                            self._N,
-                            self._n,
-                            self._n))
-        self._Q[0] = Q
-        self._Q[1::2] = Q
-        self._Q[::2] = Q
+        # Q = np.array(self._Q)
+        # self._Q = np.zeros((self._data_points,
+        #                     self._N,
+        #                     self._n,
+        #                     self._n))
+        # self._Q[0] = Q
+        # self._Q[1::2] = Q
+        # self._Q[::2] = Q
 
         # self.__simpson_integrate_Q()
-        self._P[-1] = np.array(self._Q[-1]).reshape((self._N,
-                                                     self._n,
-                                                     self._n))
+        self._P[-1] = np.array(self._Q).reshape((self._N,
+                                                 self._n,
+                                                 self._n))
         self._update_A_cl_from_last_state(k=-1)
         self._x = np.zeros((self._data_points,
                             self._n))
@@ -258,17 +256,17 @@ class DiscretePyDiffGame(PyDiffGame):
         P_k_1 = self._P[k_1]
         K_k = self._K[k]
         A_cl_k = self._A_cl[k]
-        Q_k = self._Q[k]
+        # Q_k = self._Q[k]
         P_k = np.zeros_like(P_k_1)
 
         for i in range(self._N):
             K_k_i = K_k[i, self.__get_K_i_shape(i)]
             P_k_1_i = P_k_1[i]
             R_ii = self._R[i]
-            Q_k_i = Q_k[i]
+            Q_i = self._Q[i]
 
             P_k[i] = A_cl_k.T @ P_k_1_i @ A_cl_k + (K_k_i.T @ R_ii if R_ii.ndim > 1 else K_k_i.T * 1 / R_ii) \
-                     @ K_k_i + Q_k_i
+                     @ K_k_i + Q_i
 
         self._P[k] = P_k
 
