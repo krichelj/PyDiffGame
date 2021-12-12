@@ -6,7 +6,7 @@ from numpy.linalg import eigvals, norm
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
 import warnings
-from typing import Callable, Any, Final
+from typing import Callable, Final
 from abc import ABC, abstractmethod
 
 
@@ -34,8 +34,6 @@ class PyDiffGame(ABC):
     P_f: numpy array of numpy 2-d arrays of len(N), each matrix P_f_j of shape(n, n), optional,
         default = uncoupled solution of scipy's solve_are
         Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
-    data_points: positive int, optional, default = 1000
-        Number of data points to evaluate the Riccati equation matrix. Should be given in the case of finite horizon
     show_legend: boolean, optional, default = True
         Indicates whether to display a legend in the plots (True) or not (False)
     epsilon: float, optional, default = 1 / (10 ** 8)
@@ -49,9 +47,8 @@ class PyDiffGame(ABC):
     """
 
     # class fields
-    __T_f_default: Final[int] = 5
-    _data_points_default: Final[int] = 1000
-    _epsilon_default: Final[float] = 10 ** (-3)
+    __T_f_default: Final[int] = 10
+    _epsilon_default: Final[float] = 10 ** (-5)
     _delta_T_default: Final[float] = 0.01
     _last_norms_number_default: Final[int] = 3
 
@@ -64,7 +61,6 @@ class PyDiffGame(ABC):
                  x_T: np.array = None,
                  T_f: float = None,
                  P_f: list[np.array] = None,
-                 data_points: int = _data_points_default,
                  show_legend: bool = True,
                  epsilon: float = _epsilon_default,
                  delta_T: float = _delta_T_default,
@@ -88,7 +84,8 @@ class PyDiffGame(ABC):
         self.__infinite_horizon = (not force_finite_horizon) and (T_f is None or P_f is None)
         self._T_f = PyDiffGame.__T_f_default if T_f is None else T_f
         self._P_f = self.__get_are_P_f() if P_f is None else P_f
-        self._data_points = data_points
+        self._delta_T = delta_T
+        self._data_points = round(self._T_f / self._delta_T)
         self.__show_legend = show_legend
         self._forward_time = np.linspace(0, self._T_f, self._data_points)
         self._backward_time = self._forward_time[::-1]
@@ -101,7 +98,7 @@ class PyDiffGame(ABC):
         self._K: list[np.array] = []
 
         self.__epsilon = epsilon
-        self._delta_T = delta_T
+
         self._x = self._x_0
         self.__last_norms_number = last_norms_number
         self._converged = False
@@ -173,7 +170,7 @@ class PyDiffGame(ABC):
         A decorator static-method to apply on methods that can only be called after convergence
         """
 
-        def verify_convergence(self: PyDiffGame, *args, **kwargs) -> Any:
+        def verify_convergence(self: PyDiffGame, *args, **kwargs):
             if not self._converged:
                 raise RuntimeError('Must first simulate the differential game')
             method(self, *args, **kwargs)
@@ -222,8 +219,15 @@ class PyDiffGame(ABC):
         plt.grid()
         plt.show()
 
-    def __plot_variables(self,
-                         mat: np.array):
+    def __plot_variables(self, mat: np.array):
+        """
+
+        Parameters
+        ----------
+
+        mat: numpy array
+            The y-axis information to plot
+        """
         self._plot(t=self._forward_time,
                    mat=mat,
                    is_P=False,
@@ -233,13 +237,22 @@ class PyDiffGame(ABC):
 
     def _plot_state_space(self):
         """
-        Plots the state plot wth respect to time
+        Plots the state vector variables wth respect to time
         """
 
         self.__plot_variables(mat=self._x)
 
-    def _plot_Y(self,
-                C: np.array):
+    def _plot_Y(self, C: np.array):
+        """
+        Plots the output vector variables wth respect to time
+
+        Parameters
+        ----------
+
+        C: numpy array
+            The output coefficients with respect to state
+        """
+
         Y = C @ self._x.T
         self.__plot_variables(mat=Y.T)
 
@@ -372,8 +385,7 @@ class PyDiffGame(ABC):
         self.solve_game()
         self.simulate_state_space()
 
-    def calculate_costs(self,
-                        add_noise: bool = False) -> np.array:
+    def calculate_costs(self, add_noise: bool = False) -> np.array:
 
         def cost_function_as_quadratic_expression(i: int) -> int:
             P_f_i = (self._P_f[i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n)
