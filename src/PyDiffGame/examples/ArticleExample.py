@@ -36,8 +36,8 @@ continuous_game = ContinuousPyDiffGame(A=A,
                                        Q=Q,
                                        R=R,
                                        x_0=x_0,
-                                       P_f=P_f,
-                                       T_f=T_f
+                                       # P_f=P_f,
+                                       # T_f=T_f
                                        )
 continuous_game.solve_game_and_simulate_state_space()
 
