@@ -112,10 +112,12 @@ class DiscretePyDiffGame(PyDiffGame):
 
     def __discretize_game(self):
         """
-        The input to the discrete game can either given in continuous or discrete form.
-        If it is not in discrete form, the game gets discretized using this method in the following manner:
+        The input to the discrete game can either be given in continuous or discrete form.
+        If it is not in discrete form, the model gets discretized using this method in the following manner:
         A = exp(delta_T A)
-        B_j = int_{t=0}^delta_T exp(tA) dt B_j
+        B_i = int_{t=0}^delta_T exp(tA) dt B_i
+        Q_i = Q_i * delta_T
+        R_i = Q_i / delta_T
         """
 
         A_tilda = np.exp(self._A * self._delta_T)
@@ -153,6 +155,7 @@ class DiscretePyDiffGame(PyDiffGame):
         Initializes the calculated parameters for the finite horizon case by the following steps:
             1. The matrices P_i and controllers K_i are initialized randomly for all sample points
             2. The closed-loop dynamics matrix A_cl is first set to zero for all sample points
+
             3. The terminal conditions P_f_i are set to Q_i
             4. The resulting closed-loop dynamics matrix A_cl for the last sampling point is updated
             5. The state is initialized with its initial value, if given
@@ -169,7 +172,17 @@ class DiscretePyDiffGame(PyDiffGame):
         self._A_cl = np.zeros((self._data_points,
                                self._n,
                                self._n))
-        self.__simpson_integrate_Q()
+
+        Q = np.array(self._Q)
+        self._Q = np.zeros((self._data_points,
+                            self._N,
+                            self._n,
+                            self._n))
+        self._Q[0] = Q
+        self._Q[1::2] = Q
+        self._Q[::2] = Q
+
+        # self.__simpson_integrate_Q()
         self._P[-1] = np.array(self._Q[-1]).reshape((self._N,
                                                      self._n,
                                                      self._n))
@@ -305,7 +318,7 @@ class DiscretePyDiffGame(PyDiffGame):
             if self._debug:
                 print(f'K_k+1:\n{self._K[k_1]}')
 
-            self._update_A_cl_from_last_state(k)
+            self._update_A_cl_from_last_state(k=k)
 
             if self._debug:
                 print(f'A_cl_k:\n{self._A_cl[k]}')
