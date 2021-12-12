@@ -6,7 +6,7 @@ from numpy.linalg import eigvals, norm
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
 import warnings
-from typing import Callable, Any
+from typing import Callable, Any, Final
 from abc import ABC, abstractmethod
 
 
@@ -48,11 +48,12 @@ class PyDiffGame(ABC):
         Indicates whether to display debug information or not
     """
 
-    __T_f_default = 5
-    _data_points_default = 1000
-    _epsilon_default = 10 ** (-3)
-    _delta_T_default = 0.01
-    _last_norms_number_default = 3
+    # class fields
+    __T_f_default: Final[int] = 5
+    _data_points_default: Final[int] = 1000
+    _epsilon_default: Final[float] = 10 ** (-3)
+    _delta_T_default: Final[float] = 0.01
+    _last_norms_number_default: Final[int] = 3
 
     def __init__(self,
                  A: np.array,
@@ -105,8 +106,6 @@ class PyDiffGame(ABC):
         self.__last_norms_number = last_norms_number
         self._converged = False
         self._debug = debug
-
-        print(self.__infinite_horizon)
 
     def __verify_input(self):
         """
@@ -182,7 +181,11 @@ class PyDiffGame(ABC):
         return verify_convergence
 
     @_post_convergence
-    def _plot(self, t: np.array, mat: np.array, is_P: bool, title: str = None):
+    def _plot(self,
+              t: np.array,
+              mat: np.array,
+              is_P: bool,
+              title: str = None):
         """
         Displays plots for the state variables with respect to time and the convergence of the values of P
 
@@ -219,11 +222,8 @@ class PyDiffGame(ABC):
         plt.grid()
         plt.show()
 
-    def __plot_variables(self, mat):
-        """
-        Plots the state plot wth respect to time
-        """
-
+    def __plot_variables(self,
+                         mat: np.array):
         self._plot(t=self._forward_time,
                    mat=mat,
                    is_P=False,
@@ -232,9 +232,14 @@ class PyDiffGame(ABC):
                          f"{self._data_points} sampling points")
 
     def _plot_state_space(self):
+        """
+        Plots the state plot wth respect to time
+        """
+
         self.__plot_variables(mat=self._x)
 
-    def _plot_Y(self, C: np.array):
+    def _plot_Y(self,
+                C: np.array):
         Y = C @ self._x.T
         self.__plot_variables(mat=Y.T)
 
@@ -367,7 +372,8 @@ class PyDiffGame(ABC):
         self.solve_game()
         self.simulate_state_space()
 
-    def calculate_costs(self, add_noise: bool = False) -> np.array:
+    def calculate_costs(self,
+                        add_noise: bool = False) -> np.array:
 
         def cost_function_as_quadratic_expression(i: int) -> int:
             P_f_i = (self._P_f[i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n)

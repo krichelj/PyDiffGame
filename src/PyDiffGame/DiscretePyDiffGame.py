@@ -116,6 +116,8 @@ class DiscretePyDiffGame(PyDiffGame):
         If it is not in discrete form, the model gets discretized using this method in the following manner:
         A = exp(delta_T A)
         B_i = int_{t=0}^delta_T exp(tA) dt B_i
+
+        The performance index gets discretized in the following manner:
         Q_i = Q_i * delta_T
         R_i = Q_i / delta_T
         """
