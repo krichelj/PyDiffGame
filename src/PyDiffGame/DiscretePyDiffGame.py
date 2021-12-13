@@ -156,7 +156,6 @@ class DiscretePyDiffGame(PyDiffGame):
         Initializes the calculated parameters for the finite horizon case by the following steps:
             - The matrices P_i and controllers K_i are initialized randomly for all sample points
             - The closed-loop dynamics matrix A_cl is first set to zero for all sample points
-            -
             - The terminal conditions P_f_i are set to Q_i
             - The resulting closed-loop dynamics matrix A_cl for the last sampling point is updated
             - The state is initialized with its initial value, if given
