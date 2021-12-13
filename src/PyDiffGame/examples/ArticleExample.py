@@ -53,3 +53,8 @@ for delta_T in [0.05 * i for i in range(1, 5)]:
                                        # debug=True
                                        )
     discrete_game.solve_game_and_simulate_state_space()
+
+    D_l_C = discrete_game < continuous_game
+    print('#' * 10 + f' delta_T: {delta_T} ' + '#' * 10 + f'\nD<C: {D_l_C}')
+    if D_l_C:
+        print(f'D_cost: {discrete_game.get_costs()}\nC_cost: {continuous_game.get_costs()}')

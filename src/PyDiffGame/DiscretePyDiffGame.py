@@ -242,6 +242,9 @@ class DiscretePyDiffGame(PyDiffGame):
     def _get_K_i(self, i: int, k: int) -> np.array:
         return self._K[k][i, self.__get_K_i_shape(i)]
 
+    def _get_P_f_i(self, i: int) -> np.array:
+        return self._P_f[i]
+
     def _update_P_from_last_state(self, k_1: int):
         """
         Updates the matrices P_i with
