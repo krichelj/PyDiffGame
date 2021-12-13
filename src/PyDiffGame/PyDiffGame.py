@@ -399,12 +399,17 @@ class PyDiffGame(ABC):
             P_f_i = (self._P_f[i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n)
 
             if add_noise:
-                curr_costs = [int(x_f_T @ (P_f_i + np.random.normal(loc=0,
-                                                                    scale=np.mean(P_f_i),
-                                                                    size=P_f_i.shape)) @ x_f)
-                              for _ in range(100000)]
+                noisy_costs = []
 
-                cost_i = math.ceil(np.mean(curr_costs))
+                for _ in range(100000):
+                    noise = np.random.normal(loc=0,
+                                             scale=np.mean(P_f_i),
+                                             size=P_f_i.shape)
+                    noisy_P_f_i = P_f_i + noise
+                    noisy_cost = x_f_T @ noisy_P_f_i @ x_f
+                    noisy_costs += [noisy_cost]
+
+                cost_i = np.mean(noisy_costs)
             else:
                 cost_i = x_f_T @ P_f_i @ x_f
 
