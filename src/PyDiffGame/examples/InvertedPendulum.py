@@ -7,7 +7,7 @@ import matplotlib.lines as lines
 from scipy.integrate import solve_ivp
 from time import time
 
-from PyDiffGame import ContinuousPyDiffGame
+from ContinuousPyDiffGame import ContinuousPyDiffGame
 
 m_c = 500
 m_p = 10

@@ -37,9 +37,9 @@ for delta_T in [0.05 * i for i in range(1, 5)]:
                                            Q=Q,
                                            R=R,
                                            x_0=x_0,
-                                           delta_T=delta_T
-                                           # P_f=P_f,
-                                           # T_f=T_f
+                                           delta_T=delta_T,
+                                           P_f=P_f,
+                                           T_f=T_f
                                            )
     continuous_game.solve_game_and_simulate_state_space()
     discrete_game = DiscretePyDiffGame(A=A,

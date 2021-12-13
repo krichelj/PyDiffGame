@@ -237,9 +237,6 @@ class PyDiffGame(ABC):
 
         self.__plot_variables(mat=self._x)
 
-    def compare_two_games(self, other: PyDiffGame):
-        pass
-
     def _plot_Y(self, C: np.array):
         """
         Plots the output vector variables wth respect to time
@@ -345,6 +342,7 @@ class PyDiffGame(ABC):
 
         pass
 
+    @_post_convergence
     def _plot_finite_horizon_convergence(self):
         """
         Plots the convergence of the values for the matrices P_i
@@ -387,6 +385,7 @@ class PyDiffGame(ABC):
 
         self._converged = True
 
+    @_post_convergence
     def simulate_state_space(self):
         if self._x_0 is not None:
             if self._debug:
