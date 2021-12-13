@@ -115,6 +115,9 @@ class ContinuousPyDiffGame(PyDiffGame):
     def _get_K_i(self, i: int) -> np.array:
         return self._K[i]
 
+    def _get_P_f_i(self, i: int) -> np.array:
+        return self._P_f[i * self._P_size:(i + 1) * self._P_size].reshape(self._n, self._n)
+
     def _update_P_from_last_state(self):
         """
         Evaluates the matrices P by backwards-solving a set of coupled time-continuous Riccati differential equations,

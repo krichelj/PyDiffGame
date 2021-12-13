@@ -166,22 +166,18 @@ class PyDiffGame(ABC):
 
     def _post_convergence(method: Callable) -> Callable:
         """
-        A decorator static-method to apply on methods that can only be called after convergence
+        A decorator static-method to apply on methods that need only be called after convergence
         """
 
         def verify_convergence(self: PyDiffGame, *args, **kwargs):
             if not self._converged:
                 raise RuntimeError('Must first simulate the differential game')
-            method(self, *args, **kwargs)
+            return method(self, *args, **kwargs)
 
         return verify_convergence
 
     @_post_convergence
-    def _plot(self,
-              t: np.array,
-              mat: np.array,
-              is_P: bool,
-              title: str = None):
+    def _plot(self, t: np.array, mat: np.array, is_P: bool, title: str = None):
         """
         Displays plots for the state variables with respect to time and the convergence of the values of P
 
@@ -281,6 +277,23 @@ class PyDiffGame(ABC):
 
     @abstractmethod
     def _get_K_i(self, *args) -> np.array:
+        """
+        Returns the i'th element of the controllers K
+        """
+
+        pass
+
+    @abstractmethod
+    def _get_P_f_i(self, i: int) -> np.array:
+        """
+        Returns the i'th element of the final condition matrices P_f
+
+        Parameters
+        ----------
+        i: int
+            The required index
+        """
+
         pass
 
     def _update_A_cl_from_last_state(self, k: int = None):
@@ -389,13 +402,14 @@ class PyDiffGame(ABC):
         self.solve_game()
         self.simulate_state_space()
 
+    @_post_convergence
     def get_costs(self, add_noise: bool = False) -> np.array:
-        x_f = self._x[-1]
+        x_f = self._x[-2]
         x_f_T = x_f.T
         costs = []
 
         for i in range(self._N):
-            P_f_i = (self._P_f[i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n)
+            P_f_i = self._get_P_f_i(i)
 
             if add_noise:
                 noisy_costs = []
