@@ -31,23 +31,25 @@ P_f = [np.array([[10, 0],
        np.array([[50, 0],
                  [0, 60]])]
 
-continuous_game = ContinuousPyDiffGame(A=A,
+for delta_T in [0.05 * i for i in range(1, 5)]:
+    continuous_game = ContinuousPyDiffGame(A=A,
+                                           B=B,
+                                           Q=Q,
+                                           R=R,
+                                           x_0=x_0,
+                                           delta_T=delta_T
+                                           # P_f=P_f,
+                                           # T_f=T_f
+                                           )
+    continuous_game.solve_game_and_simulate_state_space()
+    discrete_game = DiscretePyDiffGame(A=A,
                                        B=B,
                                        Q=Q,
                                        R=R,
                                        x_0=x_0,
+                                       delta_T=delta_T
                                        # P_f=P_f,
-                                       # T_f=T_f
+                                       # T_f=T_f,
+                                       # debug=True
                                        )
-continuous_game.solve_game_and_simulate_state_space()
-
-
-discrete_game = DiscretePyDiffGame(A=A,
-                                   B=B,
-                                   Q=Q,
-                                   R=R,
-                                   x_0=x_0,
-                                   # P_f=P_f,
-                                   # T_f=T_f,
-                                   )
-discrete_game.solve_game_and_simulate_state_space()
+    discrete_game.solve_game_and_simulate_state_space()

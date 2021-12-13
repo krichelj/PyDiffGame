@@ -47,10 +47,10 @@ class PyDiffGame(ABC):
     """
 
     # class fields
-    __T_f_default: Final[int] = 10
-    _epsilon_default: Final[float] = 10 ** (-5)
+    __T_f_default: Final[int] = 5
+    _epsilon_default: Final[float] = 10 ** (-3)
     _delta_T_default: Final[float] = 0.01
-    _last_norms_number_default: Final[int] = 3
+    _last_norms_number_default: Final[int] = 5
 
     def __init__(self,
                  A: np.array,
@@ -242,6 +242,9 @@ class PyDiffGame(ABC):
 
         self.__plot_variables(mat=self._x)
 
+    def compare_two_games(self, other: PyDiffGame):
+        pass
+
     def _plot_Y(self, C: np.array):
         """
         Plots the output vector variables wth respect to time
@@ -283,13 +286,15 @@ class PyDiffGame(ABC):
 
     def _update_A_cl_from_last_state(self, k: int = None):
         """
-        Updates the closed-loop control dynamics with the updated controllers based on the relation:
+        Updates the closed-loop dynamics with the updated controllers based on the relation:
         A_cl = A - sum_{i=1}^N B_i K_i
 
         Parameters
         ----------
         k: int, optional
-            The current k'th sample index, in case the controller is time-dependant
+            The current k'th sample index, in case the controller is time-dependant.
+            In this case the update rule is:
+            A_cl[k] = A - sum_{i=1}^N B_i K_i[k]
         """
 
         A_cl = self._A - sum([self._B[i] @ (self._get_K_i(i, k) if k is not None else self._get_K_i(i))
@@ -385,25 +390,27 @@ class PyDiffGame(ABC):
         self.solve_game()
         self.simulate_state_space()
 
-    def calculate_costs(self, add_noise: bool = False) -> np.array:
+    def get_costs(self, add_noise: bool = False) -> np.array:
+        x_f = self._x[-1]
+        x_f_T = x_f.T
+        costs = []
 
-        def cost_function_as_quadratic_expression(i: int) -> int:
+        for i in range(self._N):
             P_f_i = (self._P_f[i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n)
 
             if add_noise:
-                costs = [int(self._x[-1].T @ (P_f_i +
-                                              np.random.normal(loc=0,
-                                                               scale=np.mean(P_f_i),
-                                                               size=P_f_i.shape)) @ self._x[-1])
-                         for _ in range(100000)]
+                curr_costs = [int(x_f_T @ (P_f_i + np.random.normal(loc=0,
+                                                                    scale=np.mean(P_f_i),
+                                                                    size=P_f_i.shape)) @ x_f)
+                              for _ in range(100000)]
 
-                return math.ceil(np.mean(costs))
+                cost_i = math.ceil(np.mean(curr_costs))
+            else:
+                cost_i = x_f_T @ P_f_i @ x_f
 
-            return int(self._x[-1].T @ P_f_i @ self._x[-1])
+            costs += [cost_i]
 
-        J_quadratic = [cost_function_as_quadratic_expression(i) for i in range(self._N)]
-
-        return np.array(J_quadratic)
+        return np.array(costs)
 
     @property
     def A(self):
@@ -442,9 +449,16 @@ class PyDiffGame(ABC):
 
     def __eq__(self, other: PyDiffGame) -> bool:
         """
-        We define two differential games equal iff the system dynamics and cost matrices are all equal
+        We define two differential games equal iff their cost is equal
         """
 
-        return all([s == o for s, o in zip([self.A, self.B, self.Q, self.R], [other.A, other.B, other.Q, other.R])])
+        return self.get_costs() == other.get_costs()
+
+    def __lt__(self, other: PyDiffGame) -> bool:
+        """
+        We define comparison of two differential games based on their costs
+        """
+
+        return self.get_costs() < other.get_costs()
 
     _post_convergence = staticmethod(_post_convergence)
