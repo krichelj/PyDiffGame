@@ -198,9 +198,9 @@ for i in range(1, 10):
                                            T_f=T_f
                                            )
     two_player_game.solve_game_and_simulate_state_space()
-    print(f'Iteration {i} cost: {two_player_game.calculate_costs()}')
+    print(f'Iteration {i} cost: {two_player_game.get_costs()}')
 
     for j in range(1, 10):
-        print(f'\tNoise in round {j} for iteration {i} cost: {two_player_game.calculate_costs(add_noise=True)}')
+        print(f'\tNoise in round {j} for iteration {i} cost: {two_player_game.get_costs(add_noise=True)}')
 
 # # simulate(two_player_game.K)

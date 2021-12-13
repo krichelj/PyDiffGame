@@ -98,7 +98,8 @@ class DiscretePyDiffGame(PyDiffGame):
                 for j in range(self._N):
                     if j != i:
                         B_j = self._B[j]
-                        K_k_previous_j = K_k_previous[j, self.__get_K_i_shape(j)]
+                        j_indices = (j, self.__get_K_i_shape(j))
+                        K_k_previous_j = K_k_previous[j_indices]
                         A_cl_k_i = A_cl_k_i - B_j @ K_k_previous_j
 
                 K_k_i = K_k_previous_i - inv(R_ii + B_i_T @ P_k_1_i @ B_i) @ B_i_T @ P_k_1_i @ A_cl_k_i
@@ -211,7 +212,7 @@ class DiscretePyDiffGame(PyDiffGame):
         """
         After initializing, in order to solve for the controllers K_i and matrices P_i,
         we start by solving for the controllers by the update rule:
-        K_i(t) = R^{-1}_ii B^T_i P_i(t)
+        K_i[k] = [ R_ii + B_i^T P_i[k+1] B_i ] ^ {-1} B_i^T P_i[k+1] [ A - sum_{j=1, j!=i}^N B_j K_j[k] ]
 
         Parameters
         ----------
@@ -228,15 +229,16 @@ class DiscretePyDiffGame(PyDiffGame):
                                               self.__K_rows_num,
                                               self._n))
 
+        k = k_1 - 1
+
         if self._debug:
-            k = k_1 - 1
             f_K_k = self.f_solve_func(K_k_previous=K_k, k_1=k)
             close_to_zero_array = np.isclose(f_K_k, np.zeros_like(K_k))
             is_close_to_zero = all(close_to_zero_array)
             print(f"The current solution is {'NOT ' if not is_close_to_zero else ''}close to zero"
                   f"\nK_k:\n{K_k_reshaped}\nf_K_k:\n{f_K_k}")
 
-        self._K[k_1 - 1] = K_k_reshaped
+        self._K[k] = K_k_reshaped
 
     def _get_K_i(self, i: int, k: int) -> np.array:
         return self._K[k][i, self.__get_K_i_shape(i)]
@@ -256,16 +258,25 @@ class DiscretePyDiffGame(PyDiffGame):
         P_k_1 = self._P[k_1]
         K_k = self._K[k]
         A_cl_k = self._A_cl[k]
-        # Q_k = self._Q[k]
         P_k = np.zeros_like(P_k_1)
 
         for i in range(self._N):
-            K_k_i = K_k[i, self.__get_K_i_shape(i)]
+            i_indices = (i, self.__get_K_i_shape(i))
+            K_k_i = K_k[i_indices]
+            K_k_i_T = K_k_i.T
             P_k_1_i = P_k_1[i]
             R_ii = self._R[i]
             Q_i = self._Q[i]
 
-            P_k[i] = A_cl_k.T @ P_k_1_i @ A_cl_k + (K_k_i.T @ R_ii if R_ii.ndim > 1 else K_k_i.T * 1 / R_ii) \
+            # K_quad_i = np.zeros_like(Q_i)
+            #
+            # for j in range(self._N):
+            #     if j != i:
+            #         j_indices = (j, self.__get_K_i_shape(j))
+            #         K_k_j = K_k[j_indices]
+            #         K_quad_i = K_quad_i
+
+            P_k[i] = A_cl_k.T @ P_k_1_i @ A_cl_k + (K_k_i_T @ R_ii if R_ii.ndim > 1 else K_k_i_T * R_ii) \
                      @ K_k_i + Q_i
 
         self._P[k] = P_k
@@ -325,7 +336,7 @@ class DiscretePyDiffGame(PyDiffGame):
                 stable_k = self.is_A_cl_stable(k)
                 print(f"The system is {'NOT ' if not stable_k else ''}stable")
 
-            self._update_P_from_last_state(k_1=k)
+            self._update_P_from_last_state(k_1=k_1)
 
     @PyDiffGame._post_convergence
     def _solve_state_space(self):
