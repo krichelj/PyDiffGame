@@ -1,7 +1,6 @@
 # imports
 from __future__ import annotations
 import numpy as np
-import math
 from numpy.linalg import eigvals, norm
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
@@ -447,23 +446,40 @@ class PyDiffGame(ABC):
 
     def __len__(self) -> int:
         """
-        We define the length of a differential game to be its number of objectives
+        We define the length of a differential game to be its number of objectives (N)
         """
 
         return self._N
 
     def __eq__(self, other: PyDiffGame) -> bool:
         """
-        We define two differential games equal iff their cost is equal
+        Let G1, C1 and G2, C2 be two differential games and their respective costs.
+        We define G1 == G2 iff:
+             - len(G1) == len(G2)
+             - for all i in range(len(G1)):
+                C1[i] == C2[i]
         """
+        if len(self) != len(other):
+            return False
 
-        return self.get_costs() == other.get_costs()
+        return (self.get_costs() == other.get_costs()).all()
 
     def __lt__(self, other: PyDiffGame) -> bool:
         """
-        We define comparison of two differential games based on their costs
+        Let G1, C1 and G2, C2 be two differential games and their respective costs.
+        We define G1 < G2 iff:
+            - len(G1) == len(G2), else they are not comparable
+            - for all i in range(len(G1)):
+                C1[i] <= C2[i]
+            - there exists i in range(len(G1)) such that:
+                C1[i] < C2[i]
         """
+        if len(self) != len(other):
+            raise ValueError('The lengths of the differential games do not match, so they are non-comparable')
 
-        return self.get_costs() < other.get_costs()
+        self_costs = self.get_costs()
+        other_costs = other.get_costs()
+
+        return (self_costs <= other_costs).all() and (self_costs < other_costs).any()
 
     _post_convergence = staticmethod(_post_convergence)
