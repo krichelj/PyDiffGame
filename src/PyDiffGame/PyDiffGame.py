@@ -1,6 +1,7 @@
 # imports
 from __future__ import annotations
 import numpy as np
+from math import floor
 from numpy.linalg import eigvals, norm
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
@@ -37,7 +38,7 @@ class PyDiffGame(ABC):
         Indicates whether to display a legend in the plots (True) or not (False)
     epsilon: float, optional, default = 1 / (10 ** 8)
         The convergence threshold for numerical convergence
-    delta_T: float, optional, default = 0.5
+    delta: float, optional, default = 0.5
         Sampling interval
     last_norms_number: int, optional, default = 5
         The number of last matrix norms to consider for convergence
@@ -48,7 +49,7 @@ class PyDiffGame(ABC):
     # class fields
     __T_f_default: Final[int] = 5
     _epsilon_default: Final[float] = 10 ** (-3)
-    _delta_T_default: Final[float] = 0.01
+    _delta_default: Final[float] = 0.01
     _last_norms_number_default: Final[int] = 5
 
     def __init__(self,
@@ -62,7 +63,7 @@ class PyDiffGame(ABC):
                  P_f: list[np.array] = None,
                  show_legend: bool = True,
                  epsilon: float = _epsilon_default,
-                 delta_T: float = _delta_T_default,
+                 delta: float = _delta_default,
                  last_norms_number: int = _last_norms_number_default,
                  force_finite_horizon: bool = False,
                  debug: bool = False
@@ -83,10 +84,10 @@ class PyDiffGame(ABC):
         self.__infinite_horizon = (not force_finite_horizon) and (T_f is None or P_f is None)
         self._T_f = PyDiffGame.__T_f_default if T_f is None else T_f
         self._P_f = self.__get_are_P_f() if P_f is None else P_f
-        self._delta_T = delta_T
-        self._data_points = round(self._T_f / self._delta_T)
+        self._delta = delta
+        self._L = floor(self._T_f / self._delta)
         self.__show_legend = show_legend
-        self._forward_time = np.linspace(0, self._T_f, self._data_points)
+        self._forward_time = np.linspace(0, self._T_f, self._L)
         self._backward_time = self._forward_time[::-1]
 
         self.__verify_input()
@@ -137,7 +138,7 @@ class PyDiffGame(ABC):
             raise ValueError('P_f must be a list of 2-d positive semi-definite numpy arrays with shape nxn')
         if not all([eig >= 0 for eig_set in [eigvals(P_f_i) for P_f_i in self._P_f] for eig in eig_set]):
             warnings.warn("Warning: there is a matrix in P_f that has negative eigenvalues. Convergence may not occur")
-        if self._data_points <= 0:
+        if self._L <= 0:
             raise ValueError('The number of data points must be a positive integer')
 
     def _converge_DREs_to_AREs(self):
@@ -150,7 +151,7 @@ class PyDiffGame(ABC):
         converged = False
 
         while not converged:
-            self._backward_time = np.linspace(self._T_f, self._T_f - self._delta_T, self._data_points)
+            self._backward_time = np.linspace(self._T_f, self._T_f - self._delta, self._L)
             self._update_P_from_last_state()
             self._P_f = self._P[-1]
             last_norms += [norm(self._P_f)]
@@ -162,7 +163,7 @@ class PyDiffGame(ABC):
                 converged = all([abs(norm_i - norm_i1) < self.__epsilon for norm_i, norm_i1
                                  in zip(last_norms, last_norms[1:])])
 
-            self._T_f -= self._delta_T
+            self._T_f -= self._delta
 
     def _post_convergence(method: Callable) -> Callable:
         """
@@ -228,7 +229,7 @@ class PyDiffGame(ABC):
                    is_P=False,
                    title=f"{('Continuous' if self.__continuous else 'Discrete')}, "
                          f"{('Infinite' if self.__infinite_horizon else 'Finite')} Horizon, {self._N}-Player Game, "
-                         f"{self._data_points} sampling points")
+                         f"{self._L} sampling points")
 
     def _plot_state_space(self):
         """
@@ -398,11 +399,17 @@ class PyDiffGame(ABC):
         """
         Propagates the game through time, solves for it and plots the state with respect to time
         """
+
         self.solve_game()
         self.simulate_state_space()
 
     @_post_convergence
     def get_costs(self, add_noise: bool = False) -> np.array:
+        """
+        Calculates the cost function value using the approximated formula:
+        J ~ sum_{t=t_0}^T_f x(t)^T P(t) x(t)
+        """
+
         x_f = self._x[-2]
         x_f_T = x_f.T
         costs = []
@@ -466,11 +473,11 @@ class PyDiffGame(ABC):
 
     def __eq__(self, other: PyDiffGame) -> bool:
         """
-        Let G1, C1 and G2, C2 be two differential games and their respective costs.
+        Let G1, J1 and G2, J2 be two differential games and their respective costs.
         We define G1 == G2 iff:
              - len(G1) == len(G2)
              - for all i in range(len(G1)):
-                C1[i] == C2[i]
+                J1[i] == J2[i]
         """
         if len(self) != len(other):
             return False
@@ -479,13 +486,13 @@ class PyDiffGame(ABC):
 
     def __lt__(self, other: PyDiffGame) -> bool:
         """
-        Let G1, C1 and G2, C2 be two differential games and their respective costs.
+        Let G1, J1 and G2, J2 be two differential games and their respective costs.
         We define G1 < G2 iff:
             - len(G1) == len(G2), else they are not comparable
             - for all i in range(len(G1)):
-                C1[i] <= C2[i]
+                J1[i] <= J2[i]
             - there exists i in range(len(G1)) such that:
-                C1[i] < C2[i]
+                J1[i] < J2[i]
         """
         if len(self) != len(other):
             raise ValueError('The lengths of the differential games do not match, so they are non-comparable')

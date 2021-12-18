@@ -31,7 +31,7 @@ class ContinuousPyDiffGame(PyDiffGame):
                  P_f: list[np.array] = None,
                  show_legend: bool = True,
                  epsilon: float = PyDiffGame._epsilon_default,
-                 delta_T: float = PyDiffGame._delta_T_default,
+                 delta: float = PyDiffGame._delta_default,
                  last_norms_number: int = PyDiffGame._last_norms_number_default,
                  force_finite_horizon: bool = False,
                  debug: bool = False
@@ -47,7 +47,7 @@ class ContinuousPyDiffGame(PyDiffGame):
                          P_f=P_f,
                          show_legend=show_legend,
                          epsilon=epsilon,
-                         delta_T=delta_T,
+                         delta=delta,
                          last_norms_number=last_norms_number,
                          force_finite_horizon=force_finite_horizon,
                          debug=debug)
@@ -116,6 +116,9 @@ class ContinuousPyDiffGame(PyDiffGame):
         return self._K[i]
 
     def _get_P_f_i(self, i: int) -> np.array:
+        if len(self._P_f) == self._N:
+            return self._P_f[i]
+
         return self._P_f[i * self._P_size:(i + 1) * self._P_size].reshape(self._n, self._n)
 
     def _update_P_from_last_state(self):
