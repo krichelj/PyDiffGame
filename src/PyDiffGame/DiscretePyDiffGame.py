@@ -36,7 +36,7 @@ class DiscretePyDiffGame(PyDiffGame):
                  P_f: list[np.array] = None,
                  show_legend: bool = True,
                  epsilon: float = PyDiffGame._epsilon_default,
-                 delta_T: float = PyDiffGame._delta_T_default,
+                 delta: float = PyDiffGame._delta_default,
                  last_norms_number: int = PyDiffGame._last_norms_number_default,
                  force_finite_horizon: bool = False,
                  debug: bool = False
@@ -51,7 +51,7 @@ class DiscretePyDiffGame(PyDiffGame):
                          P_f=P_f,
                          show_legend=show_legend,
                          epsilon=epsilon,
-                         delta_T=delta_T,
+                         delta=delta,
                          last_norms_number=last_norms_number,
                          force_finite_horizon=force_finite_horizon,
                          debug=debug
@@ -121,16 +121,16 @@ class DiscretePyDiffGame(PyDiffGame):
         R_i = Q_i / delta_T
         """
 
-        A_tilda = np.exp(self._A * self._delta_T)
+        A_tilda = np.exp(self._A * self._delta)
         e_AT = quadpy.quad(f=lambda T: np.array([np.exp(t * self._A) for t in T]).swapaxes(0, 2).swapaxes(0, 1),
                            a=0,
-                           b=self._delta_T)[0]
+                           b=self._delta)[0]
 
         self._A = A_tilda
         B_tilda = e_AT
         self._B = [B_tilda @ B_i for B_i in self._B]
-        self._Q = [Q_i * self._delta_T for Q_i in self._Q]
-        self._R = [R_i / self._delta_T for R_i in self._R]
+        self._Q = [Q_i * self._delta for Q_i in self._Q]
+        self._R = [R_i / self._delta for R_i in self._R]
 
     def __simpson_integrate_Q(self):
         """
@@ -143,7 +143,7 @@ class DiscretePyDiffGame(PyDiffGame):
         Q_i_2, ..., Q_i_K-2 = 2 / 3 * Q_i
         """
         Q = np.array(self._Q)
-        self._Q = np.zeros((self._data_points,
+        self._Q = np.zeros((self._L,
                             self._N,
                             self._n,
                             self._n))
@@ -161,15 +161,15 @@ class DiscretePyDiffGame(PyDiffGame):
             - The state is initialized with its initial value, if given
          """
 
-        self._P = np.random.rand(self._data_points,
+        self._P = np.random.rand(self._L,
                                  self._N,
                                  self._n,
                                  self._n)
-        self._K = np.random.rand(self._data_points,
+        self._K = np.random.rand(self._L,
                                  self._N,
                                  self.__K_rows_num,
                                  self._n)
-        self._A_cl = np.zeros((self._data_points,
+        self._A_cl = np.zeros((self._L,
                                self._n,
                                self._n))
 
@@ -187,7 +187,7 @@ class DiscretePyDiffGame(PyDiffGame):
                                                  self._n,
                                                  self._n))
         self._update_A_cl_from_last_state(k=-1)
-        self._x = np.zeros((self._data_points,
+        self._x = np.zeros((self._L,
                             self._n))
         self._x[0] = self._x_0
 
@@ -320,7 +320,7 @@ class DiscretePyDiffGame(PyDiffGame):
         self.__initialize_finite_horizon()
 
         for backwards_index, t in enumerate(self._backward_time[:-1]):
-            k_1 = self._data_points - 1 - backwards_index
+            k_1 = self._L - 1 - backwards_index
             k = k_1 - 1
 
             if self._debug:
@@ -350,7 +350,7 @@ class DiscretePyDiffGame(PyDiffGame):
 
         x_1_k = self._x_0
 
-        for k in range(1, self._data_points - 1):
+        for k in range(1, self._L - 1):
             A_cl_k = self._A_cl[k]
             x_k = A_cl_k @ x_1_k
             self._x[k] = x_k
