@@ -1,7 +1,6 @@
 # imports
 from __future__ import annotations
 import numpy as np
-from math import floor
 from numpy.linalg import eigvals, norm
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
@@ -38,8 +37,8 @@ class PyDiffGame(ABC):
         Indicates whether to display a legend in the plots (True) or not (False)
     epsilon: float, optional, default = 1 / (10 ** 8)
         The convergence threshold for numerical convergence
-    delta: float, optional, default = 0.5
-        Sampling interval
+    L: int, optional, default = 1000
+        Number of data points
     last_norms_number: int, optional, default = 5
         The number of last matrix norms to consider for convergence
     debug: boolean, optional, default = False
@@ -48,8 +47,8 @@ class PyDiffGame(ABC):
 
     # class fields
     __T_f_default: Final[int] = 5
+    _L_default: Final[int] = 1000
     _epsilon_default: Final[float] = 10 ** (-3)
-    _delta_default: Final[float] = 0.01
     _last_norms_number_default: Final[int] = 5
 
     def __init__(self,
@@ -63,7 +62,7 @@ class PyDiffGame(ABC):
                  P_f: list[np.array] = None,
                  show_legend: bool = True,
                  epsilon: float = _epsilon_default,
-                 delta: float = _delta_default,
+                 L: int = _L_default,
                  last_norms_number: int = _last_norms_number_default,
                  force_finite_horizon: bool = False,
                  debug: bool = False
@@ -84,10 +83,10 @@ class PyDiffGame(ABC):
         self.__infinite_horizon = (not force_finite_horizon) and (T_f is None or P_f is None)
         self._T_f = PyDiffGame.__T_f_default if T_f is None else T_f
         self._P_f = self.__get_are_P_f() if P_f is None else P_f
-        self._delta = delta
-        self._L = floor(self._T_f / self._delta)
+        self._L = L
+        self._delta = self._T_f / self._L
         self.__show_legend = show_legend
-        self._forward_time = np.linspace(0, self._T_f, self._L)
+        self._forward_time = np.linspace(start=0, stop=self._T_f, num=self._L)
         self._backward_time = self._forward_time[::-1]
 
         self.__verify_input()
