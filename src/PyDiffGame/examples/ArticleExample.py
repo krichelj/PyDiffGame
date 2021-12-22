@@ -1,4 +1,5 @@
 import numpy as np
+
 from ContinuousPyDiffGame import ContinuousPyDiffGame
 from DiscretePyDiffGame import DiscretePyDiffGame
 
@@ -31,15 +32,15 @@ P_f = [np.array([[10, 0],
        np.array([[50, 0],
                  [0, 60]])]
 
-for delta_T in [0.05 * i for i in range(1, 5)]:
+for L in [int(1000 / i) for i in range(1, 5)]:
     continuous_game = ContinuousPyDiffGame(A=A,
                                            B=B,
                                            Q=Q,
                                            R=R,
                                            x_0=x_0,
-                                           delta=delta_T,
-                                           P_f=P_f,
-                                           T_f=T_f
+                                           L=L,
+                                           # P_f=P_f,
+                                           # T_f=T_f
                                            )
     continuous_game.solve_game_and_simulate_state_space()
     discrete_game = DiscretePyDiffGame(A=A,
@@ -47,7 +48,7 @@ for delta_T in [0.05 * i for i in range(1, 5)]:
                                        Q=Q,
                                        R=R,
                                        x_0=x_0,
-                                       delta=delta_T
+                                       L=L
                                        # P_f=P_f,
                                        # T_f=T_f,
                                        # debug=True
@@ -55,6 +56,6 @@ for delta_T in [0.05 * i for i in range(1, 5)]:
     discrete_game.solve_game_and_simulate_state_space()
 
     D_l_C = discrete_game < continuous_game
-    print('#' * 10 + f' delta_T: {delta_T} ' + '#' * 10 + f'\nD<C: {D_l_C}')
+    print('#' * 10 + f' delta_T: {L} ' + '#' * 10 + f'\nD<C: {D_l_C}')
     if D_l_C:
         print(f'D_cost: {discrete_game.get_costs()}\nC_cost: {continuous_game.get_costs()}')

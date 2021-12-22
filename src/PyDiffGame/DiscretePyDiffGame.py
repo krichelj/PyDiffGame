@@ -36,7 +36,7 @@ class DiscretePyDiffGame(PyDiffGame):
                  P_f: list[np.array] = None,
                  show_legend: bool = True,
                  epsilon: float = PyDiffGame._epsilon_default,
-                 delta: float = PyDiffGame._delta_default,
+                 L: int = PyDiffGame._L_default,
                  last_norms_number: int = PyDiffGame._last_norms_number_default,
                  force_finite_horizon: bool = False,
                  debug: bool = False
@@ -51,7 +51,7 @@ class DiscretePyDiffGame(PyDiffGame):
                          P_f=P_f,
                          show_legend=show_legend,
                          epsilon=epsilon,
-                         delta=delta,
+                         L=L,
                          last_norms_number=last_norms_number,
                          force_finite_horizon=force_finite_horizon,
                          debug=debug
