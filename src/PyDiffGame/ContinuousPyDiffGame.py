@@ -121,9 +121,9 @@ class ContinuousPyDiffGame(PyDiffGame):
 
         return self._P_f[i * self._P_size:(i + 1) * self._P_size].reshape(self._n, self._n)
 
-    def _update_P_from_last_state(self):
+    def _update_Ps_from_last_state(self):
         """
-        Evaluates the matrices P by backwards-solving a set of coupled time-continuous Riccati differential equations,
+        Evaluates the matrices P_i by backwards-solving a set of coupled time-continuous Riccati differential equations,
         with P_f as the terminal condition
 
         For the open-loop case:
@@ -149,7 +149,7 @@ class ContinuousPyDiffGame(PyDiffGame):
         for each time interval
         """
 
-        self._update_P_from_last_state()
+        self._update_Ps_from_last_state()
         self._converged = True
         #
         # # plot the convergence of the values of the P matrices

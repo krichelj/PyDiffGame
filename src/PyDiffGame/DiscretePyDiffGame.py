@@ -245,7 +245,7 @@ class DiscretePyDiffGame(PyDiffGame):
     def _get_P_f_i(self, i: int) -> np.array:
         return self._P_f[i]
 
-    def _update_P_from_last_state(self, k_1: int):
+    def _update_Ps_from_last_state(self, k_1: int):
         """
         Updates the matrices P_i with
         A_cl[k] = A - sum_{i=1}^N B_i K_i[k]
@@ -338,7 +338,7 @@ class DiscretePyDiffGame(PyDiffGame):
                 stable_k = self.is_A_cl_stable(k)
                 print(f"The system is {'NOT ' if not stable_k else ''}stable")
 
-            self._update_P_from_last_state(k_1=k_1)
+            self._update_Ps_from_last_state(k_1=k_1)
 
     @PyDiffGame._post_convergence
     def _solve_state_space(self):
