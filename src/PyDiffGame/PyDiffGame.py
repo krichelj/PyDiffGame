@@ -18,11 +18,11 @@ class PyDiffGame(ABC):
     ----------
     A: numpy 2-d array of shape(n, n)
         The system dynamics matrix
-    B: numpy array of numpy 2-d arrays of len(N), each matrix B_j of shape(n, k_j)
+    B: numpy array of numpy 2-d arrays of len(N), each matrix B_i of shape(n, m_i)
         System input matrices for each control objective
-    Q: numpy array of numpy 2-d arrays of len(N), each matrix Q_j of shape(n, M)
+    Q: numpy array of numpy 2-d arrays of len(N), each matrix Q_i of shape(n, M)
         Cost function state weights for each control objective
-    R: numpy array of numpy 2-d arrays of len(N), each matrix R_j of shape(k_j, k_j)
+    R: numpy array of numpy 2-d arrays of len(N), each matrix R_i of shape(m_i, m_i)
         Cost function input weights for each control objective
     x_0: numpy 1-d array of shape(n), optional
         Initial state vector
@@ -30,7 +30,7 @@ class PyDiffGame(ABC):
         Final state vector, in case of signal tracking
     T_f: positive float, optional, default = 10
         System dynamics horizon. Should be given in the case of finite horizon
-    P_f: numpy array of numpy 2-d arrays of len(N), each matrix P_f_j of shape(n, n), optional,
+    P_f: numpy array of numpy 2-d arrays of len(N), each matrix P_f_i of shape(n, n), optional,
         default = uncoupled solution of scipy's solve_are
         Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
     show_legend: boolean, optional, default = True
@@ -151,7 +151,7 @@ class PyDiffGame(ABC):
 
         while not converged:
             self._backward_time = np.linspace(self._T_f, self._T_f - self._delta, self._L)
-            self._update_P_from_last_state()
+            self._update_Ps_from_last_state()
             self._P_f = self._P[-1]
             last_norms += [norm(self._P_f)]
 
@@ -216,6 +216,7 @@ class PyDiffGame(ABC):
 
     def __plot_variables(self, mat: np.array):
         """
+        Displays plots for the state variables with respect to time
 
         Parameters
         ----------
@@ -223,6 +224,7 @@ class PyDiffGame(ABC):
         mat: numpy array
             The y-axis information to plot
         """
+
         self._plot(t=self._forward_time,
                    mat=mat,
                    is_P=False,
@@ -314,9 +316,9 @@ class PyDiffGame(ABC):
             self._A_cl = A_cl
 
     @abstractmethod
-    def _update_P_from_last_state(self, *args):
+    def _update_Ps_from_last_state(self, *args):
         """
-        Updates the matrices P after forward propagation of the state through time
+        Updates the matrices {P_i}_{i=1}^N after forward propagation of the state through time
         """
 
         pass
@@ -403,33 +405,24 @@ class PyDiffGame(ABC):
         self.simulate_state_space()
 
     @_post_convergence
-    def get_costs(self, add_noise: bool = False) -> np.array:
+    def get_costs(self) -> np.array:
         """
-        Calculates the cost function value using the approximated formula:
-        J ~ sum_{t=t_0}^T_f x(t)^T P(t) x(t)
+        Calculates the cost function value using the formula:
+        J_i = int_{t=0}^T_f [ x(t)^T ( Q_i + sum_{j=1}^N  K_j(t)^T R_{ij} K_j(t) ) x(t) ] dt
         """
 
-        x_f = self._x[-2]
-        x_f_T = x_f.T
         costs = []
 
         for i in range(self._N):
-            P_f_i = self._get_P_f_i(i)
+            Q_i = self._Q[i]
+            R_ii = self._R[i]
 
-            if add_noise:
-                noisy_costs = []
+            cost_i = 0
 
-                for _ in range(100000):
-                    noise = np.random.normal(loc=0,
-                                             scale=np.mean(P_f_i),
-                                             size=P_f_i.shape)
-                    noisy_P_f_i = P_f_i + noise
-                    noisy_cost = x_f_T @ noisy_P_f_i @ x_f
-                    noisy_costs += [noisy_cost]
-
-                cost_i = np.mean(noisy_costs)
-            else:
-                cost_i = x_f_T @ P_f_i @ x_f
+            for l in range(self._L):
+                x_l = self._x[l]
+                K_i_l = self._get_K_i(i) if self.__continuous else self._get_K_i(i, l)
+                cost_i += x_l.T @ (Q_i + (K_i_l.T @ R_ii @ K_i_l if R_ii.ndim > 1 else R_ii * K_i_l.T @ K_i_l)) @ x_l
 
             costs += [cost_i]
 
@@ -475,30 +468,25 @@ class PyDiffGame(ABC):
         Let G1, J1 and G2, J2 be two differential games and their respective costs.
         We define G1 == G2 iff:
              - len(G1) == len(G2)
-             - for all i in range(len(G1)):
-                J1[i] == J2[i]
+             - sum_{i=1}^N J1[i] == sum_{i=1}^N J2[i]
         """
+
         if len(self) != len(other):
             return False
 
-        return (self.get_costs() == other.get_costs()).all()
+        return self.get_costs().sum() == other.get_costs().sum()
 
     def __lt__(self, other: PyDiffGame) -> bool:
         """
         Let G1, J1 and G2, J2 be two differential games and their respective costs.
         We define G1 < G2 iff:
-            - len(G1) == len(G2), else they are not comparable
-            - for all i in range(len(G1)):
-                J1[i] <= J2[i]
-            - there exists i in range(len(G1)) such that:
-                J1[i] < J2[i]
+            - len(G1) == len(G2) := N, else they are not comparable
+            - sum_{i=1}^N J1[i] < sum_{i=1}^N J2[i]
         """
+
         if len(self) != len(other):
             raise ValueError('The lengths of the differential games do not match, so they are non-comparable')
 
-        self_costs = self.get_costs()
-        other_costs = other.get_costs()
-
-        return (self_costs <= other_costs).all() and (self_costs < other_costs).any()
+        return self.get_costs().sum() < other.get_costs().sum()
 
     _post_convergence = staticmethod(_post_convergence)

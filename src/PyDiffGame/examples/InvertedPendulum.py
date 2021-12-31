@@ -6,8 +6,10 @@ import matplotlib.patches as patches
 import matplotlib.lines as lines
 from scipy.integrate import solve_ivp
 from time import time
+from termcolor import colored
 
 from ContinuousPyDiffGame import ContinuousPyDiffGame
+from DiscretePyDiffGame import DiscretePyDiffGame
 
 m_c = 500
 m_p = 10
@@ -58,9 +60,10 @@ Q_theta = np.diag([1, 1, 100, 10])
 R_constant = 0.001
 R_one_player = np.array([[R_constant, 0],
                          [0, R_constant]])
-R_x = np.array([[R_constant/10, 0],
+R_x = np.array([[R_constant / 10, 0],
                 [0, R_constant]])
-R_theta = np.array([R_constant/10])
+R_theta = np.array([R_constant / 10])
+
 
 # R = np.array([[R_constant, 0],
 #               [0, R_constant]])
@@ -165,17 +168,17 @@ def simulate(K):
 
 T_f = 40
 
-one_player_game = ContinuousPyDiffGame(A=A,
-                                       B=[B],
-                                       Q=[(Q_x + Q_theta) / 2],
-                                       R=[R_one_player],
-                                       x_0=initial,
-                                       x_T=final,
-                                       T_f=T_f
-                                       )
-
+# one_player_game = ContinuousPyDiffGame(A=A,
+#                                        B=[B],
+#                                        Q=[(Q_x + Q_theta) / 2],
+#                                        R=[R_one_player],
+#                                        x_0=initial,
+#                                        x_T=final,
+#                                        T_f=T_f
+#                                        )
+#
 # one_player_game.solve_game_and_simulate_state_space()
-# print(one_player_game.calculate_costs())
+# print(f'One player cost: {one_player_game.get_costs()}')
 
 # for _ in range(10):
 #     print(one_player_game.calculate_costs(add_noise=True))
@@ -184,23 +187,39 @@ one_player_game = ContinuousPyDiffGame(A=A,
 M2 = np.array([[1],
                [1]])
 
-for i in range(1, 10):
-    M1 = np.array([[i, 0],
-                   [0, i]])
+M1 = np.array([[1, 0],
+               [0, 1]])
 
-    two_player_game = ContinuousPyDiffGame(A=A,
-                                           B=[B @ M1,
-                                              B @ M2],
-                                           Q=[Q_x, Q_theta],
-                                           R=[R_x, R_theta],
-                                           x_0=initial,
-                                           x_T=final,
-                                           T_f=T_f
-                                           )
-    two_player_game.solve_game_and_simulate_state_space()
-    print(f'Iteration {i} cost: {two_player_game.get_costs()}')
+for L in [int(1000 / i) for i in range(1, 10)]:
+    cont_game = ContinuousPyDiffGame(A=A,
+                                     B=[B @ M1,
+                                        B @ M2],
+                                     Q=[Q_x, Q_theta],
+                                     R=[R_x, R_theta],
+                                     x_0=initial,
+                                     x_T=final,
+                                     T_f=T_f,
+                                     L=L,
+                                     )
 
-    for j in range(1, 10):
-        print(f'\tNoise in round {j} for iteration {i} cost: {two_player_game.get_costs(add_noise=True)}')
+    cont_game.solve_game_and_simulate_state_space()
+    cont_costs = cont_game.get_costs()
 
-# # simulate(two_player_game.K)
+    d_game = DiscretePyDiffGame(A=A,
+                                B=[B @ M1,
+                                   B @ M2],
+                                Q=[Q_x, Q_theta],
+                                R=[R_x, R_theta],
+                                x_0=initial,
+                                T_f=T_f,
+                                L=L
+                                )
+
+    d_game.solve_game_and_simulate_state_space()
+    d_costs = d_game.get_costs()
+
+    print(colored('#' * 10 + f' L = {L} ' + '#' * 10, 'blue'))
+    print(colored(f'Continuous costs: {cont_costs}\n'
+                  f'Continuous costs sum: {cont_costs.sum()}', 'red'))
+    print(colored(f'Discrete costs: {d_costs}\n'
+                  f'Discrete costs sum: {d_costs.sum()}', 'red'))

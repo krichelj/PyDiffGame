@@ -57,5 +57,5 @@ for L in [int(1000 / i) for i in range(1, 5)]:
 
     D_l_C = discrete_game < continuous_game
     print('#' * 10 + f' delta_T: {L} ' + '#' * 10 + f'\nD<C: {D_l_C}')
-    if D_l_C:
-        print(f'D_cost: {discrete_game.get_costs()}\nC_cost: {continuous_game.get_costs()}')
+
+    print(f'D_cost: {discrete_game.get_costs()}\nC_cost: {continuous_game.get_costs()}')
