@@ -12,11 +12,6 @@ class ContinuousPyDiffGame(PyDiffGame):
 
     Considers the system:
     dx(t)/dt = A x(t) + sum_{j=1}^N B_j v_j(t)
-
-    Parameters
-    ----------
-    cl: boolean, optional, default = True
-        Indicates whether to generate the closed (True) or open (False) loop behaviour
     """
 
     def __init__(self,
@@ -24,7 +19,6 @@ class ContinuousPyDiffGame(PyDiffGame):
                  B: list[np.array],
                  Q: list[np.array],
                  R: list[np.array],
-                 cl: bool = True,
                  x_0: np.array = None,
                  x_T: np.array = None,
                  T_f: float = None,
@@ -54,7 +48,6 @@ class ContinuousPyDiffGame(PyDiffGame):
 
         S_matrices = [B_i @ inv(R_i) @ B_i.T if R_i.ndim > 1 else 1 / R_i * B_i @ B_i.T
                       for B_i, R_i in zip(self._B, self._R)]
-        self.__cl = cl
         self.__dx_dt = None
 
         def __solve_N_coupled_diff_riccati(_: float, P_t: np.array) -> np.array:
@@ -75,18 +68,17 @@ class ContinuousPyDiffGame(PyDiffGame):
             """
 
             P_t = [(P_t[i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n) for i in range(self._N)]
-            SP_sum = sum([S_i @ P_t_i for S_i, P_t_i in zip(S_matrices, P_t)])
+            # SP_sum = sum([S_i @ P_t_i for S_i, P_t_i in zip(S_matrices, P_t)])
             dP_tdt = np.zeros((self._P_size,))
+            A_cl_t = self._A - sum([self._B[j] @ inv(self._R[j]) @ self._B[j].T @ P_t[j] for j in range(self._N)])
 
             for i in range(self._N):
                 P_t_i = P_t[i]
-                Q_i = Q[i]
+                B_i = self._B[i]
+                R_ii = self._R[i]
+                Q_i = self._Q[i]
 
-                dP_t_idt = - self._A.T @ P_t_i - P_t_i @ A - Q_i + P_t_i @ SP_sum  # open-loop
-
-                if self.__cl:  # closed-loop
-                    PS_sum_i = (SP_sum - S_matrices[i] @ P_t_i).T
-                    dP_t_idt = dP_t_idt + PS_sum_i @ P_t_i
+                dP_t_idt = - A_cl_t.T @ P_t_i - P_t_i @ A_cl_t - Q_i - P_t_i @ B_i @ inv(R_ii) @ B_i.T @ P_t_i
 
                 dP_t_idt = dP_t_idt.reshape(self._P_size)
                 dP_tdt = dP_t_idt if not i else np.concatenate((dP_tdt, dP_t_idt), axis=0)
@@ -123,8 +115,8 @@ class ContinuousPyDiffGame(PyDiffGame):
 
     def _update_Ps_from_last_state(self):
         """
-        Evaluates the matrices P_i by backwards-solving a set of coupled time-continuous Riccati differential equations,
-        with P_f as the terminal condition
+        Evaluates the matrices P_i by backwards-solving a set of coupled time-continuous Riccati differential
+        equations, with P_f as the terminal condition
 
         For the open-loop case:
         dP_i(t)/dt = - A^T P_i(t) - P_i(t) A - Q_i + P_i(t) sum_{j=1}^N B_j R^{-1}_{jj} B^T_j P_j(t)
@@ -151,7 +143,7 @@ class ContinuousPyDiffGame(PyDiffGame):
 
         self._update_Ps_from_last_state()
         self._converged = True
-        #
+
         # # plot the convergence of the values of the P matrices
         # self._plot(t=self._backward_time,
         #            mat=self._P,
