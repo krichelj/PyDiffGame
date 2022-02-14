@@ -46,8 +46,6 @@ class ContinuousPyDiffGame(PyDiffGame):
                          force_finite_horizon=force_finite_horizon,
                          debug=debug)
 
-        S_matrices = [B_i @ inv(R_i) @ B_i.T if R_i.ndim > 1 else 1 / R_i * B_i @ B_i.T
-                      for B_i, R_i in zip(self._B, self._R)]
         self.__dx_dt = None
 
         def __solve_N_coupled_diff_riccati(_: float, P_t: np.array) -> np.array:
@@ -216,3 +214,4 @@ class ContinuousPyDiffGame(PyDiffGame):
         self._x = odeint(func=state_diff_eqn,
                          y0=self._x_0,
                          t=self._forward_time)
+

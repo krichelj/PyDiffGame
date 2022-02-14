@@ -1,11 +1,12 @@
 # imports
 from __future__ import annotations
+import time
 import numpy as np
 from numpy.linalg import eigvals, norm
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
 import warnings
-from typing import Callable, Final
+from typing import Callable
 from abc import ABC, abstractmethod
 
 
@@ -46,10 +47,10 @@ class PyDiffGame(ABC):
     """
 
     # class fields
-    __T_f_default: Final[int] = 10
-    _L_default: Final[int] = 1000
-    _epsilon_default: Final[float] = 10 ** (-3)
-    _last_norms_number_default: Final[int] = 5
+    __T_f_default: int = 10
+    _L_default: int = 1000
+    _epsilon_default: float = 10 ** (-3)
+    _last_norms_number_default: int = 5
 
     def __init__(self,
                  A: np.array,
@@ -490,3 +491,15 @@ class PyDiffGame(ABC):
         return self.get_costs().sum() < other.get_costs().sum()
 
     _post_convergence = staticmethod(_post_convergence)
+
+
+def timed(f: Callable) -> Callable:
+    def time_wrapper(*args, **kwargs):
+        start = time.time()
+        output = f(*args, **kwargs)
+        end = time.time()
+        print(f'{f.__name__} function took {(end - start) * 1000.0} ms')
+
+        return output
+
+    return time_wrapper
