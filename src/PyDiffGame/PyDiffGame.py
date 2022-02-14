@@ -6,7 +6,7 @@ from numpy.linalg import eigvals, norm
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
 import warnings
-from typing import Callable
+from typing import Callable, Union
 from abc import ABC, abstractmethod
 
 
@@ -54,9 +54,9 @@ class PyDiffGame(ABC):
 
     def __init__(self,
                  A: np.array,
-                 B: list[np.array],
-                 Q: list[np.array],
-                 R: list[np.array],
+                 B: Union[list[np.array], np.array],
+                 Q: Union[list[np.array], np.array],
+                 R: Union[list[np.array], np.array],
                  x_0: np.array = None,
                  x_T: np.array = None,
                  T_f: float = None,
@@ -73,12 +73,12 @@ class PyDiffGame(ABC):
 
         # input and shape parameters
         self._A = A
-        self._B = B
+        self._B = B if isinstance(B, list) else [B]
         self._n = self._A.shape[0]
         self._N = len(self._B)
         self._P_size = self._n ** 2
-        self._Q = Q
-        self._R = R
+        self._Q = Q if isinstance(Q, list) else [Q]
+        self._R = R if isinstance(R, list) else [R]
         self._x_0 = x_0
         self._x_T = x_T
         self.__infinite_horizon = (not force_finite_horizon) and (T_f is None or P_f is None)
@@ -395,7 +395,6 @@ class PyDiffGame(ABC):
                 print(f"The system is {'NOT ' if not self.is_A_cl_stable() else ''}stable")
 
             self._solve_state_space()
-            self._plot_state_space()
 
     def solve_game_and_simulate_state_space(self):
         """
@@ -404,6 +403,12 @@ class PyDiffGame(ABC):
 
         self.solve_game()
         self.simulate_state_space()
+
+    def solve_game_simulate_state_space_and_plot(self):
+        self.solve_game_and_simulate_state_space()
+
+        if self._x_0 is not None:
+            self._plot_state_space()
 
     @_post_convergence
     def get_costs(self) -> np.array:
@@ -448,6 +453,14 @@ class PyDiffGame(ABC):
     @property
     def K(self):
         return self._K
+
+    @property
+    def x_0(self):
+        return self._x_0
+
+    @property
+    def x_T(self):
+        return self._x_T
 
     @property
     def forward_time(self):
