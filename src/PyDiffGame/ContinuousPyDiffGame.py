@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.integrate import odeint
 from numpy.linalg import eigvals, inv
+from typing import Union
 
 from PyDiffGame import PyDiffGame
 
@@ -16,9 +17,9 @@ class ContinuousPyDiffGame(PyDiffGame):
 
     def __init__(self,
                  A: np.array,
-                 B: list[np.array],
-                 Q: list[np.array],
-                 R: list[np.array],
+                 B: Union[list[np.array], np.array],
+                 Q: Union[list[np.array], np.array],
+                 R: Union[list[np.array], np.array],
                  x_0: np.array = None,
                  x_T: np.array = None,
                  T_f: float = None,

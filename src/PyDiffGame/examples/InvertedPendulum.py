@@ -1,28 +1,146 @@
 import numpy as np
+from time import time
 from numpy import pi
-from control import ctrb
-# import sympy as sp
-
-from scipy.linalg import solve_continuous_are
-
-# import matplotlib.animation as animation
-# import matplotlib.pyplot as plt
-# import matplotlib.patches as patches
-# import matplotlib.lines as lines
-# from scipy.integrate import solve_ivp
-# from time import time
-# from termcolor import colored
+import matplotlib.animation as animation
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import matplotlib.lines as lines
+from scipy.integrate import solve_ivp
+# from scipy.linalg import solve_continuous_are
 
 from ContinuousPyDiffGame import ContinuousPyDiffGame
 
-# from DiscretePyDiffGame import DiscretePyDiffGame
 
-m_c = 500
-m_p = 10
-g = 9.81
-L = 15
-l = L / 2  # CoM of uniform rod
-I = 1 / 12 * m_p * (L ** 2)
+class InvertedPendulum(ContinuousPyDiffGame):
+    g = 9.81
+
+    def __init__(self,
+                 m_c: float,
+                 m_p: float,
+                 p_L: float,
+                 x_0: np.array = None,
+                 x_T: np.array = None,
+                 multiplayer: bool = True
+                 ):
+        self.m_c = m_c
+        self.m_p = m_p
+        self.p_L = p_L
+        self.l = self.p_L / 2  # CoM of uniform rod
+        self.I = 1 / 12 * self.m_p * self.p_L ** 2
+
+        # # original linear system
+        D = self.m_c * self.m_p * self.l ** 2 + self.I * (self.m_c + self.m_p)
+        a21 = self.m_p ** 2 * InvertedPendulum.g * self.l ** 2 / D
+        a31 = self.m_p * InvertedPendulum.g * self.l * (self.m_c + self.m_p) / D
+
+        A = np.array([[0, 0, 1, 0],
+                      [0, 0, 0, 1],
+                      [0, a21, 0, 0],
+                      [0, a31, 0, 0]])
+
+        b21 = (m_p * self.l ** 2 + self.I) / D
+        b31 = m_p * self.l / D
+        b22 = b31
+        b32 = (m_c + m_p) / D
+
+        B = np.array([[0, 0],
+                      [0, 0],
+                      [b21, b22],
+                      [b31, b32]])
+
+        q_s = 0.1
+        q_m = 10
+        q_l = 100
+
+        Q_x = np.diag([q_l, q_s, q_m, q_s])
+        Q_theta = np.diag([q_s, q_l, q_s, q_m])
+
+        r = 0.0001
+        R = np.diag([r, r])
+
+        self.origin = (0.0, 0.0)
+        self.dt = 0.02
+        self.frames = 1000
+        self.t_span = [0.0, self.frames * self.dt]
+
+        super().__init__(A=A,
+                         B=B,
+                         Q=[Q_x, Q_theta] if multiplayer else (Q_x + Q_theta) / 2,
+                         R=R,
+                         x_0=x_0,
+                         x_T=x_T,
+                         )
+
+    def run_simulation(self):
+        self.solve_game_and_simulate_state_space()
+
+        ts = np.linspace(self.t_span[0], self.t_span[1], self.frames)
+        ss = np.zeros((4,))
+
+        K = self.K[0]
+
+        def stateSpace(_, x: np.array):
+            u = - K @ (x - self.x_T)
+            u_x, u_theta = u.T
+
+            # returns state space model evaluated at initial conditions
+            S = np.sin(x[1])
+            C = np.cos(x[1])
+            denominator = self.m_p * self.l * C ** 2 - (self.m_c + self.m_p) * (self.m_p * self.l ** 2 + self.I)
+
+            # nonlinear system
+            ss[0] = x[2]
+            ss[1] = x[3]
+            ss[2] = 1 / denominator * (
+                    -self.m_p ** 2 * InvertedPendulum.g * self.l ** 2 * C * S - self.m_p * self.l * S *
+                    (self.m_p * self.l ** 2 + self.I) * x[3] ** 2
+            ) - (self.m_p * (self.l ** 2) + self.I) / denominator * u_x
+            ss[3] = 1 / denominator * (
+                    (self.m_c + self.m_p) * self.m_p * InvertedPendulum.g * self.l * S +
+                    self.m_p ** 2 * self.l ** 2 * S * C * x[3] ** 2
+            ) + self.m_p * self.l * C / denominator * u_theta
+
+            return ss
+
+        pendulum_state = solve_ivp(fun=stateSpace,
+                                   t_span=self.t_span,
+                                   y0=self.x_0,
+                                   t_eval=ts,
+                                   rtol=1e-8)
+        Y = pendulum_state.y
+
+        pendulumArm = lines.Line2D(xdata=self.origin, ydata=self.origin, color='r')
+        cart = patches.Rectangle(xy=self.origin, width=0.5, height=0.15, color='b')
+
+        def init():
+            ax.add_patch(cart)
+            ax.add_line(pendulumArm)
+            return pendulumArm, cart
+
+        def animate(i):
+            xPos = Y[0][i]
+            theta = Y[1][i]
+            x = [self.origin[0] + xPos, self.origin[0] + xPos + self.p_L * np.sin(theta)]
+            y = [self.origin[1], self.origin[1] - self.p_L * np.cos(theta)]
+            pendulumArm.set_xdata(x)
+            pendulumArm.set_ydata(y)
+            cartPos = [self.origin[0] + xPos - cart.get_width() / 2, self.origin[1] - cart.get_height()]
+            cart.set_xy(cartPos)
+
+            return pendulumArm, cart
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, aspect='equal', xlim=(-5, 5), ylim=(-1, 1), title="Inverted Pendulum Simulation")
+        ax.grid()
+        t0 = time()
+        animate(0)  # sample time required to evaluate animate() function
+        t1 = time()
+        interval = 1000 * self.dt - (t1 - t0)
+
+        anim = animation.FuncAnimation(fig=fig, func=animate, init_func=init, frames=self.frames, interval=interval,
+                                       blit=True)
+        plt.show()
+
 
 x_0 = np.array([20,  # x
                 pi / 3,  # theta
@@ -34,144 +152,10 @@ x_T = np.array([0,  # x
                 0,  # x_dot
                 0]  # theta_dot
                )
-
-# # original linear system
-D = m_c * m_p * l ** 2 + I * (m_c + m_p)
-a21 = m_p ** 2 * g * l ** 2 / D
-a31 = m_p * g * l * (m_c + m_p) / D
-
-# a21, a31 = sp.var('a21 a31')
-
-A = np.array([[0, 0, 1, 0],
-              [0, 0, 0, 1],
-              [0, a21, 0, 0],
-              [0, a31, 0, 0]])
-
-# p11, p12, p13, p14, p22, p23, p24, p33, p34, p44 = sp.var('p11 p12 p13 p14 p22 p23 p24 p33 p34 p44')
-# ps = [p11, p12, p13, p14, p22, p23, p24, p33, p34, p44]
-
-# P = np.array([[p11, p12, p13, p14],
-#               [p12, p22, p23, p24],
-#               [p13, p23, p33, p34],
-#               [p14, p24, p34, p44]
-#               ])
-# P = sp.Matrix(P)
-
-b21 = (m_p * l ** 2 + I) / D
-b31 = m_p * l / D
-b22 = b31
-b32 = (m_c + m_p) / D
-#
-
-# b21, b22, b31, b32 = sp.var('b21 b22 b31 b32')
-
-B = np.array([[0, 0],
-              [0, 0],
-              [b21, b22],
-              [b31, b32]])
-# B = sp.Matrix(B)
-
-
-q_s = 0.1
-q_m = 10
-q_l = 100
-
-# q_s, q_m, q_l = sp.var('q_s q_m q_l')
-
-Q_x = np.diag([q_l, q_s, q_m, q_s])
-# Q_x = sp.Matrix(Q_x)
-
-Q_theta = np.diag([q_s, q_l, q_s, q_m])
-# Q_theta = sp.Matrix(Q_theta)
-
-Q = (Q_x + Q_theta) / 2
-
-r = 0.0001
-# r = sp.var('r')
-R = np.diag([r, r])
-# print(np.linalg.matrix_rank(ctrb(A, B)))
-
-# def is_pos_def(x):
-#     return np.all(np.linalg.eigvals(x) > 0)
-
-P = solve_continuous_are(A, B, Q, R)
-K = np.matrix(np.linalg.inv(R) @ B.T @ P)
-A_cl = A - B @ K
-w, v = np.linalg.eig(A_cl)
-print(w)
-
-
-# print(x)
-# print(is_pos_def(x))
-
-# sys = P @ A + A.T @ P - P @ B @ np.linalg.inv(R) @ B.T @ P + Q
-# PB = P @ B
-# print(sp.latex(PB @ PB.T))
-
-#
-#
-# one_player_game = ContinuousPyDiffGame(A=A,
-#                                        B=B,
-#                                        Q=Q,
-#                                        R=R,
-#                                        x_0=x_0,
-#                                        x_T=x_T,
-#                                        )
-# one_player_game.solve_game_and_simulate_state_space()
-# print(f'One player cost: {one_player_game.get_costs()}')
-#
-#
-# R_x = np.diag([r, r])
-# R_theta = np.array([r / 10])
-#
-# # M_x = np.array([[1],
-# #                [1]])
-# #
-# # M_theta = np.array([[1, 0],
-# #                     [0, 1]])
-# #
-# # two_player_game = ContinuousPyDiffGame(A=A,
-# #                                        B=[B @ M1,
-# #                                           B @ M2],
-# #                                        Q=[Q_x, Q_theta],
-# #                                        R=[R_x, R_theta],
-# #                                        x_0=x_0,
-# #                                        x_T=x_T,
-# #                                        )
-# #
-# # two_player_game.solve_game_and_simulate_state_space()
-# # print(f'Two player cost: {two_player_game.get_costs()}')
-#
-# # for L in [int(1000 / i) for i in range(1, 10)]:
-# #     cont_game = ContinuousPyDiffGame(A=A,
-# #                                      B=[B @ M1,
-# #                                         B @ M2],
-# #                                      Q=[Q_x, Q_theta],
-# #                                      R=[R_x, R_theta],
-# #                                      x_0=x_0,
-# #                                      x_T=x_T,
-# #                                      T_f=T_f,
-# #                                      L=L,
-# #                                      )
-# #
-# #     cont_game.solve_game_and_simulate_state_space()
-# #     cont_costs = cont_game.get_costs()
-# #
-# #     d_game = DiscretePyDiffGame(A=A,
-# #                                 B=[B @ M1,
-# #                                    B @ M2],
-# #                                 Q=[Q_x, Q_theta],
-# #                                 R=[R_x, R_theta],
-# #                                 x_0=x_0,
-# #                                 T_f=T_f,
-# #                                 L=L
-# #                                 )
-# #
-# #     d_game.solve_game_and_simulate_state_space()
-# #     d_costs = d_game.get_costs()
-# #
-# #     print(colored('#' * 10 + f' L = {L} ' + '#' * 10, 'blue'))
-# #     print(colored(f'Continuous costs: {cont_costs}\n'
-# #                   f'Continuous costs sum: {cont_costs.sum()}', 'red'))
-# #     print(colored(f'Discrete costs: {d_costs}\n'
-# #                   f'Discrete costs sum: {d_costs.sum()}', 'red'))
+ip = InvertedPendulum(m_c=3,
+                      m_p=2,
+                      p_L=0.5,
+                      x_0=x_0,
+                      x_T=x_T,
+                      multiplayer=False)
+ip.run_simulation()
