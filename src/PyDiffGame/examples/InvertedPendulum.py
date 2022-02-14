@@ -8,6 +8,7 @@ import matplotlib.lines as lines
 from scipy.integrate import solve_ivp
 # from scipy.linalg import solve_continuous_are
 
+from PyDiffGame import PyDiffGame
 from ContinuousPyDiffGame import ContinuousPyDiffGame
 
 
@@ -18,8 +19,14 @@ class InvertedPendulum(ContinuousPyDiffGame):
                  m_c: float,
                  m_p: float,
                  p_L: float,
+                 q_s: float = 0.1,
+                 q_m: float = 10,
+                 q_l: float = 100,
+                 r: float = 0.0001,
                  x_0: np.array = None,
                  x_T: np.array = None,
+                 T_f: float = None,
+                 L: int = PyDiffGame._L_default,
                  multiplayer: bool = True
                  ):
         self.m_c = m_c
@@ -48,20 +55,13 @@ class InvertedPendulum(ContinuousPyDiffGame):
                       [b21, b22],
                       [b31, b32]])
 
-        q_s = 0.1
-        q_m = 10
-        q_l = 100
-
         Q_x = np.diag([q_l, q_s, q_m, q_s])
         Q_theta = np.diag([q_s, q_l, q_s, q_m])
-
-        r = 0.0001
         R = np.diag([r, r])
 
         self.origin = (0.0, 0.0)
-        self.dt = 0.02
-        self.frames = 1000
-        self.t_span = [0.0, self.frames * self.dt]
+        # self.dt = 0.02
+        # self.frames = 1000
 
         super().__init__(A=A,
                          B=B,
@@ -69,18 +69,21 @@ class InvertedPendulum(ContinuousPyDiffGame):
                          R=R,
                          x_0=x_0,
                          x_T=x_T,
+                         T_f=T_f,
+                         L=L
                          )
+        self.t_span = [0.0, self._L * self._delta]
 
     def run_simulation(self):
         self.solve_game_and_simulate_state_space()
 
-        ts = np.linspace(self.t_span[0], self.t_span[1], self.frames)
+        ts = np.linspace(self.t_span[0], self.t_span[1], self._L)
         ss = np.zeros((4,))
 
         K = self.K[0]
 
         def stateSpace(_, x: np.array):
-            u = - K @ (x - self.x_T)
+            u = - K @ (x - self._x_T)
             u_x, u_theta = u.T
 
             # returns state space model evaluated at initial conditions
@@ -104,7 +107,7 @@ class InvertedPendulum(ContinuousPyDiffGame):
 
         pendulum_state = solve_ivp(fun=stateSpace,
                                    t_span=self.t_span,
-                                   y0=self.x_0,
+                                   y0=self._x_0,
                                    t_eval=ts,
                                    rtol=1e-8)
         Y = pendulum_state.y
@@ -135,9 +138,9 @@ class InvertedPendulum(ContinuousPyDiffGame):
         t0 = time()
         animate(0)  # sample time required to evaluate animate() function
         t1 = time()
-        interval = 1000 * self.dt - (t1 - t0)
+        interval = self._L * self._delta - (t1 - t0)
 
-        anim = animation.FuncAnimation(fig=fig, func=animate, init_func=init, frames=self.frames, interval=interval,
+        anim = animation.FuncAnimation(fig=fig, func=animate, init_func=init, frames=self._L, interval=interval,
                                        blit=True)
         plt.show()
 
@@ -152,7 +155,7 @@ x_T = np.array([0,  # x
                 0,  # x_dot
                 0]  # theta_dot
                )
-ip = InvertedPendulum(m_c=3,
+ip = InvertedPendulum(m_c=11,
                       m_p=2,
                       p_L=0.5,
                       x_0=x_0,

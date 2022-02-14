@@ -455,14 +455,6 @@ class PyDiffGame(ABC):
         return self._K
 
     @property
-    def x_0(self):
-        return self._x_0
-
-    @property
-    def x_T(self):
-        return self._x_T
-
-    @property
     def forward_time(self):
         return self._forward_time
 
