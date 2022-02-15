@@ -69,7 +69,7 @@ class PyDiffGame(ABC):
                  debug: bool = False
                  ):
 
-        self.__continuous = self.__class__.__name__ == 'ContinuousPyDiffGame'
+        self.__continuous = 'ContinuousPyDiffGame' in [c.__name__ for c in type(self).__bases__]
 
         # input and shape parameters
         self._A = A

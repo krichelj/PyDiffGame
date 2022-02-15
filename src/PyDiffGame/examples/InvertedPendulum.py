@@ -80,7 +80,8 @@ class InvertedPendulum(ContinuousPyDiffGame):
             P = np.matrix(solve_continuous_are(self._A, self._B[0], self._Q[0], self._R[0]))
             K = np.matrix(np.linalg.inv(self._R[0]) @ self._B[0].T @ P)
         else:
-            self.solve_game_and_simulate_state_space()
+            # self.solve_game_and_simulate_state_space()
+            self.solve_game_simulate_state_space_and_plot()
             K = self._K[0]
 
         def stateSpace(_, x_t: np.array) -> np.array:
@@ -162,7 +163,6 @@ ip = InvertedPendulum(m_c=11,
                       x_0=x_0,
                       x_T=x_T,
                       multiplayer=False,
-                      regular_LQR=False
                       )
 
 ip.run_simulation()

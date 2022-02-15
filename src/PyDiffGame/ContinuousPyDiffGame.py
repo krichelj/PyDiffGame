@@ -168,7 +168,7 @@ class ContinuousPyDiffGame(PyDiffGame):
         num_of_zeros = [int(v) for v in closed_loop_eigenvalues_real_values].count(0)
         non_positive_eigenvalues = all([eig_real_value <= 0 for eig_real_value in closed_loop_eigenvalues_real_values])
         at_most_one_zero_eigenvalue = num_of_zeros <= 1
-        print(f'A_cl = \n{self._A_cl}\neig=\n{closed_loop_eigenvalues_real_values}')
+        # print(f'A_cl = \n{self._A_cl}\neig=\n{closed_loop_eigenvalues_real_values}')
         stability = non_positive_eigenvalues and at_most_one_zero_eigenvalue
 
         return stability
