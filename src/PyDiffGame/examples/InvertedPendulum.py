@@ -83,31 +83,23 @@ class InvertedPendulum(ContinuousPyDiffGame):
             self.solve_game_and_simulate_state_space()
             K = self._K[0]
 
-        ss = np.zeros_like(self._x_0)
-
-        def stateSpace(_, x_t: np.array):
-            u = - K @ (x_t - self._x_T)
-            u_x, u_theta = u.T
+        def stateSpace(_, x_t: np.array) -> np.array:
+            u_t = - K @ (x_t - self._x_T)
+            F_t, M_t = u_t.T
             x, theta, x_dot, theta_dot = x_t
-
+            one_over_masses = 1 / (self.__m_p + self.__m_c)
+            m_p_l = self.__m_p * self.__l
             sin_theta = sin(theta)
             cos_theta = cos(theta)
-            non_linear_D = self.__m_p * self.__l * cos_theta ** 2 - (self.__m_c + self.__m_p) * (
-                    self.__m_p * self.__l ** 2 + self.__I)
+            g_sin = g * sin_theta
+            sin_dot_sq = sin_theta * theta_dot ** 2
+            non_linear_D = m_p_l * self.__l + self.__I - m_p_l ** 2 * cos_theta ** 2 * one_over_masses
+            theta_ddot = 1 / non_linear_D * \
+                         (M_t - m_p_l * (cos_theta * one_over_masses * (F_t + m_p_l * sin_dot_sq) + g_sin))
+            x_ddot = one_over_masses * (F_t + m_p_l * (sin_dot_sq - cos_theta * theta_ddot))
+            x_dot_t = np.array([x_dot, theta_dot, x_ddot, theta_ddot])
 
-            # nonlinear system
-            ss[0] = x_dot
-            ss[1] = theta_dot
-            ss[2] = 1 / non_linear_D * (
-                    -self.__m_p ** 2 * g * self.__l ** 2 * cos_theta * sin_theta - self.__m_p * self.__l * sin_theta *
-                    (self.__m_p * self.__l ** 2 + self.__I) * x_t[3] ** 2
-            ) - (self.__m_p * (self.__l ** 2) + self.__I) / non_linear_D * u_x
-            ss[3] = 1 / non_linear_D * (
-                    (self.__m_c + self.__m_p) * self.__m_p * g * self.__l * sin_theta +
-                    self.__m_p ** 2 * self.__l ** 2 * sin_theta * cos_theta * x_t[3] ** 2
-            ) + self.__m_p * self.__l * cos_theta / non_linear_D * u_theta
-
-            return ss
+            return x_dot_t
 
         pendulum_state = solve_ivp(fun=stateSpace,
                                    t_span=[0.0, self._T_f],
@@ -165,8 +157,8 @@ x_T = np.array([0,  # x
                )
 
 ip = InvertedPendulum(m_c=11,
-                      m_p=3,
-                      p_L=0.5,
+                      m_p=30,
+                      p_L=0.7,
                       x_0=x_0,
                       x_T=x_T,
                       multiplayer=False,
