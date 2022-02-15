@@ -149,9 +149,10 @@ class PyDiffGame(ABC):
 
         last_norms = []
         converged = False
+        T_f_curr = self._T_f
 
         while not converged:
-            self._backward_time = np.linspace(self._T_f, self._T_f - self._delta, self._L)
+            self._backward_time = np.linspace(T_f_curr, T_f_curr - self._delta, self._L)
             self._update_Ps_from_last_state()
             self._P_f = self._P[-1]
             last_norms += [norm(self._P_f)]
@@ -163,7 +164,7 @@ class PyDiffGame(ABC):
                 converged = all([abs(norm_i - norm_i1) < self.__epsilon for norm_i, norm_i1
                                  in zip(last_norms, last_norms[1:])])
 
-            self._T_f -= self._delta
+            T_f_curr -= self._delta
 
     def _post_convergence(method: Callable) -> Callable:
         """
@@ -433,34 +434,6 @@ class PyDiffGame(ABC):
             costs += [cost_i]
 
         return np.array(costs)
-
-    @property
-    def A(self):
-        return self._A
-
-    @property
-    def B(self):
-        return self._B
-
-    @property
-    def Q(self):
-        return self._Q
-
-    @property
-    def R(self):
-        return self._R
-
-    @property
-    def K(self):
-        return self._K
-
-    @property
-    def forward_time(self):
-        return self._forward_time
-
-    @property
-    def converged(self):
-        return self._converged
 
     def __len__(self) -> int:
         """

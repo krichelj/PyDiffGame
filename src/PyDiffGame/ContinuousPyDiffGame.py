@@ -215,4 +215,3 @@ class ContinuousPyDiffGame(PyDiffGame):
         self._x = odeint(func=state_diff_eqn,
                          y0=self._x_0,
                          t=self._forward_time)
-
