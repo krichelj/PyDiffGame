@@ -20,10 +20,10 @@ class InvertedPendulum(ContinuousPyDiffGame):
                  m_c: float,
                  m_p: float,
                  p_L: float,
-                 q_s: float = 0.1,
-                 q_m: float = 10,
-                 q_l: float = 100,
-                 r: float = 0.0001,
+                 q_s: float = 100,
+                 q_m: float = 100,
+                 q_l: float = 1000,
+                 r: float = 0.001,
                  x_0: np.array = None,
                  x_T: np.array = None,
                  T_f: float = None,
@@ -59,15 +59,24 @@ class InvertedPendulum(ContinuousPyDiffGame):
 
         Q_x = np.diag([q_l, q_s, q_m, q_s])
         Q_theta = np.diag([q_s, q_l, q_s, q_m])
-        R = np.diag([r, r])
 
         self.__origin = (0.0, 0.0)
-        self._regular_LQR = regular_LQR
+        self.__regular_LQR = regular_LQR
+        multi = multiplayer and not regular_LQR
+
+        B_x = np.array([[0],
+                        [0],
+                        [1],
+                        [0]])
+        B_theta = np.array([[0],
+                            [0],
+                            [0],
+                            [1]])
 
         super().__init__(A=A,
-                         B=B,
-                         Q=[Q_x, Q_theta] if multiplayer and not regular_LQR else (Q_x + Q_theta) / 2,
-                         R=R,
+                         B=[B_x, B_theta] if multi else B,
+                         Q=[Q_x, Q_theta] if multi else (Q_x + Q_theta) / 2,
+                         R=[np.array([r * 1000])] * 2 if multi else np.diag([r, r]),
                          x_0=x_0,
                          x_T=x_T,
                          T_f=T_f,
@@ -76,7 +85,7 @@ class InvertedPendulum(ContinuousPyDiffGame):
 
     def run_simulation(self):
 
-        if self._regular_LQR:
+        if self.__regular_LQR:
             P = np.matrix(solve_continuous_are(self._A, self._B[0], self._Q[0], self._R[0]))
             K = np.matrix(np.linalg.inv(self._R[0]) @ self._B[0].T @ P)
         else:
@@ -98,7 +107,7 @@ class InvertedPendulum(ContinuousPyDiffGame):
             theta_ddot = 1 / non_linear_D * \
                          (M_t - m_p_l * (cos_theta * one_over_masses * (F_t + m_p_l * sin_dot_sq) + g_sin))
             x_ddot = one_over_masses * (F_t + m_p_l * (sin_dot_sq - cos_theta * theta_ddot))
-            x_dot_t = np.array([x_dot, theta_dot, x_ddot, theta_ddot])
+            x_dot_t = np.array([x_dot, theta_dot, float(x_ddot), float(theta_ddot)])
 
             return x_dot_t
 
@@ -109,8 +118,13 @@ class InvertedPendulum(ContinuousPyDiffGame):
                                    rtol=1e-8)
         Y = pendulum_state.y
 
-        pendulumArm = lines.Line2D(xdata=self.__origin, ydata=self.__origin, color='r')
-        cart = patches.Rectangle(xy=self.__origin, width=0.5, height=0.15, color='b')
+        pendulumArm = lines.Line2D(xdata=self.__origin,
+                                   ydata=self.__origin,
+                                   color='r')
+        cart = patches.Rectangle(xy=self.__origin,
+                                 width=0.5,
+                                 height=0.15,
+                                 color='b')
 
         def init():
             ax.add_patch(cart)
@@ -130,7 +144,11 @@ class InvertedPendulum(ContinuousPyDiffGame):
             return pendulumArm, cart
 
         fig = plt.figure()
-        ax = fig.add_subplot(111, aspect='equal', xlim=(-5, 5), ylim=(-1, 1), title="Inverted Pendulum Simulation")
+        ax = fig.add_subplot(111,
+                             aspect='equal',
+                             xlim=(-5, 5),
+                             ylim=(-1, 1),
+                             title="Inverted Pendulum Simulation")
         ax.grid()
         t0 = time()
         animate(0)
@@ -157,12 +175,10 @@ x_T = np.array([0,  # x
                 0]  # theta_dot
                )
 
-ip = InvertedPendulum(m_c=11,
+ip = InvertedPendulum(m_c=10,
                       m_p=30,
                       p_L=0.7,
                       x_0=x_0,
                       x_T=x_T,
-                      multiplayer=False,
                       )
-
 ip.run_simulation()

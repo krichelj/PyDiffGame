@@ -2,7 +2,7 @@
 from __future__ import annotations
 import time
 import numpy as np
-from numpy.linalg import eigvals, norm
+from numpy.linalg import eigvals, norm, LinAlgError
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
 import warnings
@@ -266,7 +266,18 @@ class PyDiffGame(ABC):
         """
 
         are_solver = solve_continuous_are if self.__continuous else solve_discrete_are
-        return [are_solver(self._A, B_i, Q_i, R_ii) for B_i, Q_i, R_ii in zip(self._B, self._Q, self._R)]
+        P_f = []
+
+        for B_i, Q_i, R_ii in zip(self._B, self._Q, self._R):
+            try:
+                P_f_i = are_solver(self._A, B_i, Q_i, R_ii)
+            except LinAlgError:
+                rand = np.random.rand(*self._A.shape)
+                P_f_i = rand @ rand.T
+
+            P_f += [P_f_i]
+
+        return P_f
 
     @abstractmethod
     def _update_K_from_last_state(self, *args):
