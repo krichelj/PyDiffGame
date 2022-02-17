@@ -69,7 +69,9 @@ class ContinuousPyDiffGame(PyDiffGame):
             P_t = [(P_t[i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n) for i in range(self._N)]
             # SP_sum = sum([S_i @ P_t_i for S_i, P_t_i in zip(S_matrices, P_t)])
             dP_tdt = np.zeros((self._P_size,))
-            A_cl_t = self._A - sum([self._B[j] @ inv(self._R[j]) @ self._B[j].T @ P_t[j] for j in range(self._N)])
+            A_cl_t = self._A - sum([(self._B[j] @ inv(self._R[j])
+                                     if self._R[j].ndim > 1 else self._B[j] / self._R[j]) @ self._B[j].T @ P_t[j]
+                                    for j in range(self._N)])
 
             for i in range(self._N):
                 P_t_i = P_t[i]
@@ -77,7 +79,8 @@ class ContinuousPyDiffGame(PyDiffGame):
                 R_ii = self._R[i]
                 Q_i = self._Q[i]
 
-                dP_t_idt = - A_cl_t.T @ P_t_i - P_t_i @ A_cl_t - Q_i - P_t_i @ B_i @ inv(R_ii) @ B_i.T @ P_t_i
+                dP_t_idt = - A_cl_t.T @ P_t_i - P_t_i @ A_cl_t - Q_i - P_t_i @ \
+                           (B_i @ inv(R_ii) if R_ii.ndim > 1 else B_i / R_ii) @ B_i.T @ P_t_i
 
                 dP_t_idt = dP_t_idt.reshape(self._P_size)
                 dP_tdt = dP_t_idt if not i else np.concatenate((dP_tdt, dP_t_idt), axis=0)
