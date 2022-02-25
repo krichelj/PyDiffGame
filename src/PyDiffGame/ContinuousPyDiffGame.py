@@ -27,7 +27,7 @@ class ContinuousPyDiffGame(PyDiffGame):
                  show_legend: bool = True,
                  epsilon: float = PyDiffGame._epsilon_default,
                  L: int = PyDiffGame._L_default,
-                 last_norms_number: int = PyDiffGame._last_norms_number_default,
+                 eta: int = PyDiffGame._eta_default,
                  force_finite_horizon: bool = False,
                  debug: bool = False
                  ):
@@ -43,7 +43,7 @@ class ContinuousPyDiffGame(PyDiffGame):
                          show_legend=show_legend,
                          epsilon=epsilon,
                          L=L,
-                         last_norms_number=last_norms_number,
+                         eta=eta,
                          force_finite_horizon=force_finite_horizon,
                          debug=debug)
 
@@ -117,13 +117,9 @@ class ContinuousPyDiffGame(PyDiffGame):
 
     def _update_Ps_from_last_state(self):
         """
-        Evaluates the matrices P_i by backwards-solving a set of coupled time-continuous Riccati differential
-        equations, with P_f as the terminal condition
+        With P_f as the terminal condition, evaluates the matrices P_i by backwards-solving this set of
+        coupled time-continuous Riccati differential equations:
 
-        For the open-loop case:
-        dP_i(t)/dt = - A^T P_i(t) - P_i(t) A - Q_i + P_i(t) sum_{j=1}^N B_j R^{-1}_{jj} B^T_j P_j(t)
-
-        and for the closed loop case:
         dP_idt = - A^T P_i(t) - P_i(t) A - Q_i + P_i(t) sum_{j=1}^N B_j R^{-1}_{jj} B^T_j P_j(t) +
                     [sum_{j=1, j!=i}^N P_j(t) B_j R^{-1}_{jj} B^T_j] P_i(t)
         """
