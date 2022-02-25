@@ -37,7 +37,7 @@ class DiscretePyDiffGame(PyDiffGame):
                  show_legend: bool = True,
                  epsilon: float = PyDiffGame._epsilon_default,
                  L: int = PyDiffGame._L_default,
-                 last_norms_number: int = PyDiffGame._last_norms_number_default,
+                 eta: int = PyDiffGame._eta_default,
                  force_finite_horizon: bool = False,
                  debug: bool = False
                  ):
@@ -52,7 +52,7 @@ class DiscretePyDiffGame(PyDiffGame):
                          show_legend=show_legend,
                          epsilon=epsilon,
                          L=L,
-                         last_norms_number=last_norms_number,
+                         eta=eta,
                          force_finite_horizon=force_finite_horizon,
                          debug=debug
                          )
@@ -86,7 +86,7 @@ class DiscretePyDiffGame(PyDiffGame):
             K_k = np.zeros_like(K_k_previous)
 
             for i in range(self._N):
-                i_indices = (i, self.__get_K_i_shape(i))
+                i_indices = self.__get_indices_tuple(i)
                 K_k_previous_i = K_k_previous[i_indices]
                 P_k_1_i = P_k_1[i]
                 R_ii = self._R[i]
@@ -98,7 +98,7 @@ class DiscretePyDiffGame(PyDiffGame):
                 for j in range(self._N):
                     if j != i:
                         B_j = self._B[j]
-                        j_indices = (j, self.__get_K_i_shape(j))
+                        j_indices = self.__get_indices_tuple(j)
                         K_k_previous_j = K_k_previous[j_indices]
                         A_cl_k_i = A_cl_k_i - B_j @ K_k_previous_j
 
@@ -207,6 +207,9 @@ class DiscretePyDiffGame(PyDiffGame):
 
         return range(first_K_i_index, second_K_i_index)
 
+    def __get_indices_tuple(self, i: int):
+        return i, self.__get_K_i_shape(i)
+
     def _update_K_from_last_state(self, k_1: int):
         """
         After initializing, in order to solve for the controllers K_i and matrices P_i,
@@ -240,7 +243,7 @@ class DiscretePyDiffGame(PyDiffGame):
         self._K[k] = K_k_reshaped
 
     def _get_K_i(self, i: int, k: int) -> np.array:
-        return self._K[k][i, self.__get_K_i_shape(i)]
+        return self._K[k][self.__get_indices_tuple(i)]
 
     def _get_P_f_i(self, i: int) -> np.array:
         return self._P_f[i]
@@ -263,20 +266,12 @@ class DiscretePyDiffGame(PyDiffGame):
         P_k = np.zeros_like(P_k_1)
 
         for i in range(self._N):
-            i_indices = (i, self.__get_K_i_shape(i))
+            i_indices = self.__get_indices_tuple(i)
             K_k_i = K_k[i_indices]
             K_k_i_T = K_k_i.T
             P_k_1_i = P_k_1[i]
             R_ii = self._R[i]
             Q_i = self._Q[i]
-
-            # K_quad_i = np.zeros_like(Q_i)
-            #
-            # for j in range(self._N):
-            #     if j != i:
-            #         j_indices = (j, self.__get_K_i_shape(j))
-            #         K_k_j = K_k[j_indices]
-            #         K_quad_i = K_quad_i
 
             P_k[i] = A_cl_k.T @ P_k_1_i @ A_cl_k + (K_k_i_T @ R_ii if R_ii.ndim > 1 else K_k_i_T * R_ii) \
                      @ K_k_i + Q_i
