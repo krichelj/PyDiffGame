@@ -180,5 +180,6 @@ ip = InvertedPendulum(m_c=10,
                       p_L=0.7,
                       x_0=x_0,
                       x_T=x_T,
+                      # regular_LQR=True
                       )
 ip.run_simulation()

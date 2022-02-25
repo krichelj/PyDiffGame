@@ -19,11 +19,11 @@ class PyDiffGame(ABC):
     ----------
     A: numpy 2-d array of shape(n, n)
         The system dynamics matrix
-    B: numpy array of numpy 2-d arrays of len(N), each matrix B_i of shape(n, m_i)
+    B: list of numpy 2-d arrays of len(N), each matrix B_i of shape(n, m_i)
         System input matrices for each control objective
-    Q: numpy array of numpy 2-d arrays of len(N), each matrix Q_i of shape(n, M)
+    Q: list of numpy 2-d arrays of len(N), each matrix Q_i of shape(n, n)
         Cost function state weights for each control objective
-    R: numpy array of numpy 2-d arrays of len(N), each matrix R_i of shape(m_i, m_i)
+    R: list of numpy 2-d arrays of len(N), each matrix R_i of shape(m_i, m_i)
         Cost function input weights for each control objective
     x_0: numpy 1-d array of shape(n), optional
         Initial state vector
@@ -31,7 +31,7 @@ class PyDiffGame(ABC):
         Final state vector, in case of signal tracking
     T_f: positive float, optional, default = 10
         System dynamics horizon. Should be given in the case of finite horizon
-    P_f: numpy array of numpy 2-d arrays of len(N), each matrix P_f_i of shape(n, n), optional,
+    P_f: list of numpy 2-d arrays of len(N), each matrix P_f_i of shape(n, n), optional,
         default = uncoupled solution of scipy's solve_are
         Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
     show_legend: boolean, optional, default = True
@@ -40,7 +40,7 @@ class PyDiffGame(ABC):
         The convergence threshold for numerical convergence
     L: int, optional, default = 1000
         Number of data points
-    last_norms_number: int, optional, default = 5
+    eta: int, optional, default = 5
         The number of last matrix norms to consider for convergence
     debug: boolean, optional, default = False
         Indicates whether to display debug information or not
@@ -50,7 +50,7 @@ class PyDiffGame(ABC):
     __T_f_default: int = 10
     _L_default: int = 1000
     _epsilon_default: float = 10 ** (-3)
-    _last_norms_number_default: int = 5
+    _eta_default: int = 5
 
     def __init__(self,
                  A: np.array,
@@ -64,7 +64,7 @@ class PyDiffGame(ABC):
                  show_legend: bool = True,
                  epsilon: float = _epsilon_default,
                  L: int = _L_default,
-                 last_norms_number: int = _last_norms_number_default,
+                 eta: int = _eta_default,
                  force_finite_horizon: bool = False,
                  debug: bool = False
                  ):
@@ -100,7 +100,7 @@ class PyDiffGame(ABC):
         self.__epsilon = epsilon
 
         self._x = self._x_0
-        self.__last_norms_number = last_norms_number
+        self.__eta = eta
         self._converged = False
         self._debug = debug
 
@@ -149,22 +149,22 @@ class PyDiffGame(ABC):
 
         last_norms = []
         converged = False
-        T_f_curr = self._T_f
+        # T_f_curr = self._T_f
 
         while not converged:
-            self._backward_time = np.linspace(T_f_curr, T_f_curr - self._delta, self._L)
+            # self._backward_time = np.linspace(start=T_f_curr, stop=T_f_curr - self._delta)
             self._update_Ps_from_last_state()
             self._P_f = self._P[-1]
             last_norms += [norm(self._P_f)]
 
-            if len(last_norms) > self.__last_norms_number:
+            if len(last_norms) > self.__eta:
                 last_norms.pop(0)
 
-            if len(last_norms) == self.__last_norms_number:
+            if len(last_norms) == self.__eta:
                 converged = all([abs(norm_i - norm_i1) < self.__epsilon for norm_i, norm_i1
                                  in zip(last_norms, last_norms[1:])])
 
-            T_f_curr -= self._delta
+            # T_f_curr -= self._delta
 
     def _post_convergence(method: Callable) -> Callable:
         """
