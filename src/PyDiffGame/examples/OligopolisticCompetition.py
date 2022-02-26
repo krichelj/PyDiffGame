@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.integrate import odeint
-from PyDiffGame import PyDiffGame, ContinuousPyDiffGame
+from PyDiffGame import PyDiffGame
+
+from ContinuousPyDiffGame import ContinuousPyDiffGame
 
 
 class OligopolisticCompetition(ContinuousPyDiffGame):
