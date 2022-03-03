@@ -8,8 +8,8 @@ import matplotlib.lines as lines
 from scipy.integrate import solve_ivp
 from scipy.linalg import solve_continuous_are
 
-from PyDiffGame import PyDiffGame
-from ContinuousPyDiffGame import ContinuousPyDiffGame
+from PyDiffGame.PyDiffGame import PyDiffGame
+from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
 
 g = 9.81
 
@@ -167,8 +167,8 @@ class InvertedPendulum(ContinuousPyDiffGame):
 x_0 = np.array([20,  # x
                 pi / 3,  # theta
                 0,  # x_dot
-                0]
-               )  # theta_dot
+                0]  # theta_dot
+               )
 x_T = np.array([0,  # x
                 pi,  # theta
                 0,  # x_dot

@@ -4,7 +4,7 @@ import quadpy
 from numpy.linalg import eigvals, inv
 from typing import Union
 
-from PyDiffGame import PyDiffGame
+from PyDiffGame.PyDiffGame import PyDiffGame
 
 
 class DiscretePyDiffGame(PyDiffGame):
@@ -27,8 +27,8 @@ class DiscretePyDiffGame(PyDiffGame):
 
     def __init__(self,
                  A: np.array,
-                 B: list[np.array],
                  Q: list[np.array],
+                 B: list[np.array],
                  R: list[np.array],
                  is_input_discrete: bool = False,
                  x_0: np.array = None,
