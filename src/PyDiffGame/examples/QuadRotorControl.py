@@ -11,7 +11,7 @@ from numpy import sin, cos, arctan
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 
-from ContinuousPyDiffGame import ContinuousPyDiffGame
+from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
 
 # Global Constants
 

@@ -47,7 +47,7 @@ class PyDiffGame(ABC):
     """
 
     # class fields
-    __T_f_default: int = 10
+    __T_f_default: int = 0.1
     _L_default: int = 1000
     _epsilon_default: float = 10 ** (-3)
     _eta_default: int = 5
@@ -437,9 +437,9 @@ class PyDiffGame(ABC):
 
             cost_i = 0
 
-            for l in range(self._L):
-                x_l = self._x[l]
-                K_i_l = self._get_K_i(i) if self.__continuous else self._get_K_i(i, l)
+            for interval in range(self._L):
+                x_l = self._x[interval]
+                K_i_l = self._get_K_i(i) if self.__continuous else self._get_K_i(i, interval)
                 cost_i += x_l.T @ (Q_i + (K_i_l.T @ R_ii @ K_i_l if R_ii.ndim > 1 else R_ii * K_i_l.T @ K_i_l)) @ x_l
 
             costs += [cost_i]

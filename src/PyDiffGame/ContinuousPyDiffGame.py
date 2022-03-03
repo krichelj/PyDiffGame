@@ -3,7 +3,7 @@ from scipy.integrate import odeint
 from numpy.linalg import eigvals, inv
 from typing import Union
 
-from PyDiffGame import PyDiffGame
+from PyDiffGame.PyDiffGame import PyDiffGame
 
 
 class ContinuousPyDiffGame(PyDiffGame):
