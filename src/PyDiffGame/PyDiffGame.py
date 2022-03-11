@@ -47,9 +47,9 @@ class PyDiffGame(ABC):
     """
 
     # class fields
-    __T_f_default: int = 0.1
+    __T_f_default: int = 0.5
     _L_default: int = 1000
-    _epsilon_default: float = 10 ** (-3)
+    _epsilon_default: float = 10 ** (-8)
     _eta_default: int = 5
 
     def __init__(self,
@@ -148,23 +148,28 @@ class PyDiffGame(ABC):
         """
 
         last_norms = []
-        converged = False
-        # T_f_curr = self._T_f
+        P_converged = False
+        x_converged = False
+        T_f_curr = self._T_f
 
-        while not converged:
-            # self._backward_time = np.linspace(start=T_f_curr, stop=T_f_curr - self._delta)
-            self._update_Ps_from_last_state()
-            self._P_f = self._P[-1]
-            last_norms += [norm(self._P_f)]
+        while not x_converged:
+            self._backward_time = np.linspace(start=0, stop=T_f_curr, num=self._L)[::-1]
 
-            if len(last_norms) > self.__eta:
-                last_norms.pop(0)
+            while not P_converged:
 
-            if len(last_norms) == self.__eta:
-                converged = all([abs(norm_i - norm_i1) < self.__epsilon for norm_i, norm_i1
-                                 in zip(last_norms, last_norms[1:])])
+                self._update_Ps_from_last_state()
+                self._P_f = self._P[-1]
+                last_norms += [norm(self._P_f)]
 
-            # T_f_curr -= self._delta
+                if len(last_norms) > self.__eta:
+                    last_norms.pop(0)
+
+                if len(last_norms) == self.__eta:
+                    P_converged = all([abs(norm_i - norm_i1) < self.__epsilon for norm_i, norm_i1
+                                       in zip(last_norms, last_norms[1:])])
+
+            x_converged = norm(self.simulate_x_T_f()) < self.__epsilon
+            T_f_curr += self._delta
 
     def _post_convergence(method: Callable) -> Callable:
         """
@@ -421,6 +426,9 @@ class PyDiffGame(ABC):
 
         if self._x_0 is not None:
             self._plot_state_space()
+
+    def simulate_x_T_f(self) -> np.array:
+        pass
 
     @_post_convergence
     def get_costs(self) -> np.array:

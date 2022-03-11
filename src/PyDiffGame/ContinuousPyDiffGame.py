@@ -184,7 +184,7 @@ class ContinuousPyDiffGame(PyDiffGame):
 
         def state_diff_eqn(x_t: np.array, _: float) -> np.array:
             """
-            odeint State Variables Solver function
+            Scipy's odeint State Variables Solver function
 
             Parameters
             ----------
@@ -206,11 +206,27 @@ class ContinuousPyDiffGame(PyDiffGame):
             dx_t_dt = self._A_cl @ ((x_t - self._x_T) if self._x_T is not None else x_t)
             dx_t_dt = dx_t_dt.ravel()
 
-            if t:
-                t += 1
+            t += 1
 
             return dx_t_dt
 
         self._x = odeint(func=state_diff_eqn,
                          y0=self._x_0,
                          t=self._forward_time)
+
+    def simulate_x_T_f(self) -> np.array:
+
+        def state_diff_eqn(x_t: np.array, _: float) -> np.array:
+            self._update_K_from_last_state(t=-1)
+            self._update_A_cl_from_last_state()
+            dx_t_dt = self._A_cl @ ((x_t - self._x_T) if self._x_T is not None else x_t)
+            dx_t_dt = dx_t_dt.ravel()
+
+            return dx_t_dt
+
+        simulated_x_T = odeint(func=state_diff_eqn,
+                               y0=self._x_0,
+                               t=self._forward_time)[-1]
+
+        return simulated_x_T
+

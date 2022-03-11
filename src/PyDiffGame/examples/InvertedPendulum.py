@@ -84,10 +84,13 @@ class InvertedPendulum(ContinuousPyDiffGame):
                          )
 
     def run_simulation(self):
-
         if self.__regular_LQR:
-            P = np.matrix(solve_continuous_are(self._A, self._B[0], self._Q[0], self._R[0]))
-            K = np.matrix(np.linalg.inv(self._R[0]) @ self._B[0].T @ P)
+            P = np.array(solve_continuous_are(self._A,
+                                              self._B[0],
+                                              self._Q[0],
+                                              self._R[0])
+                         )
+            K = np.array(np.linalg.inv(self._R[0]) @ self._B[0].T @ P)
         else:
             # self.solve_game_and_simulate_state_space()
             self.solve_game_simulate_state_space_and_plot()
