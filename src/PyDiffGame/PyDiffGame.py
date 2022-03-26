@@ -47,7 +47,7 @@ class PyDiffGame(ABC):
     """
 
     # class fields
-    __T_f_default: int = 0.5
+    __T_f_default: int = 5
     _L_default: int = 1000
     _epsilon_default: float = 10 ** (-8)
     _eta_default: int = 5

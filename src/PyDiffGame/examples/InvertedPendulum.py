@@ -167,22 +167,22 @@ class InvertedPendulum(ContinuousPyDiffGame):
         plt.show()
 
 
-x_0 = np.array([20,  # x
-                pi / 3,  # theta
-                0,  # x_dot
-                0]  # theta_dot
-               )
-x_T = np.array([0,  # x
-                pi,  # theta
-                0,  # x_dot
-                0]  # theta_dot
-               )
+x_0_1 = np.array([20,  # x
+                  pi / 3,  # theta
+                  0,  # x_dot
+                  0]  # theta_dot
+                 )
+x_T_1 = np.array([0,  # x
+                  pi,  # theta
+                  0,  # x_dot
+                  0]  # theta_dot
+                 )
 
 ip = InvertedPendulum(m_c=10,
-                      m_p=30,
-                      p_L=0.7,
-                      x_0=x_0,
-                      x_T=x_T,
-                      # regular_LQR=True
+                      m_p=3,
+                      p_L=1,
+                      x_0=x_0_1,
+                      x_T=x_T_1,
+                      regular_LQR=True
                       )
 ip.run_simulation()
