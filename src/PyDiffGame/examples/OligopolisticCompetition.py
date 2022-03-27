@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.integrate import odeint
-from PyDiffGame import PyDiffGame
 
-from ContinuousPyDiffGame import ContinuousPyDiffGame
+from PyDiffGame import PyDiffGame
+from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
 
 
 class OligopolisticCompetition(ContinuousPyDiffGame):
@@ -22,8 +22,8 @@ class OligopolisticCompetition(ContinuousPyDiffGame):
         self.__c = c
         self.__p = p
 
-        A = np.array([[- 0.5 * self.__r - self.__s * (1 + np.sum(beta)), self.__s * (self.__p +
-                                                                                     np.inner(self.__beta, self.__c))],
+        A = np.array([[- 0.5 * self.__r - self.__s * (1 + np.sum(beta)),
+                       self.__s * (self.__p + np.inner(self.__beta, self.__c))],
                       [0, - 0.5 * self.__r]])
         B = [np.array([[- self.__s * beta_i],
                        [0]]) for beta_i in self.__beta]
@@ -59,7 +59,7 @@ class OligopolisticCompetition(ContinuousPyDiffGame):
         if len(self.__c) != self._N:
             raise ValueError('c must be of length N')
 
-    @PyDiffGame._post_convergence
+    # @PyDiffGame._post_convergence
     def print_steady_state_price(self):
         numerator_sum = 0
         denominator_sum = 0
@@ -80,7 +80,7 @@ class OligopolisticCompetition(ContinuousPyDiffGame):
 
         print(p_s)
 
-    @PyDiffGame._post_convergence
+    # @PyDiffGame._post_convergence
     def simulate_p(self):
         t = len(self._P) - 1
 
@@ -141,23 +141,15 @@ class OligopolisticCompetition(ContinuousPyDiffGame):
         #            title=f"p_t")
 
 
-r = 0.1
-s = 2
-p = 85
-x_0 = np.array([80, 1])
-T_f = 5
-
-for N in [2]:
-    beta = [1] * N
-    c = [1] * N
-    oc = OligopolisticCompetition(N=N,
-                                  r=r,
-                                  s=s,
-                                  beta=beta,
-                                  c=c,
-                                  p=p,
-                                  x_0=x_0,
-                                  T_f=T_f,
+for N_i in [2]:
+    oc = OligopolisticCompetition(N=N_i,
+                                  r=0.1,
+                                  s=2,
+                                  beta=[1] * N_i,
+                                  c=[1] * N_i,
+                                  p=85,
+                                  x_0=np.array([80, 1]),
+                                  T_f=5,
                                   )
     oc.solve_game_and_simulate_state_space()
     oc.print_steady_state_price()

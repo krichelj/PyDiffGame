@@ -49,8 +49,8 @@ class PyDiffGame(ABC):
     # class fields
     __T_f_default: int = 5
     _L_default: int = 1000
-    _epsilon_default: float = 10 ** (-8)
-    _eta_default: int = 5
+    _epsilon_default: float = 10 ** (-3)
+    _eta_default: int = 3
 
     def __init__(self,
                  A: np.array,
@@ -101,7 +101,7 @@ class PyDiffGame(ABC):
 
         self._x = self._x_0
         self.__eta = eta
-        self._converged = False
+        self.__converged = False
         self._debug = debug
 
     def __verify_input(self):
@@ -146,16 +146,18 @@ class PyDiffGame(ABC):
         Solves the game as backwards convergence of the differential
         finite-horizon game for repeated consecutive steps until the matrix norm converges
         """
-
         last_norms = []
         P_converged = False
         x_converged = False
         T_f_curr = self._T_f
+        x_T_norm = norm(self._x_T) if self._x_T is not None else 0
 
         while not x_converged:
-            self._backward_time = np.linspace(start=0, stop=T_f_curr, num=self._L)[::-1]
 
             while not P_converged:
+                self._backward_time = np.linspace(start=T_f_curr,
+                                                  stop=T_f_curr - self._delta,
+                                                  num=self._L)
 
                 self._update_Ps_from_last_state()
                 self._P_f = self._P[-1]
@@ -168,8 +170,11 @@ class PyDiffGame(ABC):
                     P_converged = all([abs(norm_i - norm_i1) < self.__epsilon for norm_i, norm_i1
                                        in zip(last_norms, last_norms[1:])])
 
-            x_converged = norm(self.simulate_x_T_f()) < self.__epsilon
-            T_f_curr += self._delta
+                T_f_curr -= self._delta
+
+            curr_x_T_f_norm = norm(self.simulate_x_T_f())
+            x_converged = abs(curr_x_T_f_norm - x_T_norm) < self.__epsilon
+            T_f_curr = self._T_f + 100 * self._delta
 
     def _post_convergence(method: Callable) -> Callable:
         """
@@ -177,7 +182,7 @@ class PyDiffGame(ABC):
         """
 
         def verify_convergence(self: PyDiffGame, *args, **kwargs):
-            if not self._converged:
+            if not self.__converged:
                 raise RuntimeError('Must first simulate the differential game')
             return method(self, *args, **kwargs)
 
@@ -403,7 +408,7 @@ class PyDiffGame(ABC):
         else:
             self._solve_and_plot_finite_horizon()
 
-        self._converged = True
+        self.__converged = True
 
     @_post_convergence
     def simulate_state_space(self):
