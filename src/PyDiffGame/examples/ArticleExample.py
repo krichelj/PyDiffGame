@@ -1,6 +1,6 @@
 import numpy as np
 
-# from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
+from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
 from PyDiffGame.DiscretePyDiffGame import DiscretePyDiffGame
 
 A = np.array([[-2, 1],
@@ -33,27 +33,27 @@ P_f = [np.array([[10, 0],
                  [0, 60]])]
 
 for L in [int(1000 / i) for i in range(1, 5)]:
-    # continuous_game = ContinuousPyDiffGame(A=A,
-    #                                        B=B,
-    #                                        Q=Q,
-    #                                        R=R,
-    #                                        x_0=x_0,
-    #                                        L=L,
-    #                                        # P_f=P_f,
-    #                                        # T_f=T_f
-    #                                        )
-    # continuous_game.solve_game_and_simulate_state_space()
-    discrete_game = DiscretePyDiffGame(A=A,
-                                       B=B,
-                                       Q=Q,
-                                       R=R,
-                                       x_0=x_0,
-                                       # L=L
-                                       # P_f=P_f,
-                                       # T_f=T_f,
-                                       # debug=True
-                                       )
-    discrete_game.solve_game_simulate_state_space_and_plot()
+    continuous_game = ContinuousPyDiffGame(A=A,
+                                           B=B,
+                                           Q=Q,
+                                           R=R,
+                                           x_0=x_0,
+                                           L=L,
+                                           # P_f=P_f,
+                                           # T_f=T_f
+                                           )
+    continuous_game.solve_game_and_simulate_state_space()
+    # discrete_game = DiscretePyDiffGame(A=A,
+    #                                    B=B,
+    #                                    Q=Q,
+    #                                    R=R,
+    #                                    x_0=x_0,
+    #                                    # L=L
+    #                                    # P_f=P_f,
+    #                                    # T_f=T_f,
+    #                                    # debug=True
+    #                                    )
+    # discrete_game.solve_game_simulate_state_space_and_plot()
 
     # D_l_C = discrete_game < continuous_game
     # print('#' * 10 + f' delta_T: {L} ' + '#' * 10 + f'\nD<C: {D_l_C}')

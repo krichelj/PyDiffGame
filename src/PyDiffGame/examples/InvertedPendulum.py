@@ -29,7 +29,8 @@ class InvertedPendulum(ContinuousPyDiffGame):
                  T_f: float = None,
                  L: int = PyDiffGame._L_default,
                  multiplayer: bool = True,
-                 regular_LQR: bool = False
+                 regular_LQR: bool = False,
+                 show_animation: bool = False
                  ):
         self.__m_c = m_c
         self.__m_p = m_p
@@ -62,6 +63,7 @@ class InvertedPendulum(ContinuousPyDiffGame):
 
         self.__origin = (0.0, 0.0)
         self.__regular_LQR = regular_LQR
+        self.__show_animation = show_animation
         multi = multiplayer and not regular_LQR
 
         B_x = np.array([[0],
@@ -83,18 +85,8 @@ class InvertedPendulum(ContinuousPyDiffGame):
                          L=L
                          )
 
-    def run_simulation(self):
-        if self.__regular_LQR:
-            P = np.array(solve_continuous_are(self._A,
-                                              self._B[0],
-                                              self._Q[0],
-                                              self._R[0])
-                         )
-            K = np.array(np.linalg.inv(self._R[0]) @ self._B[0].T @ P)
-        else:
-            # self.solve_game_and_simulate_state_space()
-            self.solve_game_simulate_state_space_and_plot()
-            K = self._K[0]
+    def __run_animation(self):
+        K = self._K[0]
 
         def stateSpace(_, x_t: np.array) -> np.array:
             u_t = - K @ (x_t - self._x_T)
@@ -166,6 +158,12 @@ class InvertedPendulum(ContinuousPyDiffGame):
                                        blit=True)
         plt.show()
 
+    def run_simulation(self):
+        self.solve_game_simulate_state_space_and_plot()
+
+        if self.__show_animation:
+            self.__run_animation()
+
 
 x_0_1 = np.array([20,  # x
                   pi / 3,  # theta
@@ -183,6 +181,7 @@ ip = InvertedPendulum(m_c=10,
                       p_L=1,
                       x_0=x_0_1,
                       x_T=x_T_1,
-                      regular_LQR=True
+                      regular_LQR=True,
+                      show_animation=True
                       )
 ip.run_simulation()
