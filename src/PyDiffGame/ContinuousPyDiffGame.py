@@ -3,10 +3,11 @@ from scipy.integrate import odeint
 from numpy.linalg import eigvals, inv
 from typing import Union
 
+from abc import ABC
 from PyDiffGame.PyDiffGame import PyDiffGame
 
 
-class ContinuousPyDiffGame(PyDiffGame):
+class ContinuousPyDiffGame(PyDiffGame, ABC):
     """
     Continuous differential game base class
 

@@ -6,16 +6,16 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.lines as lines
 from scipy.integrate import solve_ivp
-from scipy.linalg import solve_continuous_are
 
+from abc import ABC
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
+from PyDiffGame.DiscretePyDiffGame import DiscretePyDiffGame
 
 g = 9.81
 
 
-class InvertedPendulum(ContinuousPyDiffGame):
-
+class InvertedPendulum(PyDiffGame, ABC):
     def __init__(self,
                  m_c: float,
                  m_p: float,
@@ -165,6 +165,74 @@ class InvertedPendulum(ContinuousPyDiffGame):
             self.__run_animation()
 
 
+class ContinuousInvertedPendulum(InvertedPendulum, ContinuousPyDiffGame):
+    def __init__(self,
+                 m_c: float,
+                 m_p: float,
+                 p_L: float,
+                 q_s: float = 100,
+                 q_m: float = 100,
+                 q_l: float = 1000,
+                 r: float = 0.001,
+                 x_0: np.array = None,
+                 x_T: np.array = None,
+                 T_f: float = None,
+                 L: int = PyDiffGame._L_default,
+                 multiplayer: bool = True,
+                 regular_LQR: bool = False,
+                 show_animation: bool = False
+                 ):
+        super(ContinuousInvertedPendulum, self).__init__(m_c=m_c,
+                                                         m_p=m_p,
+                                                         p_L=p_L,
+                                                         q_s=q_s,
+                                                         q_m=q_m,
+                                                         q_l=q_l,
+                                                         r=r,
+                                                         x_0=x_0,
+                                                         x_T=x_T,
+                                                         T_f=T_f,
+                                                         L=L,
+                                                         multiplayer=multiplayer,
+                                                         regular_LQR=regular_LQR,
+                                                         show_animation=show_animation)
+        self.run_simulation()
+
+
+class DiscreteInvertedPendulum(InvertedPendulum, DiscretePyDiffGame):
+    def __init__(self,
+                 m_c: float,
+                 m_p: float,
+                 p_L: float,
+                 q_s: float = 100,
+                 q_m: float = 100,
+                 q_l: float = 1000,
+                 r: float = 0.001,
+                 x_0: np.array = None,
+                 x_T: np.array = None,
+                 T_f: float = None,
+                 L: int = PyDiffGame._L_default,
+                 multiplayer: bool = True,
+                 regular_LQR: bool = False,
+                 show_animation: bool = False
+                 ):
+        super(DiscreteInvertedPendulum, self).__init__(m_c=m_c,
+                                                       m_p=m_p,
+                                                       p_L=p_L,
+                                                       q_s=q_s,
+                                                       q_m=q_m,
+                                                       q_l=q_l,
+                                                       r=r,
+                                                       x_0=x_0,
+                                                       x_T=x_T,
+                                                       T_f=T_f,
+                                                       L=L,
+                                                       multiplayer=multiplayer,
+                                                       regular_LQR=regular_LQR,
+                                                       show_animation=show_animation)
+        self.run_simulation()
+
+
 x_0_1 = np.array([20,  # x
                   pi / 3,  # theta
                   0,  # x_dot
@@ -176,12 +244,20 @@ x_T_1 = np.array([0,  # x
                   0]  # theta_dot
                  )
 
-ip = InvertedPendulum(m_c=10,
-                      m_p=3,
-                      p_L=1,
-                      x_0=x_0_1,
-                      x_T=x_T_1,
-                      regular_LQR=True,
-                      show_animation=True
-                      )
-ip.run_simulation()
+ip = ContinuousInvertedPendulum(m_c=10,
+                                m_p=3,
+                                p_L=1,
+                                x_0=x_0_1,
+                                x_T=x_T_1,
+                                # regular_LQR=True,
+                                show_animation=False
+                                )
+
+# ip = DiscreteInvertedPendulum(m_c=10,
+#                               m_p=3,
+#                               p_L=1,
+#                               x_0=x_0_1,
+#                               x_T=x_T_1,
+#                               # regular_LQR=True,
+#                               show_animation=False
+#                               )
