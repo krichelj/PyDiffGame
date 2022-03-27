@@ -1,5 +1,5 @@
-# imports
 from __future__ import annotations
+
 import time
 import numpy as np
 from numpy.linalg import eigvals, norm, LinAlgError
@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
 import warnings
 from typing import Callable, Union
+
 from abc import ABC, abstractmethod
 
 
@@ -458,6 +459,10 @@ class PyDiffGame(ABC):
             costs += [cost_i]
 
         return np.array(costs)
+
+    @abstractmethod
+    def run_simulation(self):
+        pass
 
     def __len__(self) -> int:
         """
