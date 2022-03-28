@@ -3,11 +3,10 @@ from scipy.integrate import odeint
 from numpy.linalg import eigvals, inv
 from typing import Union
 
-from abc import ABC
 from PyDiffGame.PyDiffGame import PyDiffGame
 
 
-class ContinuousPyDiffGame(PyDiffGame, ABC):
+class ContinuousPyDiffGame(PyDiffGame):
     """
     Continuous differential game base class
 
@@ -68,7 +67,6 @@ class ContinuousPyDiffGame(PyDiffGame, ABC):
             """
 
             P_t = [(P_t[i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n) for i in range(self._N)]
-            # SP_sum = sum([S_i @ P_t_i for S_i, P_t_i in zip(S_matrices, P_t)])
             dP_tdt = np.zeros((self._P_size,))
             A_cl_t = self._A - sum([(self._B[j] @ inv(self._R[j])
                                      if self._R[j].ndim > 1 else self._B[j] / self._R[j]) @ self._B[j].T @ P_t[j]
@@ -143,11 +141,6 @@ class ContinuousPyDiffGame(PyDiffGame, ABC):
         self._update_Ps_from_last_state()
         self._converged = True
 
-        # # plot the convergence of the values of the P matrices
-        # self._plot(t=self._backward_time,
-        #            mat=self._P,
-        #            is_P=True)
-
     def _solve_infinite_horizon(self):
         """
         Considers the following finite-horizon cost functions:
@@ -168,7 +161,6 @@ class ContinuousPyDiffGame(PyDiffGame, ABC):
         num_of_zeros = [int(v) for v in closed_loop_eigenvalues_real_values].count(0)
         non_positive_eigenvalues = all([eig_real_value <= 0 for eig_real_value in closed_loop_eigenvalues_real_values])
         at_most_one_zero_eigenvalue = num_of_zeros <= 1
-        # print(f'A_cl = \n{self._A_cl}\neig=\n{closed_loop_eigenvalues_real_values}')
         stability = non_positive_eigenvalues and at_most_one_zero_eigenvalue
 
         return stability
@@ -221,13 +213,11 @@ class ContinuousPyDiffGame(PyDiffGame, ABC):
             self._update_K_from_last_state(t=-1)
             self._update_A_cl_from_last_state()
             dx_t_dt = self._A_cl @ ((x_t - self._x_T) if self._x_T is not None else x_t)
-            dx_t_dt = dx_t_dt.ravel()
 
-            return dx_t_dt
+            return dx_t_dt.ravel()
 
         simulated_x_T = odeint(func=state_diff_eqn,
                                y0=self._x_0,
                                t=self._forward_time)[-1]
 
         return simulated_x_T
-
