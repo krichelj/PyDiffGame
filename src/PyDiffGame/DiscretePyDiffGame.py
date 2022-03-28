@@ -4,11 +4,10 @@ import quadpy
 from numpy.linalg import eigvals, inv
 from typing import Union
 
-from abc import ABC
 from PyDiffGame.PyDiffGame import PyDiffGame
 
 
-class DiscretePyDiffGame(PyDiffGame, ABC):
+class DiscretePyDiffGame(PyDiffGame):
     """
     Discrete differential game base class
 
@@ -33,6 +32,7 @@ class DiscretePyDiffGame(PyDiffGame, ABC):
                  R: list[np.array],
                  is_input_discrete: bool = False,
                  x_0: np.array = None,
+                 x_T: np.array = None,
                  T_f: Union[float, int] = None,
                  P_f: list[np.array] = None,
                  show_legend: bool = True,
@@ -48,6 +48,7 @@ class DiscretePyDiffGame(PyDiffGame, ABC):
                          Q=Q,
                          R=R,
                          x_0=x_0,
+                         x_T=x_T,
                          T_f=T_f,
                          P_f=P_f,
                          show_legend=show_legend,
@@ -174,16 +175,6 @@ class DiscretePyDiffGame(PyDiffGame, ABC):
                                self._n,
                                self._n))
 
-        # Q = np.array(self._Q)
-        # self._Q = np.zeros((self._data_points,
-        #                     self._N,
-        #                     self._n,
-        #                     self._n))
-        # self._Q[0] = Q
-        # self._Q[1::2] = Q
-        # self._Q[::2] = Q
-
-        # self.__simpson_integrate_Q()
         self._P[-1] = np.array(self._Q).reshape((self._N,
                                                  self._n,
                                                  self._n))
