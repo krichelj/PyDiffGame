@@ -101,6 +101,7 @@ class ContinuousPyDiffGame(PyDiffGame):
             Current point in time
         """
 
+
         P_t = [(self._P[t][i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n) for i in range(self._N)]
         self._K = [(inv(R_ii) @ B_i.T if R_ii.ndim > 1 else 1 / R_ii * B_i.T) @ P_i
                    for R_ii, B_i, P_i in zip(self._R, self._B, P_t)]
@@ -199,7 +200,8 @@ class ContinuousPyDiffGame(PyDiffGame):
             dx_t_dt = self._A_cl @ ((x_t - self._x_T) if self._x_T is not None else x_t)
             dx_t_dt = dx_t_dt.ravel()
 
-            t += 1
+            if t < self._L - 1:
+                t += 1
 
             return dx_t_dt
 

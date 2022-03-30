@@ -48,9 +48,9 @@ class PyDiffGame(ABC):
     """
 
     # class fields
-    __T_f_default: int = 5
+    __T_f_default: int = 2
     _L_default: int = 1000
-    _epsilon_default: float = 10 ** (-8)
+    _epsilon_default: float = 10 ** (-7)
     _eta_default: int = 5
 
     def __init__(self,
@@ -149,11 +149,11 @@ class PyDiffGame(ABC):
         finite-horizon game for repeated consecutive steps until the matrix norm converges
         """
 
-        last_eta_norms = []
-        P_converged = False
         x_converged = False
+        P_converged = False
+        last_norms = []
         curr_iteration_T_f = self._T_f
-        x_T_norm = norm(self._x_T) if self._x_T is not None else 0
+        x_T = self._x_T if self._x_T is not None else np.zeros_like(self._x_0)
 
         while not x_converged:
 
@@ -163,19 +163,21 @@ class PyDiffGame(ABC):
                                                   num=self._L)
                 self._update_Ps_from_last_state()
                 self._P_f = self._P[-1]
-                last_eta_norms += [norm(self._P_f)]
+                last_norms += [norm(self._P_f)]
 
-                if len(last_eta_norms) > self.__eta:
-                    last_eta_norms.pop(0)
+                if len(last_norms) > self.__eta:
+                    last_norms.pop(0)
 
-                if len(last_eta_norms) == self.__eta:
+                if len(last_norms) == self.__eta:
                     P_converged = all([abs(norm_i - norm_i1) < self.__epsilon for norm_i, norm_i1
-                                       in zip(last_eta_norms, last_eta_norms[1:])])
+                                       in zip(last_norms, last_norms[1:])])
                 self._T_f -= self._delta
 
-            if self._x_T is not None:
-                curr_x_T_f_norm = norm(self.simulate_x_T_f())
-                x_converged = abs(curr_x_T_f_norm - x_T_norm) < self.__epsilon
+            self._T_f = curr_iteration_T_f
+
+            if self._x_0 is not None:
+                curr_x_T_f_norm = self.simulate_x_T_f()
+                x_converged = norm(curr_x_T_f_norm - x_T) < self.__epsilon
                 curr_iteration_T_f += 1
                 self._T_f = curr_iteration_T_f
                 self._forward_time = np.linspace(start=0, stop=self._T_f, num=self._L)
@@ -271,7 +273,11 @@ class PyDiffGame(ABC):
         Y = C @ self._x.T
         self.__plot_variables(mat=Y.T)
 
+    @_post_convergence
     def save_figure(self, figure_path: str):
+        if self._x_0 is None:
+            raise RuntimeError('No parameter x_0 was defined to illustrate a figure')
+
         self._fig.savefig(figure_path)
 
     def __get_are_P_f(self) -> list[np.array]:
