@@ -7,15 +7,13 @@ import matplotlib.patches as patches
 import matplotlib.lines as lines
 from scipy.integrate import solve_ivp
 
-from abc import ABC
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
-from PyDiffGame.DiscretePyDiffGame import DiscretePyDiffGame
 
 g = 9.81
 
 
-class InvertedPendulum(PyDiffGame, ABC):
+class InvertedPendulum(ContinuousPyDiffGame):
     def __init__(self,
                  m_c: float,
                  m_p: float,
@@ -23,7 +21,7 @@ class InvertedPendulum(PyDiffGame, ABC):
                  q_s: float = 1,
                  q_m: float = 100,
                  q_l: float = 10000,
-                 r: float = 0.001,
+                 r: float = 1,
                  x_0: np.array = None,
                  x_T: np.array = None,
                  T_f: float = None,
@@ -166,107 +164,41 @@ class InvertedPendulum(PyDiffGame, ABC):
             self.__run_animation()
 
 
-class ContinuousInvertedPendulum(InvertedPendulum, ContinuousPyDiffGame):
-    def __init__(self,
-                 m_c: float,
-                 m_p: float,
-                 p_L: float,
-                 q_s: float = 100,
-                 q_m: float = 100,
-                 q_l: float = 1000,
-                 r: float = 0.001,
-                 x_0: np.array = None,
-                 x_T: np.array = None,
-                 T_f: float = None,
-                 L: int = PyDiffGame._L_default,
-                 multiplayer: bool = True,
-                 regular_LQR: bool = False,
-                 show_animation: bool = True
-                 ):
-        super(ContinuousInvertedPendulum, self).__init__(m_c=m_c,
-                                                         m_p=m_p,
-                                                         p_L=p_L,
-                                                         q_s=q_s,
-                                                         q_m=q_m,
-                                                         q_l=q_l,
-                                                         r=r,
-                                                         x_0=x_0,
-                                                         x_T=x_T,
-                                                         T_f=T_f,
-                                                         L=L,
-                                                         multiplayer=multiplayer,
-                                                         regular_LQR=regular_LQR,
-                                                         show_animation=show_animation)
-        self.run_simulation()
-
-
-class DiscreteInvertedPendulum(InvertedPendulum, DiscretePyDiffGame):
-    def __init__(self,
-                 m_c: float,
-                 m_p: float,
-                 p_L: float,
-                 q_s: float = 100,
-                 q_m: float = 100,
-                 q_l: float = 1000,
-                 r: float = 0.001,
-                 x_0: np.array = None,
-                 x_T: np.array = None,
-                 T_f: float = None,
-                 L: int = PyDiffGame._L_default,
-                 multiplayer: bool = True,
-                 regular_LQR: bool = False,
-                 show_animation: bool = False
-                 ):
-        super(DiscreteInvertedPendulum, self).__init__(m_c=m_c,
-                                                       m_p=m_p,
-                                                       p_L=p_L,
-                                                       q_s=q_s,
-                                                       q_m=q_m,
-                                                       q_l=q_l,
-                                                       r=r,
-                                                       x_0=x_0,
-                                                       x_T=x_T,
-                                                       T_f=T_f,
-                                                       L=L,
-                                                       multiplayer=multiplayer,
-                                                       regular_LQR=regular_LQR,
-                                                       show_animation=show_animation)
-        self.run_simulation()
-
-
-x_0_1 = np.array([20,  # x
+x_0_1 = np.array([200,  # x
                   pi / 3,  # theta
-                  0,  # x_dot
+                  5,  # x_dot
                   0]  # theta_dot
                  )
-x_T_1 = np.array([0,  # x
-                  pi,  # theta
-                  0,  # x_dot
-                  0]  # theta_dot
+x_T_1 = np.array([-3,  # x
+                  pi / 4,  # theta
+                  10,  # x_dot
+                  5]  # theta_dot
                  )
 
-# for m_c_i, m_p_i, p_L_i in zip([10, 20, 50, 100, 200, 300], [1, 5, 8, 10, 15, 20], [1, 2, 3, 4, 1, 1]):
+for m_c_i, m_p_i, p_L_i in zip([50, 100, 200], [8, 10, 15], [3, 4, 7]):
+    for T_f_i in [5, 10]:
+        lqr_cip = InvertedPendulum(m_c=m_c_i,
+                                   m_p=m_p_i,
+                                   p_L=p_L_i,
+                                   x_0=x_0_1,
+                                   x_T=x_T_1,
+                                   regular_LQR=True,
+                                   show_animation=False,
+                                   T_f=T_f_i
+                                   )
+        lqr_cip.run_simulation()
 
-m_c_i, m_p_i, p_L_i = 200, 10, 1
-lqr_cip = ContinuousInvertedPendulum(m_c=m_c_i,
-                                     m_p=m_p_i,
-                                     p_L=p_L_i,
-                                     x_0=x_0_1,
-                                     x_T=x_T_1,
-                                     regular_LQR=True,
-                                     show_animation=False,
-                                     # T_f=5
-                                     )
+        # lqr_cip.save_figure(f'figures/lqr_{m_c_i}|{m_p_i}|{p_L_i}T_f{T_f_i}.png')
 
-# lqr_cip.save_figure(f'figures/lqr_m_c_{m_c_i}_m_p_{m_p_i}_p_L_{p_L_i}.png')
-cip = ContinuousInvertedPendulum(m_c=m_c_i,
-                                 m_p=m_p_i,
-                                 p_L=p_L_i,
-                                 x_0=x_0_1,
-                                 x_T=x_T_1,
-                                 # regular_LQR=True,
-                                 show_animation=False,
-                                 # T_f=5
-                                 )
-# cip.save_figure(f'figures/game_m_c_{m_c_i}_m_p_{m_p_i}_p_L_{p_L_i}.png')
+        cip = InvertedPendulum(m_c=m_c_i,
+                               m_p=m_p_i,
+                               p_L=p_L_i,
+                               x_0=x_0_1,
+                               x_T=x_T_1,
+                               # regular_LQR=True,
+                               show_animation=False,
+                               T_f=T_f_i
+                               )
+        cip.run_simulation()
 
+        # cip.save_figure(f'figures/game_{m_c_i}|{m_p_i}|{p_L_i}.png')
