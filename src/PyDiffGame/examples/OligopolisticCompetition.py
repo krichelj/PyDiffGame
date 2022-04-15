@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.integrate import odeint
 
-from PyDiffGame import PyDiffGame
 from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
 
 
@@ -39,9 +38,9 @@ class OligopolisticCompetition(ContinuousPyDiffGame):
                          T_f=T_f,
                          epsilon=epsilon)
 
-        self.__verify_input()
+        self._verify_input()
 
-    def __verify_input(self):
+    def _verify_input(self):
         """
         Input checking method
 
@@ -49,6 +48,8 @@ class OligopolisticCompetition(ContinuousPyDiffGame):
         ------
         Case-specific errors
         """
+
+        super(OligopolisticCompetition, self)._verify_input()
 
         if self.__s <= 0:
             raise ValueError('s must be positive')

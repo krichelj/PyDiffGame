@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from scipy import interpolate
 import numpy as np
 from numpy.linalg import eigvals, norm, LinAlgError
 import matplotlib.pyplot as plt
@@ -20,11 +21,11 @@ class PyDiffGame(ABC):
     ----------
     A: numpy 2-d array of shape(n, n)
         The system dynamics matrix
-    B: list of numpy 2-d arrays of len(N), each matrix B_i of shape(n, m_i)
+    B: list of numpy 2-d arrays of len(N), each array B_i of shape(n, m_i)
         System input matrices for each control objective
-    Q: list of numpy 2-d arrays of len(N), each matrix Q_i of shape(n, n)
+    Q: list of numpy 2-d arrays of len(N), each array Q_i of shape(n, n)
         Cost function state weights for each control objective
-    R: list of numpy 2-d arrays of len(N), each matrix R_i of shape(m_i, m_i)
+    R: list of numpy 2-d arrays of len(N), each array R_i of shape(m_i, m_i)
         Cost function input weights for each control objective
     x_0: numpy 1-d array of shape(n), optional
         Initial state vector
@@ -32,9 +33,9 @@ class PyDiffGame(ABC):
         Final state vector, in case of signal tracking
     T_f: positive float, optional, default = 10
         System dynamics horizon. Should be given in the case of finite horizon
-    P_f: list of numpy 2-d arrays of len(N), each matrix P_f_i of shape(n, n), optional,
+    P_f: list of numpy 2-d arrays of len(N), each array P_f_i of shape(n, n), optional,
         default = uncoupled solution of scipy's solve_are
-        Final condition for the Riccati equation matrix. Should be given in the case of finite horizon
+        Final condition for the Riccati equation array. Should be given in the case of finite horizon
     show_legend: boolean, optional, default = True
         Indicates whether to display a legend in the plots (True) or not (False)
     epsilon: float, optional, default = 1 / (10 ** 8)
@@ -91,11 +92,11 @@ class PyDiffGame(ABC):
         self._forward_time = np.linspace(start=0, stop=self._T_f, num=self._L)
         self._backward_time = self._forward_time[::-1]
 
-        self.__verify_input()
+        self._verify_input()
 
         # additional parameters
         self._A_cl = np.empty_like(self._A)
-        self._P = []
+        self._P: list[np.array] = []
         self._K: list[np.array] = []
 
         self.__epsilon = epsilon
@@ -106,7 +107,7 @@ class PyDiffGame(ABC):
         self._debug = debug
         self._fig = None
 
-    def __verify_input(self):
+    def _verify_input(self):
         """
         Input checking method
 
@@ -187,6 +188,11 @@ class PyDiffGame(ABC):
     def _post_convergence(method: Callable) -> Callable:
         """
         A decorator static-method to apply on methods that need only be called after convergence
+
+        Parameters
+        ----------
+        method: callable
+            The method requiring convergence
         """
 
         def verify_convergence(self: PyDiffGame, *args, **kwargs):
@@ -203,9 +209,9 @@ class PyDiffGame(ABC):
 
         Parameters
         ----------
-        t: numpy array of len(data_points)
+        t: numpy 1-d array of len(L)
             The time axis information to plot
-        mat: numpy array
+        mat: numpy 2-d array of shape(L, n)
             The y-axis information to plot
         is_P: boolean
             Indicates whether to accommodate plotting for all the values in P_i or just for x
@@ -213,8 +219,9 @@ class PyDiffGame(ABC):
             The plot title to display
         """
 
+        num_of_variables = mat.shape[1]
         V = range(1, self._N + 1)
-        U = range(1, self._n + 1)
+        U = range(1, num_of_variables + 1)
 
         self._fig = plt.figure(dpi=130)
         plt.plot(t, mat)
@@ -228,8 +235,8 @@ class PyDiffGame(ABC):
                 ['${P' + str(i) + '}_{' + str(j) + str(k) + '}$' for i in V for j in U for k in U] if is_P else
                 ['${\mathbf{x}}_{' + str(j) + '}$' for j in U])
             plt.legend(legend, loc='upper left' if is_P else 'best',
-                       ncol=int(self._n / 2),
-                       prop={'size': int(40 / self._n)})
+                       ncol=int(num_of_variables / 2),
+                       prop={'size': int(60 / num_of_variables)})
 
         plt.grid()
         plt.show()
@@ -241,7 +248,7 @@ class PyDiffGame(ABC):
         Parameters
         ----------
 
-        mat: numpy array
+        mat: numpy array of shape(L, n)
             The y-axis information to plot
         """
 
@@ -266,7 +273,7 @@ class PyDiffGame(ABC):
         Parameters
         ----------
 
-        C: numpy array
+        C: numpy 2-d array of shape(p, n)
             The output coefficients with respect to state
         """
 
@@ -275,10 +282,45 @@ class PyDiffGame(ABC):
 
     @_post_convergence
     def save_figure(self, figure_path: str):
+        """
+        Saves the current figure
+
+        Parameters
+        ----------
+
+        figure_path: str
+            The desired saved figure's file path
+        """
         if self._x_0 is None:
             raise RuntimeError('No parameter x_0 was defined to illustrate a figure')
 
         self._fig.savefig(figure_path)
+
+    def plot_two_state_spaces(self, other: PyDiffGame):
+        f_self = interpolate.interp1d(x=self._forward_time,
+                                      y=self._x,
+                                      axis=0,
+                                      fill_value="extrapolate")
+
+        f_other = interpolate.interp1d(x=other.forward_time,
+                                       y=other.x,
+                                       axis=0,
+                                       fill_value="extrapolate")
+
+        longer_period = self._forward_time if max(self._forward_time) > max(other.forward_time) \
+            else other.forward_time
+
+        self_state_space = f_self(longer_period)
+        other_state_space = f_other(longer_period)
+
+        augmented_state_space = np.concatenate((self_state_space, other_state_space), axis=1)
+
+        self._plot(t=longer_period,
+                   mat=augmented_state_space,
+                   is_P=False,
+                   title=f"{('Continuous' if self.__continuous else 'Discrete')}, "
+                         f"{('Infinite' if self.__infinite_horizon else 'Finite')} Horizon, {self._N}-Player Game, "
+                         f"{self._L} sampling points")
 
     def __get_are_P_f(self) -> list[np.array]:
         """
@@ -286,7 +328,7 @@ class PyDiffGame(ABC):
 
         Returns
         ----------
-        P_f: numpy array of numpy 2-d arrays, of len(N), of shape(n, n), solution of scipy's solve_are
+        P_f: list numpy 2-d arrays, of len(N), of shape(n, n), solution of scipy's solve_are
             Final condition for the Riccati equation matrix
         """
 
@@ -315,7 +357,12 @@ class PyDiffGame(ABC):
     @abstractmethod
     def _get_K_i(self, *args) -> np.array:
         """
-        Returns the i'th element of the controllers K
+        Returns the i'th element of the currently calculated controllers
+
+        Returns
+        ----------
+        K_i: numpy array of numpy 2-d arrays, of len(N), of shape(n, n), solution of scipy's solve_are
+            Final condition for the Riccati equation matrix
         """
 
         pass
@@ -425,29 +472,36 @@ class PyDiffGame(ABC):
 
         self._converged = True
 
-    @_post_convergence
-    def simulate_state_space(self):
-        if self._x_0 is not None:
-            if self._debug:
-                print(f"The system is {'NOT ' if not self.is_A_cl_stable() else ''}stable")
-
-            self._solve_state_space()
-
     def solve_game_and_simulate_state_space(self):
         """
         Propagates the game through time, solves for it and plots the state with respect to time
         """
 
         self.solve_game()
-        self.simulate_state_space()
+
+        if self._x_0 is not None:
+            self._solve_state_space()
 
     def solve_game_simulate_state_space_and_plot(self):
+        """
+        Propagates the game through time, solves for it and plots the state with respect to time
+        """
+
         self.solve_game_and_simulate_state_space()
 
         if self._x_0 is not None:
             self._plot_state_space()
 
     def simulate_x_T_f(self) -> np.array:
+        """
+        Evaluates the space vector at the terminal time T_f
+
+        Returns
+        ----------
+        x_T_f: numpy 1-d array of shape(n)
+            Final condition for the Riccati equation matrix
+        """
+
         pass
 
     @_post_convergence
@@ -474,12 +528,23 @@ class PyDiffGame(ABC):
 
         return np.array(costs)
 
-    def run_simulation(self):
-        pass
+    def run_simulation(self, plot_state_space: bool = True):
+        if plot_state_space:
+            self.solve_game_simulate_state_space_and_plot()
+        else:
+            self.solve_game_and_simulate_state_space()
 
     @property
-    def P(self):
+    def P(self) -> list:
         return self._P
+
+    @property
+    def x(self) -> np.array:
+        return self._x
+
+    @property
+    def forward_time(self) -> np.array:
+        return self._forward_time
 
     def __len__(self) -> int:
         """
