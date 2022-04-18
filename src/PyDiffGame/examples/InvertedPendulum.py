@@ -25,6 +25,7 @@ class InvertedPendulum(ContinuousPyDiffGame):
                  x_0: np.array = None,
                  x_T: np.array = None,
                  T_f: float = None,
+                 epsilon: float = PyDiffGame._epsilon_default,
                  L: int = PyDiffGame._L_default,
                  multiplayer: bool = True,
                  regular_LQR: bool = False,
@@ -73,6 +74,8 @@ class InvertedPendulum(ContinuousPyDiffGame):
                             [0],
                             [1]])
 
+        state_variables_names = ['x', '\\theta', '\\dot{x}', '\\dot{\\theta}']
+
         super().__init__(A=A,
                          B=[B_x, B_theta] if multi else B,
                          Q=[Q_x, Q_theta] if multi else (Q_x + Q_theta) / 2,
@@ -80,6 +83,8 @@ class InvertedPendulum(ContinuousPyDiffGame):
                          x_0=x_0,
                          x_T=x_T,
                          T_f=T_f,
+                         state_variables_names=state_variables_names,
+                         epsilon=epsilon,
                          L=L,
                          force_finite_horizon=T_f is not None
                          )
@@ -175,29 +180,31 @@ x_T_1 = np.array([-3,  # x
                   5]  # theta_dot
                  )
 
-for m_c_i, m_p_i, p_L_i in zip([200], [15], [1]):
-    lqr_cip = InvertedPendulum(m_c=m_c_i,
-                               m_p=m_p_i,
-                               p_L=p_L_i,
-                               x_0=x_0_1,
-                               x_T=x_T_1,
-                               regular_LQR=True,
-                               show_animation=False,
-                               )
-    lqr_cip.run_simulation()
+for m_c_i, m_p_i, p_L_i in zip([20, 50, 100, 200, 1000, 2000], [5, 8, 10, 15, 40, 60], [2, 3, 4, 1, 8, 20]):
+    lqr_inverted_pendulum = InvertedPendulum(m_c=m_c_i,
+                                             m_p=m_p_i,
+                                             p_L=p_L_i,
+                                             x_0=x_0_1,
+                                             x_T=x_T_1,
+                                             regular_LQR=True,
+                                             show_animation=False,
+                                             epsilon=10**(-5)
+                                             )
+    lqr_inverted_pendulum.run_simulation(plot_state_space=False)
 
     # lqr_cip.save_figure(f'figures/lqr_{m_c_i}|{m_p_i}|{p_L_i}T_f{T_f_i}.png')
 
-    cip = InvertedPendulum(m_c=m_c_i,
-                           m_p=m_p_i,
-                           p_L=p_L_i,
-                           x_0=x_0_1,
-                           x_T=x_T_1,
-                           # regular_LQR=True,
-                           show_animation=False,
-                           )
-    cip.run_simulation()
+    game_inverted_pendulum = InvertedPendulum(m_c=m_c_i,
+                                              m_p=m_p_i,
+                                              p_L=p_L_i,
+                                              x_0=x_0_1,
+                                              x_T=x_T_1,
+                                              # regular_LQR=True,
+                                              show_animation=False,
+                                              epsilon=10 ** (-5)
+                                              )
+    game_inverted_pendulum.run_simulation(plot_state_space=False)
+    lqr_inverted_pendulum.plot_two_state_spaces(game_inverted_pendulum)
 
-    lqr_cip.plot_two_state_spaces(cip)
-
+    lqr_inverted_pendulum.save_figure(f'figures/2/{m_c_i}|{m_p_i}|{p_L_i}.png')
     # cip.save_figure(f'figures/game_{m_c_i}|{m_p_i}|{p_L_i}.png')

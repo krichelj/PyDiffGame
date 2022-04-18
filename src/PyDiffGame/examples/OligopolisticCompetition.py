@@ -132,10 +132,10 @@ class OligopolisticCompetition(ContinuousPyDiffGame):
                    y0=p_0,
                    t=self._forward_time)
 
-        self._plot(t=self._forward_time,
-                   mat=p,
-                   is_P=False,
-                   title=f"p_t")
+        self._plot_temporal_variables(t=self._forward_time,
+                                      variables=p,
+                                      is_P=False,
+                                      title=f"p_t")
         # self._plot(t=self._forward_time,
         #            mat=[x[1] for x in self._x],
         #            is_P=False,
