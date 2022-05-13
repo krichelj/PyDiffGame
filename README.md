@@ -100,7 +100,8 @@ class InvertedPendulum(ContinuousPyDiffGame):
         self.__I = 1 / 12 * self.__m_p * self.__p_L ** 2
 
         # # original linear system
-        linearized_D = self.__m_c * self.__m_p * self.__l ** 2 + self.__I * (self.__m_c + self.__m_p)
+        linearized_D = self.__m_c * self.__m_p * self.__l ** 2 \
+                        + self.__I * (self.__m_c + self.__m_p)
         a21 = self.__m_p ** 2 * g * self.__l ** 2 / linearized_D
         a31 = self.__m_p * g * self.__l * (self.__m_c + self.__m_p) / linearized_D
 
