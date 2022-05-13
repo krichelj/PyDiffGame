@@ -186,6 +186,7 @@ lqr_inverted_pendulum.plot_two_state_spaces(game_inverted_pendulum)
 
 ```
 
+
 This will result in the following plot that compares the two systems performance:
 
 <p align="center">
