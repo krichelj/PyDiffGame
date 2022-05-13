@@ -3,11 +3,12 @@ from scipy.optimize import fsolve
 import quadpy
 from numpy.linalg import eigvals, inv
 from typing import Union
+from abc import ABC
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 
 
-class DiscretePyDiffGame(PyDiffGame):
+class DiscretePyDiffGame(PyDiffGame, ABC):
     """
     Discrete differential game base class
 

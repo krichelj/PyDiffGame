@@ -180,31 +180,26 @@ x_T_1 = np.array([-3,  # x
                   5]  # theta_dot
                  )
 
-for m_c_i, m_p_i, p_L_i in zip([20, 50, 100, 200, 1000, 2000], [5, 8, 10, 15, 40, 60], [2, 3, 4, 1, 8, 20]):
-    lqr_inverted_pendulum = InvertedPendulum(m_c=m_c_i,
-                                             m_p=m_p_i,
-                                             p_L=p_L_i,
-                                             x_0=x_0_1,
-                                             x_T=x_T_1,
-                                             regular_LQR=True,
-                                             show_animation=False,
-                                             epsilon=10**(-5)
-                                             )
-    lqr_inverted_pendulum.run_simulation(plot_state_space=False)
-
-    # lqr_cip.save_figure(f'figures/lqr_{m_c_i}|{m_p_i}|{p_L_i}T_f{T_f_i}.png')
-
-    game_inverted_pendulum = InvertedPendulum(m_c=m_c_i,
-                                              m_p=m_p_i,
-                                              p_L=p_L_i,
-                                              x_0=x_0_1,
-                                              x_T=x_T_1,
-                                              # regular_LQR=True,
-                                              show_animation=False,
-                                              epsilon=10 ** (-5)
-                                              )
-    game_inverted_pendulum.run_simulation(plot_state_space=False)
-    lqr_inverted_pendulum.plot_two_state_spaces(game_inverted_pendulum)
-
-    lqr_inverted_pendulum.save_figure(f'figures/2/{m_c_i}|{m_p_i}|{p_L_i}.png')
-    # cip.save_figure(f'figures/game_{m_c_i}|{m_p_i}|{p_L_i}.png')
+m_c_i, m_p_i, p_L_i = 50, 8, 3
+# for m_c_i, m_p_i, p_L_i in zip([20, 50, 100, 200, 1000, 2000], [5, 8, 10, 15, 40, 60], [2, 3, 4, 1, 8, 20]):
+lqr_inverted_pendulum = InvertedPendulum(m_c=m_c_i,
+                                         m_p=m_p_i,
+                                         p_L=p_L_i,
+                                         x_0=x_0_1,
+                                         x_T=x_T_1,
+                                         regular_LQR=True,
+                                         show_animation=False,
+                                         epsilon=10**(-5)
+                                         )
+lqr_inverted_pendulum.run_simulation(plot_state_space=False)
+game_inverted_pendulum = InvertedPendulum(m_c=m_c_i,
+                                          m_p=m_p_i,
+                                          p_L=p_L_i,
+                                          x_0=x_0_1,
+                                          x_T=x_T_1,
+                                          # regular_LQR=True,
+                                          show_animation=False,
+                                          epsilon=10 ** (-5)
+                                          )
+game_inverted_pendulum.run_simulation(plot_state_space=False)
+lqr_inverted_pendulum.plot_two_state_spaces(game_inverted_pendulum)

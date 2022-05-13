@@ -2,11 +2,12 @@ import numpy as np
 from scipy.integrate import odeint
 from numpy.linalg import eigvals, inv
 from typing import Union
+from abc import ABC
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 
 
-class ContinuousPyDiffGame(PyDiffGame):
+class ContinuousPyDiffGame(PyDiffGame, ABC):
     """
     Continuous differential game base class
 
@@ -80,8 +81,9 @@ class ContinuousPyDiffGame(PyDiffGame):
                 R_ii = self._R[i]
                 Q_i = self._Q[i]
 
-                dP_t_idt = - A_cl_t.T @ P_t_i - P_t_i @ A_cl_t - Q_i - P_t_i @ \
-                           (B_i @ inv(R_ii) if R_ii.ndim > 1 else B_i / R_ii) @ B_i.T @ P_t_i
+                dP_t_idt = - A_cl_t.T @ P_t_i - P_t_i @ A_cl_t - Q_i - P_t_i @ (B_i @ inv(R_ii)
+                                                                                if R_ii.ndim > 1
+                                                                                else B_i / R_ii) @ B_i.T @ P_t_i
 
                 dP_t_idt = dP_t_idt.reshape(self._P_size)
                 dP_tdt = dP_t_idt if not i else np.concatenate((dP_tdt, dP_t_idt), axis=0)
@@ -102,7 +104,6 @@ class ContinuousPyDiffGame(PyDiffGame):
         t: int
             Current point in time
         """
-
 
         P_t = [(self._P[t][i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n) for i in range(self._N)]
         self._K = [(inv(R_ii) @ B_i.T if R_ii.ndim > 1 else 1 / R_ii * B_i.T) @ P_i

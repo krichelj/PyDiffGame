@@ -33,21 +33,21 @@ class PyDiffGame(ABC):
         Final state vector, in case of signal tracking
     T_f: positive float, optional, default = 10
         System dynamics horizon. Should be given in the case of finite horizon
-    P_f: list of 2-d np.arrays of len(N), each array P_f_i of shape(n, n), optional,
+    P_f: list of 2-d np.arrays of len(N), each array P_f_i of shape(n, n), optional
         default = uncoupled solution of scipy's solve_are
         Final condition for the Riccati equation array. Should be given in the case of finite horizon
     show_legend: boolean, optional, default = True
-        Indicates whether to display a legend in the plots (True) or not (False)
-    state_variables_names: list, optional
+        Indicates whether to display a legend in the plots
+    state_variables_names: list of strings of len(n), optional
         The state variables' names to display
     epsilon: float in the interval (0,1), optional, default = 10 ** (-7)
-        The convergence threshold for numerical convergence
+        Numerical convergence threshold
     L: positive int, optional, default = 1000
         Number of data points
     eta: positive int, optional, default = 5
         The number of last matrix norms to consider for convergence
     debug: boolean, optional, default = False
-        Indicates whether to display debug information or not
+        Indicates whether to display debug information
     """
 
     # class fields
@@ -261,7 +261,7 @@ class PyDiffGame(ABC):
             plt.legend(labels=labels,
                        loc='upper left' if is_P else 'best',
                        ncol=int(num_of_variables / 2),
-                       prop={'size': int(80 / num_of_variables)})
+                       prop={'size': int(120 / num_of_variables)})
 
         plt.grid()
 
@@ -636,10 +636,7 @@ class PyDiffGame(ABC):
              - sum_{i=1}^N J1[i] == sum_{i=1}^N J2[i]
         """
 
-        if len(self) != len(other):
-            return False
-
-        return self.get_costs().sum() == other.get_costs().sum()
+        return len(self) == len(other) and self.get_costs().sum() == other.get_costs().sum()
 
     def __lt__(self, other: PyDiffGame) -> bool:
         """
