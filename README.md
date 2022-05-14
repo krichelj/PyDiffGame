@@ -2,6 +2,7 @@
     <img alt="Logo" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/logo.png"/>
 </p>
 
+
   * [What is this?](#what-is-this)
   * [Local Installation](#local-installation)
   * [Input Parameters](#input-Parameters)
