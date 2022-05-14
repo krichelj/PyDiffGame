@@ -201,20 +201,20 @@ This research was also supported by The Israeli Smart Transportation Research Ce
 
 <p align="center">
     <a href="https://istrc.net.technion.ac.il/">
-    <img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/Logo_ISTRC_Green_English.png" width="180" />
+    <img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/Logo_ISTRC_Green_English.png" width="180"  alt=""/>
     </a>
 &emsp;
 &emsp;
 &emsp;
 &emsp;
 <a href="https://in.bgu.ac.il/en/Pages/default.aspx">
-<img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/BGU-logo-round.png" width="150" />
+<img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/BGU-logo-round.png" width="150"  alt=""/>
 </a>
 &emsp;
 &emsp;
 &emsp;
 &emsp;
 <a href="https://in.bgu.ac.il/en/robotics/Pages/default.aspx">
-<img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/logo_abc.png" width="180" />
+<img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/logo_abc.png" width="180"  alt=""/>
 </a>
 </p>
