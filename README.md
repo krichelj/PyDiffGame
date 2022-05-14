@@ -14,7 +14,12 @@
 
 # What is this?
 `PyDiffGame` is a Python implementation of a multi-objective control systems simulator based on Nash Equilibrium differential game. 
-The method relies on the formulation given in the article "_Composition of Dynamic Control Objectives Based on Differential Games_" 
+The method relies on the formulation given in:
+
+ - The thesis work "_Differential Games for Compositional Handling of Competing Control Tasks_"
+   ([Research Gate](https://www.researchgate.net/publication/359819808_Differential_Games_for_Compositional_Handling_of_Competing_Control_Tasks))
+
+ - The conference article "_Composition of Dynamic Control Objectives Based on Differential Games_" 
 ([IEEE](https://ieeexplore.ieee.org/document/9480269) | 
 [Research Gate](https://www.researchgate.net/publication/353452024_Composition_of_Dynamic_Control_Objectives_Based_on_Differential_Games))
 
