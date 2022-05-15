@@ -66,7 +66,7 @@ class PyDiffGame(ABC):
                  T_f: float = None,
                  P_f: list[np.array] = None,
                  show_legend: bool = True,
-                 state_variables_names: list = None,
+                 state_variables_names: list[str] = None,
                  epsilon: float = _epsilon_default,
                  L: int = _L_default,
                  eta: int = _eta_default,
@@ -142,10 +142,12 @@ class PyDiffGame(ABC):
             raise ValueError('P_f must be a list of 2-d positive semi-definite numpy arrays with shape nxn')
         if not all([eig >= 0 for eig_set in [eigvals(P_f_i) for P_f_i in self._P_f] for eig in eig_set]):
             warnings.warn("Warning: there is a matrix in P_f that has negative eigenvalues. Convergence may not occur")
-        if self._L <= 0:
-            raise ValueError('The number of data points must be a positive integer')
+        if len(self.__state_variables_names) != self._n:
+            raise ValueError('The parameter state_variables_names must be of length n')
         if not 0 < self.__epsilon < 1:
             raise ValueError('The convergence tolerance epsilon must be in the open interval (0,1)')
+        if self._L <= 0:
+            raise ValueError('The number of data points must be a positive integer')
         if self.__eta <= 0:
             raise ValueError('The number of last matrix norms to consider for convergence must be a positive integer')
 
@@ -237,7 +239,7 @@ class PyDiffGame(ABC):
         num_of_variables = variables.shape[1]
         variables_range = range(1, num_of_variables + 1)
 
-        self._fig = plt.figure(dpi=200)
+        self._fig = plt.figure(dpi=150)
         self._fig.set_size_inches(8, 6)
         plt.plot(t, variables)
         plt.xlabel('Time')
@@ -267,18 +269,19 @@ class PyDiffGame(ABC):
 
         plt.show()
 
-    def __get_temporal_state_variables_title(self, two_state_spaces=False):
+    def __get_temporal_state_variables_title(self, linear_system: bool = True, two_state_spaces=False):
         if two_state_spaces:
             title = f"{self._N}-Player Game"
         else:
-            title = f"{('Continuous' if self.__continuous else 'Discrete')}, " \
+            title = f"{('Linear' if linear_system else 'Nonlinear')}, " \
+                    f"{('Continuous' if self.__continuous else 'Discrete')}, " \
                     f"{('Infinite' if self.__infinite_horizon else 'Finite')} Horizon, " \
                     f"{self._N}-Player Game" \
                     f"{f', {self._L} Sampling Points'}"
 
         return title
 
-    def __plot_temporal_state_variables(self, state_variables: np.array):
+    def _plot_temporal_state_variables(self, state_variables: np.array, linear_system: bool = True):
         """
         Displays plots for the state variables with respect to time
 
@@ -292,14 +295,14 @@ class PyDiffGame(ABC):
         self._plot_temporal_variables(t=self._forward_time,
                                       variables=state_variables,
                                       is_P=False,
-                                      title=self.__get_temporal_state_variables_title())
+                                      title=self.__get_temporal_state_variables_title(linear_system=linear_system))
 
     def _plot_x(self):
         """
         Plots the state vector variables wth respect to time
         """
 
-        self.__plot_temporal_state_variables(state_variables=self._x)
+        self._plot_temporal_state_variables(state_variables=self._x)
 
     def _plot_y(self, C: np.array):
         """
@@ -313,7 +316,7 @@ class PyDiffGame(ABC):
         """
 
         y = C @ self._x.T
-        self.__plot_temporal_state_variables(state_variables=y.T)
+        self._plot_temporal_state_variables(state_variables=y.T)
 
     @_post_convergence
     def save_figure(self, figure_path: str):
