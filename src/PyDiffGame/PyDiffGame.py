@@ -258,7 +258,7 @@ class PyDiffGame(ABC):
                 else:
                     labels = [f'${name}$' for name in self.__state_variables_names]
             else:
-                labels = ['${\mathbf{x}}_{' + str(j) + '}$' for j in variables_range]
+                labels = ["${\mathbf{x}}_{" + str(j) + "}$" for j in variables_range]
 
             plt.legend(labels=labels,
                        loc='upper left' if is_P else 'best',

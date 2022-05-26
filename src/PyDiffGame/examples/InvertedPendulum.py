@@ -215,6 +215,7 @@ lqr_inverted_pendulum = InvertedPendulum(m_c=m_c_i,
                                          epsilon=epsilon
                                          )
 lqr_inverted_pendulum.run_simulation(plot_state_space=True)
+
 # game_inverted_pendulum = InvertedPendulum(m_c=m_c_i,
 #                                           m_p=m_p_i,
 #                                           p_L=p_L_i,
