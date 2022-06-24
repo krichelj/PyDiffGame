@@ -55,6 +55,7 @@ class PyDiffGame(ABC):
     _L_default: int = 1000
     _epsilon_default: float = 10 ** (-7)
     _eta_default: int = 5
+    _g = 9.81
 
     def __init__(self,
                  A: np.array,

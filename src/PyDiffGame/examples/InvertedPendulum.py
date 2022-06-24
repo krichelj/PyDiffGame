@@ -10,8 +10,6 @@ from scipy.integrate import solve_ivp
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
 
-g = 9.81
-
 
 class InvertedPendulum(ContinuousPyDiffGame):
     __q_s_default = 1
@@ -43,8 +41,8 @@ class InvertedPendulum(ContinuousPyDiffGame):
 
         # # original linear system
         linearized_D = self.__m_c * self.__m_p * self.__l ** 2 + self.__I * (self.__m_c + self.__m_p)
-        a21 = self.__m_p ** 2 * g * self.__l ** 2 / linearized_D
-        a31 = self.__m_p * g * self.__l * (self.__m_c + self.__m_p) / linearized_D
+        a21 = self.__m_p ** 2 * PyDiffGame._g * self.__l ** 2 / linearized_D
+        a31 = self.__m_p * PyDiffGame._g * self.__l * (self.__m_c + self.__m_p) / linearized_D
 
         A = np.array([[0, 0, 1, 0],
                       [0, 0, 0, 1],
@@ -107,7 +105,7 @@ class InvertedPendulum(ContinuousPyDiffGame):
             m_p_l = self.__m_p * self.__l
             sin_theta = sin(theta)
             cos_theta = cos(theta)
-            g_sin = g * sin_theta
+            g_sin = PyDiffGame._g * sin_theta
             sin_dot_sq = sin_theta * (theta_dot ** 2)
             theta_ddot = 1 / (m_p_l * self.__l + self.__I - (m_p_l ** 2) * (cos_theta ** 2) / masses) * \
                              (M_t - m_p_l * (cos_theta / masses * (F_t + m_p_l * sin_dot_sq) + g_sin))
@@ -122,9 +120,8 @@ class InvertedPendulum(ContinuousPyDiffGame):
                                    rtol=1e-8)
 
         Y = pendulum_state.y
-        self._plot_temporal_state_variables(state_variables=Y.T, linear_system=False)
-
-        return Y
+        self._plot_temporal_state_variables(state_variables=Y.T,
+                                            linear_system=False)
 
     def __run_animation(self):
         pend_x, pend_theta, pend_x_dot, pend_theta_dot = self.__simulate_non_linear_system()
