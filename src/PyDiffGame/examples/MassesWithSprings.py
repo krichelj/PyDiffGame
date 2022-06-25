@@ -23,36 +23,46 @@ class MassesWithSprings(ContinuousPyDiffGame):
                  epsilon: float = PyDiffGame._epsilon_default,
                  L: int = PyDiffGame._L_default,
                  regular_LQR: bool = False,
-                 show_animation: bool = True
                  ):
         self.__m = m
         self.__k = k
 
         A = np.array([[0, 0, 1, 0],
                       [0, 0, 0, 1],
-                      [-2 * self.__k / self.__m, 1 * self.__k / self.__m, 0, 0],
-                      [-1 * self.__k / self.__m, 2 * self.__k / self.__m, 0, 0]])
+                      [-2 * self.__k / self.__m, self.__k / self.__m, 0, 0],
+                      [self.__k / self.__m, -2 * self.__k / self.__m, 0, 0]])
 
-        B_lqr = 1 / self.__k * np.array([[0, 0],
+        B_1 = np.array([[0],
+                        [0],
+                        [1/2],
+                        [1/2]])
+        B_2 = np.array([[0],
+                        [0],
+                        [1/2],
+                        [-1/2]])
+
+        B_lqr = 1 / self.__m * np.array([[0, 0],
                                          [0, 0],
                                          [1, 0],
                                          [0, 1]])
+        B_multiplayer = [B_1, B_2]
 
-        Q_x = np.diag([q_l, q_s, q_m, q_s])
-        Q_theta = np.diag([q_s, q_l, q_s, q_m])
-        Q_lqr = (Q_x + Q_theta) / 2
+        Q_1 = np.diag([q_l, q_s, q_m, q_s])
+        Q_2 = np.diag([q_s, q_l, q_s, q_m])
+        Q_lqr = (Q_1 + Q_2) / 2
+        Q_multiplayer = [Q_1, Q_2]
 
         R_lqr = np.diag([r, r])
+        R_multiplayer = [np.array([r])] * 2
 
         self.__origin = (0.0, 0.0)
-        self.__show_animation = show_animation
 
         state_variables_names = ['x_1', 'x_2', '\\dot{x}_1', '\\dot{x}_2']
 
         super().__init__(A=A,
-                         B=B_lqr,
-                         Q=Q_lqr,
-                         R=R_lqr,
+                         B=B_lqr if regular_LQR else B_multiplayer,
+                         Q=Q_lqr if regular_LQR else Q_multiplayer,
+                         R=R_lqr if regular_LQR else R_multiplayer,
                          x_0=x_0,
                          x_T=x_T,
                          T_f=T_f,
@@ -62,6 +72,8 @@ class MassesWithSprings(ContinuousPyDiffGame):
                          force_finite_horizon=T_f is not None
                          )
 
+
+m, k, r = 10, 10, 1000
 
 x_0 = np.array([1,  # x_1
                 2,  # x_2
@@ -75,13 +87,22 @@ x_T = np.array([10,  # x_1
                )
 
 epsilon = 10 ** (-3)
-sys = MassesWithSprings(m=1,
-                        k=1,
-                        r=100000,
-                        x_0=x_0,
-                        x_T=x_T,
-                        regular_LQR=True,
-                        show_animation=False,
-                        epsilon=epsilon
-                        )
-sys.solve_game_simulate_state_space_and_plot()
+
+lqr_masses = MassesWithSprings(m=m,
+                               k=k,
+                               r=r,
+                               x_0=x_0,
+                               x_T=x_T,
+                               regular_LQR=True,
+                               epsilon=epsilon
+                               )
+lqr_masses.solve_game_simulate_state_space_and_plot()
+
+game_masses = MassesWithSprings(m=m,
+                                k=k,
+                                r=r,
+                                x_0=x_0,
+                                x_T=x_T,
+                                epsilon=epsilon
+                                )
+game_masses.solve_game_simulate_state_space_and_plot()
