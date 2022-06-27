@@ -141,7 +141,7 @@ def get_P_quad_given_angular_rates(x, P_sol):
     R = [R1, R2, R3]
     Q = [Q1, Q2, Q3]
     game = ContinuousPyDiffGame(A=A, B=B, Q=Q, R=R, P_f=P_sol, show_legend=False)
-    game.solve_game_and_simulate_state_space()
+    game.run_simulation()
     Plast = game.P[-1]
 
     return Plast
@@ -341,7 +341,7 @@ def get_higher_level_control2(state, st, a_y):
     P_sol = [0.01 * Q1, 0.01 * Q1]
 
     game = ContinuousPyDiffGame(A=A, B=Bs, Q=Q, R=R, P_f=P_sol, show_legend=False)
-    game.solve_game_and_simulate_state_space()
+    game.run_simulation()
     Plast = game.P[-1]
     N = 2
     M = 9

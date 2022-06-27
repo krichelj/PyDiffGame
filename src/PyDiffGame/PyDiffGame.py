@@ -298,14 +298,14 @@ class PyDiffGame(ABC):
                                       is_P=False,
                                       title=self.__get_temporal_state_variables_title(linear_system=linear_system))
 
-    def _plot_x(self):
+    def __plot_x(self):
         """
         Plots the state vector variables wth respect to time
         """
 
         self._plot_temporal_state_variables(state_variables=self._x)
 
-    def _plot_y(self, C: np.array):
+    def __plot_y(self, C: np.array):
         """
         Plots an output vector y = C x^T wth respect to time
 
@@ -505,7 +505,7 @@ class PyDiffGame(ABC):
         pass
 
     @_post_convergence
-    def _plot_finite_horizon_convergence(self):
+    def __plot_finite_horizon_convergence(self):
         """
         Plots the convergence of the values for the matrices P_i
         """
@@ -514,13 +514,13 @@ class PyDiffGame(ABC):
                                       variables=self._P,
                                       is_P=True)
 
-    def _solve_and_plot_finite_horizon(self):
+    def __solve_and_plot_finite_horizon(self):
         """
         Solves for the finite horizon case and plots the convergence of the values for the matrices P_i
         """
 
         self._solve_finite_horizon()
-        self._plot_finite_horizon_convergence()
+        self.__plot_finite_horizon_convergence()
 
     @abstractmethod
     def _solve_infinite_horizon(self):
@@ -539,33 +539,33 @@ class PyDiffGame(ABC):
 
         pass
 
-    def solve_game(self):
+    def __solve_game(self):
         if self.__infinite_horizon:
             self._solve_infinite_horizon()
         else:
-            self._solve_and_plot_finite_horizon()
+            self.__solve_and_plot_finite_horizon()
 
         self._converged = True
 
-    def solve_game_and_simulate_state_space(self):
+    def __solve_game_and_simulate_state_space(self):
         """
         Propagates the game through time, solves for it and plots the state with respect to time
         """
 
-        self.solve_game()
+        self.__solve_game()
 
         if self._x_0 is not None:
             self._solve_state_space()
 
-    def solve_game_simulate_state_space_and_plot(self):
+    def __solve_game_simulate_state_space_and_plot(self):
         """
         Propagates the game through time, solves for it and plots the state with respect to time
         """
 
-        self.solve_game_and_simulate_state_space()
+        self.__solve_game_and_simulate_state_space()
 
         if self._x_0 is not None:
-            self._plot_x()
+            self.__plot_x()
 
     def simulate_x_T_f(self) -> np.array:
         """
@@ -605,9 +605,9 @@ class PyDiffGame(ABC):
 
     def run_simulation(self, plot_state_space: bool = True):
         if plot_state_space:
-            self.solve_game_simulate_state_space_and_plot()
+            self.__solve_game_simulate_state_space_and_plot()
         else:
-            self.solve_game_and_simulate_state_space()
+            self.__solve_game_and_simulate_state_space()
 
     @property
     def P(self) -> list:

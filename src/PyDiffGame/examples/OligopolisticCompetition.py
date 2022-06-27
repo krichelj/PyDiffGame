@@ -152,6 +152,6 @@ for N_i in [2]:
                                   x_0=np.array([80, 1]),
                                   T_f=5,
                                   )
-    oc.solve_game_and_simulate_state_space()
+    oc.run_simulation()
     oc.print_steady_state_price()
     oc.simulate_p()
