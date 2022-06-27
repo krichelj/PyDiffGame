@@ -5,17 +5,13 @@ from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
 
 
 class MassesWithSprings(ContinuousPyDiffGame):
-    __q_s_default = 1
-    __q_m_default = 100
-    __q_l_default = 10000
+    __q_default = 100
     __r_default = 1
 
     def __init__(self,
                  m: float,
                  k: float,
-                 q_s: float = __q_s_default,
-                 q_m: float = __q_m_default,
-                 q_l: float = __q_l_default,
+                 q: float = __q_default,
                  r: float = __r_default,
                  x_0: np.array = None,
                  x_T: np.array = None,
@@ -34,12 +30,12 @@ class MassesWithSprings(ContinuousPyDiffGame):
 
         B_1 = np.array([[0],
                         [0],
-                        [1/2],
-                        [1/2]])
+                        [1 / 2],
+                        [1 / 2]])
         B_2 = np.array([[0],
                         [0],
-                        [1/2],
-                        [-1/2]])
+                        [1 / 2],
+                        [-1 / 2]])
 
         B_lqr = 1 / self.__m * np.array([[0, 0],
                                          [0, 0],
@@ -47,11 +43,10 @@ class MassesWithSprings(ContinuousPyDiffGame):
                                          [0, 1]])
         B_multiplayer = [B_1, B_2]
 
-        Q_1 = np.diag([q_l, q_s, q_m, q_s])
-        Q_2 = np.diag([q_s, q_l, q_s, q_m])
-        Q_lqr = (Q_1 + Q_2) / 2
+        Q_1 = np.diag([q, 0, q ** 2, q ** 2])
+        Q_2 = np.diag([0, q, q ** 2, q ** 2])
+        Q_lqr = np.diag([q, q, q ** 2, q ** 2])
         Q_multiplayer = [Q_1, Q_2]
-
         R_lqr = np.diag([r, r])
         R_multiplayer = [np.array([r])] * 2
 
@@ -73,7 +68,7 @@ class MassesWithSprings(ContinuousPyDiffGame):
                          )
 
 
-m, k, r = 10, 10, 1000
+m, k, r = 10, 100, 1000
 
 x_0 = np.array([1,  # x_1
                 2,  # x_2
@@ -96,7 +91,7 @@ lqr_masses = MassesWithSprings(m=m,
                                regular_LQR=True,
                                epsilon=epsilon
                                )
-lqr_masses.solve_game_simulate_state_space_and_plot()
+lqr_masses.run_simulation()
 
 game_masses = MassesWithSprings(m=m,
                                 k=k,
@@ -105,4 +100,4 @@ game_masses = MassesWithSprings(m=m,
                                 x_T=x_T,
                                 epsilon=epsilon
                                 )
-game_masses.solve_game_simulate_state_space_and_plot()
+game_masses.run_simulation()

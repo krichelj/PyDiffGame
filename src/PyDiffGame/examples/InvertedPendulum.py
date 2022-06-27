@@ -13,8 +13,8 @@ from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
 
 class InvertedPendulum(ContinuousPyDiffGame):
     __q_s_default = 1
-    __q_m_default = 100
-    __q_l_default = 10000
+    __q_m_default = 100 * __q_s_default
+    __q_l_default = 100 * __q_m_default
     __r_default = 1
 
     def __init__(self,
@@ -122,6 +122,8 @@ class InvertedPendulum(ContinuousPyDiffGame):
         Y = pendulum_state.y
         self._plot_temporal_state_variables(state_variables=Y.T,
                                             linear_system=False)
+
+        return Y
 
     def __run_animation(self):
         pend_x, pend_theta, pend_x_dot, pend_theta_dot = self.__simulate_non_linear_system()

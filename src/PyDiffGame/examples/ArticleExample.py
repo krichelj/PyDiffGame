@@ -1,7 +1,8 @@
 import numpy as np
 
 from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
-from PyDiffGame.DiscretePyDiffGame import DiscretePyDiffGame
+
+# from PyDiffGame.DiscretePyDiffGame import DiscretePyDiffGame
 
 A = np.array([[-2, 1],
               [1, 4]])
@@ -42,7 +43,7 @@ for L in [int(1000 / i) for i in range(1, 5)]:
                                            # P_f=P_f,
                                            # T_f=T_f
                                            )
-    continuous_game.solve_game_and_simulate_state_space()
+    continuous_game.run_simulation()
     # discrete_game = DiscretePyDiffGame(A=A,
     #                                    B=B,
     #                                    Q=Q,
