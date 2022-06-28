@@ -5,14 +5,11 @@ from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
 
 
 class MassesWithSprings(ContinuousPyDiffGame):
-    __q_default = 100
-    __r_default = 1
-
     def __init__(self,
                  m: float,
                  k: float,
-                 q: float = __q_default,
-                 r: float = __r_default,
+                 q_x: float,
+                 r: float,
                  x_0: np.array = None,
                  x_T: np.array = None,
                  T_f: float = None,
@@ -43,9 +40,10 @@ class MassesWithSprings(ContinuousPyDiffGame):
                                          [0, 1]])
         B_multiplayer = [B_1, B_2]
 
-        Q_1 = np.diag([q, 0, q ** 2, q ** 2])
-        Q_2 = np.diag([0, q, q ** 2, q ** 2])
-        Q_lqr = np.diag([q, q, q ** 2, q ** 2])
+        q_v = q_x ** 2
+        Q_1 = np.diag([q_x, 0, q_v, q_v])
+        Q_2 = np.diag([0, q_x, q_v, q_v])
+        Q_lqr = np.diag([q_x, q_x, q_v, q_v])
         Q_multiplayer = [Q_1, Q_2]
         R_lqr = np.diag([r, r])
         R_multiplayer = [np.array([r])] * 2
@@ -68,7 +66,8 @@ class MassesWithSprings(ContinuousPyDiffGame):
                          )
 
 
-m, k, r = 10, 100, 1000
+m, k = 10, 1000
+q_x, r = 1000, 10000
 
 x_0 = np.array([1,  # x_1
                 2,  # x_2
@@ -85,6 +84,7 @@ epsilon = 10 ** (-3)
 
 lqr_masses = MassesWithSprings(m=m,
                                k=k,
+                               q_x=q_x,
                                r=r,
                                x_0=x_0,
                                x_T=x_T,
@@ -92,12 +92,16 @@ lqr_masses = MassesWithSprings(m=m,
                                epsilon=epsilon
                                )
 lqr_masses.run_simulation()
+lqr_masses.save_figure()
 
 game_masses = MassesWithSprings(m=m,
                                 k=k,
+                                q_x=q_x,
                                 r=r,
                                 x_0=x_0,
                                 x_T=x_T,
                                 epsilon=epsilon
                                 )
 game_masses.run_simulation()
+
+# print(f'LQR cost: {lqr_masses.get_costs() - game_masses.get_costs().max()}')
