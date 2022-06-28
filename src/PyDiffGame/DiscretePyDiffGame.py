@@ -42,8 +42,7 @@ class DiscretePyDiffGame(PyDiffGame, ABC):
                  L: int = PyDiffGame._L_default,
                  eta: int = PyDiffGame._eta_default,
                  force_finite_horizon: bool = False,
-                 debug: bool = False
-                 ):
+                 debug: bool = False):
 
         super().__init__(A=A,
                          B=B,

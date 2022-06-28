@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
 import time
 from scipy import interpolate
 import numpy as np
@@ -72,8 +74,7 @@ class PyDiffGame(ABC):
                  L: int = _L_default,
                  eta: int = _eta_default,
                  force_finite_horizon: bool = False,
-                 debug: bool = False
-                 ):
+                 debug: bool = False):
 
         self.__continuous = 'ContinuousPyDiffGame' in [c.__name__ for c in type(self).__bases__]
         self._A = A
@@ -218,7 +219,11 @@ class PyDiffGame(ABC):
         return decorated_f
 
     @_post_convergence
-    def _plot_temporal_variables(self, t: np.array, variables: np.array, is_P: bool, title: str = None,
+    def _plot_temporal_variables(self,
+                                 t: np.array,
+                                 variables: np.array,
+                                 is_P: bool,
+                                 title: str = None,
                                  two_state_spaces: bool = False):
         """
         Displays plots for the state variables with respect to time and the convergence of the values of P
@@ -270,7 +275,9 @@ class PyDiffGame(ABC):
 
         plt.show()
 
-    def __get_temporal_state_variables_title(self, linear_system: bool = True, two_state_spaces=False):
+    def __get_temporal_state_variables_title(self,
+                                             linear_system: bool = True,
+                                             two_state_spaces=False):
         if two_state_spaces:
             title = f"{self._N}-Player Game"
         else:
@@ -282,7 +289,9 @@ class PyDiffGame(ABC):
 
         return title
 
-    def _plot_temporal_state_variables(self, state_variables: np.array, linear_system: bool = True):
+    def _plot_temporal_state_variables(self,
+                                       state_variables: np.array,
+                                       linear_system: bool = True):
         """
         Displays plots for the state variables with respect to time
 
@@ -305,7 +314,8 @@ class PyDiffGame(ABC):
 
         self._plot_temporal_state_variables(state_variables=self._x)
 
-    def __plot_y(self, C: np.array):
+    def __plot_y(self,
+                 C: np.array):
         """
         Plots an output vector y = C x^T wth respect to time
 
@@ -320,23 +330,31 @@ class PyDiffGame(ABC):
         self._plot_temporal_state_variables(state_variables=y.T)
 
     @_post_convergence
-    def save_figure(self, figure_path: str):
+    def save_figure(self,
+                    figure_path: Union[str, Path] = Path(fr'{os.getcwd()}/figures'),
+                    filename: str = 'last_image'):
         """
         Saves the current figure
 
         Parameters
         ----------
 
-        figure_path: str
+        figure_path: str or Path, optional, default = figures sub-folder of the current directory
             The desired saved figure's file path
+        filename: str, optional
+            The desired saved figure's filename
         """
 
         if self._x_0 is None:
             raise RuntimeError('No parameter x_0 was defined to illustrate a figure')
 
-        self._fig.savefig(figure_path)
+        if not figure_path.is_dir():
+            os.mkdir(figure_path)
 
-    def __augment_two_state_space_vectors(self, other: PyDiffGame) -> (np.array, np.array):
+        self._fig.savefig(Path(fr'{figure_path}/{filename}'))
+
+    def __augment_two_state_space_vectors(self,
+                                          other: PyDiffGame) -> (np.array, np.array):
         """
         Plots the state variables of two converged state spaces
 
@@ -373,7 +391,8 @@ class PyDiffGame(ABC):
 
         return longer_period, augmented_state_space
 
-    def plot_two_state_spaces(self, other: PyDiffGame):
+    def plot_two_state_spaces(self,
+                              other: PyDiffGame):
         """
         Plots the state variables of two converged state spaces
 
@@ -422,7 +441,8 @@ class PyDiffGame(ABC):
         return P_f
 
     @abstractmethod
-    def _update_K_from_last_state(self, *args):
+    def _update_K_from_last_state(self,
+                                  *args):
         """
         Updates the controllers K after forward propagation of the state through time
         """
@@ -430,7 +450,8 @@ class PyDiffGame(ABC):
         pass
 
     @abstractmethod
-    def _get_K_i(self, *args) -> np.array:
+    def _get_K_i(self,
+                 *args) -> np.array:
         """
         Returns the i'th element of the currently calculated controllers
 
@@ -443,7 +464,8 @@ class PyDiffGame(ABC):
         pass
 
     @abstractmethod
-    def _get_P_f_i(self, i: int) -> np.array:
+    def _get_P_f_i(self,
+                   i: int) -> np.array:
         """
         Returns the i'th element of the final condition matrices P_f
 
@@ -455,7 +477,8 @@ class PyDiffGame(ABC):
 
         pass
 
-    def _update_A_cl_from_last_state(self, k: int = None):
+    def _update_A_cl_from_last_state(self,
+                                     k: int = None):
         """
         Updates the closed-loop dynamics with the updated controllers based on the relation:
         A_cl = A - sum_{i=1}^N B_i K_i
@@ -476,7 +499,8 @@ class PyDiffGame(ABC):
             self._A_cl = A_cl
 
     @abstractmethod
-    def _update_Ps_from_last_state(self, *args):
+    def _update_Ps_from_last_state(self,
+                                   *args):
         """
         Updates the matrices {P_i}_{i=1}^N after forward propagation of the state through time
         """
@@ -484,7 +508,8 @@ class PyDiffGame(ABC):
         pass
 
     @abstractmethod
-    def is_A_cl_stable(self, *args) -> bool:
+    def is_A_cl_stable(self,
+                       *args) -> bool:
         """
         Tests Lyapunov stability of the closed loop
 
@@ -594,16 +619,17 @@ class PyDiffGame(ABC):
 
             cost_i = 0
 
-            for interval in range(self._L):
-                x_l = self._x[interval]
-                K_i_l = self._get_K_i(i) if self.__continuous else self._get_K_i(i, interval)
+            for l in range(self._L):
+                x_l = self._x[l]
+                K_i_l = self._get_K_i(i) if self.__continuous else self._get_K_i(i, l)
                 cost_i += x_l.T @ (Q_i + (K_i_l.T @ R_ii @ K_i_l if R_ii.ndim > 1 else R_ii * K_i_l.T @ K_i_l)) @ x_l
 
             costs += [cost_i]
 
         return np.array(costs)
 
-    def run_simulation(self, plot_state_space: bool = True):
+    def run_simulation(self,
+                       plot_state_space: bool = True):
         if plot_state_space:
             self.__solve_game_simulate_state_space_and_plot()
         else:
@@ -632,7 +658,8 @@ class PyDiffGame(ABC):
 
         return self._N
 
-    def __eq__(self, other: PyDiffGame) -> bool:
+    def __eq__(self,
+               other: PyDiffGame) -> bool:
         """
         Let G1, J1 and G2, J2 be two differential games and their respective costs.
         We define G1 == G2 iff:
@@ -642,7 +669,8 @@ class PyDiffGame(ABC):
 
         return len(self) == len(other) and self.get_costs().sum() == other.get_costs().sum()
 
-    def __lt__(self, other: PyDiffGame) -> bool:
+    def __lt__(self,
+               other: PyDiffGame) -> bool:
         """
         Let G1, J1 and G2, J2 be two differential games and their respective costs.
         We define G1 < G2 iff:
