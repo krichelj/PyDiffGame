@@ -83,21 +83,26 @@ g = 9.81
 
 
 class InvertedPendulum(ContinuousPyDiffGame):
+    __q_s_default = 1
+    __q_m_default = 100 * __q_s_default
+    __q_l_default = 100 * __q_m_default
+    __r_default = 1
+
     def __init__(self,
                  m_c: float,
                  m_p: float,
                  p_L: float,
-                 q_s: float = 1,
-                 q_m: float = 100,
-                 q_l: float = 10000,
-                 r: float = 1,
+                 q_s: float = __q_s_default,
+                 q_m: float = __q_m_default,
+                 q_l: float = __q_l_default,
+                 r: float = __r_default,
                  x_0: np.array = None,
                  x_T: np.array = None,
                  T_f: float = None,
-                 epsilon: float = PyDiffGame._epsilon_default,
-                 L: int = PyDiffGame._L_default,
-                 multiplayer: bool = True,
-                 regular_LQR: bool = False
+                 epsilon: float = PyDiffGame.epsilon_default,
+                 L: int = PyDiffGame.L_default,
+                 regular_LQR: bool = False,
+                 show_animation: bool = True
                  ):
         self.__m_c = m_c
         self.__m_p = m_p
@@ -106,10 +111,9 @@ class InvertedPendulum(ContinuousPyDiffGame):
         self.__I = 1 / 12 * self.__m_p * self.__p_L ** 2
 
         # # original linear system
-        linearized_D = self.__m_c * self.__m_p * self.__l ** 2 \
-                        + self.__I * (self.__m_c + self.__m_p)
-        a21 = self.__m_p ** 2 * g * self.__l ** 2 / linearized_D
-        a31 = self.__m_p * g * self.__l * (self.__m_c + self.__m_p) / linearized_D
+        linearized_D = self.__m_c * self.__m_p * self.__l ** 2 + self.__I * (self.__m_c + self.__m_p)
+        a21 = self.__m_p ** 2 * PyDiffGame._g * self.__l ** 2 / linearized_D
+        a31 = self.__m_p * PyDiffGame._g * self.__l * (self.__m_c + self.__m_p) / linearized_D
 
         A = np.array([[0, 0, 1, 0],
                       [0, 0, 0, 1],
@@ -121,18 +125,6 @@ class InvertedPendulum(ContinuousPyDiffGame):
         b22 = b31
         b32 = (m_c + m_p) / linearized_D
 
-        B = np.array([[0, 0],
-                      [0, 0],
-                      [b21, b22],
-                      [b31, b32]])
-
-        Q_x = np.diag([q_l, q_s, q_m, q_s])
-        Q_theta = np.diag([q_s, q_l, q_s, q_m])
-
-        self.__origin = (0.0, 0.0)
-        self.__regular_LQR = regular_LQR
-        multi = multiplayer and not regular_LQR
-
         B_x = np.array([[0],
                         [0],
                         [1],
@@ -141,13 +133,29 @@ class InvertedPendulum(ContinuousPyDiffGame):
                             [0],
                             [0],
                             [1]])
+        B_lqr = np.array([[0, 0],
+                          [0, 0],
+                          [b21, b22],
+                          [b31, b32]])
+        B_multiplayer = [B_x, B_theta]
+
+        Q_x = np.diag([q_l, q_s, q_m, q_s])
+        Q_theta = np.diag([q_s, q_l, q_s, q_m])
+        Q_lqr = (Q_x + Q_theta) / 2
+        Q_multiplayer = [Q_x, Q_theta]
+
+        R_lqr = np.diag([r, r])
+        R_multiplayer = [np.array([r * 1000])] * 2
+
+        self.__origin = (0.0, 0.0)
+        self.__show_animation = show_animation
 
         state_variables_names = ['x', '\\theta', '\\dot{x}', '\\dot{\\theta}']
 
         super().__init__(A=A,
-                         B=[B_x, B_theta] if multi else B,
-                         Q=[Q_x, Q_theta] if multi else (Q_x + Q_theta) / 2,
-                         R=[np.array([r * 1000])] * 2 if multi else np.diag([r, r]),
+                         B=B_lqr if regular_LQR else B_multiplayer,
+                         Q=Q_lqr if regular_LQR else Q_multiplayer,
+                         R=R_lqr if regular_LQR else R_multiplayer,
                          x_0=x_0,
                          x_T=x_T,
                          T_f=T_f,
@@ -157,40 +165,40 @@ class InvertedPendulum(ContinuousPyDiffGame):
                          force_finite_horizon=T_f is not None
                          )
 
-    def run_simulation(self, plot_state_space: bool = True):
-        super(InvertedPendulum, self).run_simulation(plot_state_space)
-
-
-x_0_1 = np.array([20,  # x
-                  pi / 3,  # theta
-                  0,  # x_dot
-                  0]  # theta_dot
-                 )
-x_T_1 = np.array([-3,  # x
-                  pi / 4,  # theta
-                  10,  # x_dot
-                  5]  # theta_dot
-                 )
+x_0 = np.array([0,  # x
+                pi / 3,  # theta
+                2,  # x_dot
+                4]  # theta_dot
+               )
+x_T = np.array([7,  # x
+                pi / 4,  # theta
+                2,  # x_dot
+                6]  # theta_dot
+               )
 
 m_c_i, m_p_i, p_L_i = 50, 8, 3
+epsilon = 10 ** (-5)
+
 lqr_inverted_pendulum = InvertedPendulum(m_c=m_c_i,
                                          m_p=m_p_i,
                                          p_L=p_L_i,
-                                         x_0=x_0_1,
-                                         x_T=x_T_1,
+                                         x_0=x_0,
+                                         x_T=x_T,
                                          regular_LQR=True,
-                                         epsilon=10**(-5)
+                                         epsilon=epsilon
                                          )
-lqr_inverted_pendulum.run_simulation(plot_state_space=False)
+lqr_inverted_pendulum.run_simulation(plot_state_space=True)
+
 game_inverted_pendulum = InvertedPendulum(m_c=m_c_i,
                                           m_p=m_p_i,
                                           p_L=p_L_i,
-                                          x_0=x_0_1,
-                                          x_T=x_T_1,
-                                          epsilon=10 ** (-5)
+                                          x_0=x_0,
+                                          x_T=x_T,
+                                          epsilon=epsilon
                                           )
 game_inverted_pendulum.run_simulation(plot_state_space=False)
 lqr_inverted_pendulum.plot_two_state_spaces(game_inverted_pendulum)
+
 
 ```
 
