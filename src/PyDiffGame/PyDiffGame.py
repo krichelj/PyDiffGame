@@ -54,9 +54,9 @@ class PyDiffGame(ABC):
 
     # class fields
     __T_f_default: int = 5
-    _L_default: int = 1000
-    _epsilon_default: float = 10 ** (-7)
-    _eta_default: int = 5
+    L_default: int = 1000
+    epsilon_default: float = 10 ** (-7)
+    eta_default: int = 5
     _g = 9.81
 
     def __init__(self,
@@ -67,12 +67,12 @@ class PyDiffGame(ABC):
                  x_0: np.array = None,
                  x_T: np.array = None,
                  T_f: float = None,
-                 P_f: list[np.array] = None,
+                 P_f: Union[list[np.array], np.array] = None,
                  show_legend: bool = True,
                  state_variables_names: list[str] = None,
-                 epsilon: float = _epsilon_default,
-                 L: int = _L_default,
-                 eta: int = _eta_default,
+                 epsilon: float = epsilon_default,
+                 L: int = L_default,
+                 eta: int = eta_default,
                  force_finite_horizon: bool = False,
                  debug: bool = False):
 
@@ -281,10 +281,10 @@ class PyDiffGame(ABC):
         if two_state_spaces:
             title = f"{self._N}-Player Game"
         else:
-            title = f"{('Linear' if linear_system else 'Nonlinear')}, " \
+            title = f"{('' if linear_system else 'Nonlinear, ')}" \
                     f"{('Continuous' if self.__continuous else 'Discrete')}, " \
-                    f"{('Infinite' if self.__infinite_horizon else 'Finite')} Horizon, " \
-                    f"{self._N}-Player Game" \
+                    f"{('Infinite' if self.__infinite_horizon else 'Finite')} Horizon" \
+                    f"{(f', {self._N}-Player Game' if self._N > 1 else ' LQR')}" \
                     f"{f', {self._L} Sampling Points'}"
 
         return title
@@ -684,6 +684,17 @@ class PyDiffGame(ABC):
         return self.get_costs().sum() < other.get_costs().sum()
 
     _post_convergence = staticmethod(_post_convergence)
+
+
+class PyDiffGameComparison(ABC):
+
+    def __init__(self,
+                 optimizers: dict[str, PyDiffGame]):
+        self.__optimizers = optimizers
+
+    def run_optimizers(self):
+        for opt in self.__optimizers.values():
+            opt.run_simulation()
 
 
 def timed(f: Callable) -> Callable:

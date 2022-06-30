@@ -3,12 +3,11 @@ from scipy.optimize import fsolve
 import quadpy
 from numpy.linalg import eigvals, inv
 from typing import Union
-from abc import ABC
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 
 
-class DiscretePyDiffGame(PyDiffGame, ABC):
+class DiscretePyDiffGame(PyDiffGame):
     """
     Discrete differential game base class
 
@@ -28,19 +27,19 @@ class DiscretePyDiffGame(PyDiffGame, ABC):
 
     def __init__(self,
                  A: np.array,
-                 Q: list[np.array],
-                 B: list[np.array],
-                 R: list[np.array],
+                 B: Union[list[np.array], np.array],
+                 Q: Union[list[np.array], np.array],
+                 R: Union[list[np.array], np.array],
                  is_input_discrete: bool = False,
                  x_0: np.array = None,
                  x_T: np.array = None,
-                 T_f: Union[float, int] = None,
-                 P_f: list[np.array] = None,
+                 T_f: float = None,
+                 P_f: Union[list[np.array], np.array] = None,
                  show_legend: bool = True,
                  state_variables_names: list = None,
-                 epsilon: float = PyDiffGame._epsilon_default,
-                 L: int = PyDiffGame._L_default,
-                 eta: int = PyDiffGame._eta_default,
+                 epsilon: float = PyDiffGame.epsilon_default,
+                 L: int = PyDiffGame.L_default,
+                 eta: int = PyDiffGame.eta_default,
                  force_finite_horizon: bool = False,
                  debug: bool = False):
 

@@ -28,8 +28,8 @@ class InvertedPendulum(ContinuousPyDiffGame):
                  x_0: np.array = None,
                  x_T: np.array = None,
                  T_f: float = None,
-                 epsilon: float = PyDiffGame._epsilon_default,
-                 L: int = PyDiffGame._L_default,
+                 epsilon: float = PyDiffGame.epsilon_default,
+                 L: int = PyDiffGame.L_default,
                  regular_LQR: bool = False,
                  show_animation: bool = True
                  ):
@@ -215,13 +215,13 @@ lqr_inverted_pendulum = InvertedPendulum(m_c=m_c_i,
                                          )
 lqr_inverted_pendulum.run_simulation(plot_state_space=True)
 
-# game_inverted_pendulum = InvertedPendulum(m_c=m_c_i,
-#                                           m_p=m_p_i,
-#                                           p_L=p_L_i,
-#                                           x_0=x_0,
-#                                           x_T=x_T,
-#                                           show_animation=False,
-#                                           epsilon=epsilon
-#                                           )
-# game_inverted_pendulum.run_simulation(plot_state_space=False)
-# lqr_inverted_pendulum.plot_two_state_spaces(game_inverted_pendulum)
+game_inverted_pendulum = InvertedPendulum(m_c=m_c_i,
+                                          m_p=m_p_i,
+                                          p_L=p_L_i,
+                                          x_0=x_0,
+                                          x_T=x_T,
+                                          show_animation=False,
+                                          epsilon=epsilon
+                                          )
+game_inverted_pendulum.run_simulation(plot_state_space=False)
+lqr_inverted_pendulum.plot_two_state_spaces(game_inverted_pendulum)

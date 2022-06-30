@@ -7,7 +7,7 @@ from abc import ABC
 from PyDiffGame.PyDiffGame import PyDiffGame
 
 
-class ContinuousPyDiffGame(PyDiffGame, ABC):
+class ContinuousPyDiffGame(PyDiffGame):
     """
     Continuous differential game base class
 
@@ -27,9 +27,9 @@ class ContinuousPyDiffGame(PyDiffGame, ABC):
                  P_f: list[np.array] = None,
                  show_legend: bool = True,
                  state_variables_names: list = None,
-                 epsilon: float = PyDiffGame._epsilon_default,
-                 L: int = PyDiffGame._L_default,
-                 eta: int = PyDiffGame._eta_default,
+                 epsilon: float = PyDiffGame.epsilon_default,
+                 L: int = PyDiffGame.L_default,
+                 eta: int = PyDiffGame.eta_default,
                  force_finite_horizon: bool = False,
                  debug: bool = False):
 
