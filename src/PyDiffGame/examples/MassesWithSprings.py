@@ -1,5 +1,4 @@
 import numpy as np
-from numpy.linalg import inv
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.PyDiffGame import PyDiffGameComparison
@@ -11,15 +10,15 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
     def __init__(self,
                  m: float,
                  k: float,
-                 q: float,
-                 r: float,
+                 Ms: list[np.array],
+                 Qs: list[np.array],
+                 Rs: list[np.array],
                  x_0: np.array = None,
                  x_T: np.array = None,
                  T_f: float = None,
                  epsilon: float = PyDiffGame.epsilon_default,
                  L: int = PyDiffGame.L_default,
                  eta: int = PyDiffGame.eta_default):
-
         A = np.array([[0, 0, 1, 0],
                       [0, 0, 0, 1],
                       [-2 * k / m, k / m, 0, 0],
@@ -29,34 +28,16 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
                               [0, 0],
                               [1, 0],
                               [0, 1]])
+        R_lqr = Rs[0] * np.eye(len(Ms))
 
-        M_1 = 1 / (2 * m) * np.array([[1, 1]])
-        M_2 = 1 / (2 * m) * np.array([[1, -1]])
-        m_1 = M_1.shape[0]
-        m_2 = M_2.shape[0]
-
-        M = np.concatenate([M_1, M_2])
-        M_inv = inv(M)
-        M_1_tilde = M_inv[:, 0:m_1]
-        M_2_tilde = M_inv[:, m_1:m_1 + m_2]
-
-        n = A.shape[0]
-        B_1 = (B @ M_1_tilde).reshape((n, m_1))
-        B_2 = (B @ M_2_tilde).reshape((n, m_2))
-
-        B_multiplayer = [B_1, B_2]
-
-        Q_1 = np.diag([q, 0, q ** 2, 0])
-        Q_2 = np.diag([0, q, 0, q ** 2])
-        Q_multiplayer = [Q_1, Q_2]
-        R_lqr = np.diag([r, r])
-        R_multiplayer = [np.array([r])] * 2
-
-        state_variables_names = ['x_1', 'x_2', '\\dot{x}_1', '\\dot{x}_2']
+        state_variables_names = ['x_1',
+                                 'x_2',
+                                 '\\dot{x}_1',
+                                 '\\dot{x}_2']
 
         optimizers = {**{f'LQR_{i}': ContinuousLQR(A=A,
                                                    B=B,
-                                                   Q=Q_i,
+                                                   Q=Qs,
                                                    R=R_lqr,
                                                    x_0=x_0,
                                                    x_T=x_T,
@@ -66,11 +47,12 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
                                                    L=L,
                                                    eta=eta,
                                                    force_finite_horizon=T_f is not None)
-                         for i, Q_i in enumerate(Q_multiplayer)},
+                         for i, Q_i in enumerate(Qs)},
                       **{'game': ContinuousPyDiffGame(A=A,
-                                                      B=B_multiplayer,
-                                                      Q=Q_multiplayer,
-                                                      R=R_multiplayer,
+                                                      B=B,
+                                                      Q=Qs,
+                                                      R=Rs,
+                                                      Ms=Ms,
                                                       x_0=x_0,
                                                       x_T=x_T,
                                                       T_f=T_f,
@@ -85,6 +67,17 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
 
 m, k = 10, 100
 q, r = 1000, 10000
+
+M_1 = 1 / (2 * m) * np.array([[1, 10]])
+M_2 = 1 / (2 * m) * np.array([[1, -1]])
+Ms = [M_1, M_2]
+
+Q_1 = np.diag([q, 0, q ** 2, 0])
+Q_2 = np.diag([0, q, 0, q ** 2])
+Qs = [Q_1, Q_2]
+
+R_11 = R_22 = np.array([[r]])
+Rs = [R_11, R_22]
 
 x_0 = np.array([1,  # x_1
                 2,  # x_2
@@ -101,8 +94,9 @@ epsilon = 10 ** (-3)
 
 masses_with_springs = MassesWithSpringsComparison(m=m,
                                                   k=k,
-                                                  q=q,
-                                                  r=r,
+                                                  Ms=Ms,
+                                                  Qs=Qs,
+                                                  Rs=Rs,
                                                   x_0=x_0,
                                                   x_T=x_T,
                                                   epsilon=epsilon

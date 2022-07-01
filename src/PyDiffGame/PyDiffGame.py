@@ -5,7 +5,7 @@ from pathlib import Path
 import time
 from scipy import interpolate
 import numpy as np
-from numpy.linalg import eigvals, norm, LinAlgError
+from numpy.linalg import eigvals, norm, LinAlgError, inv, matrix_power, matrix_rank
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
 import warnings
@@ -61,9 +61,10 @@ class PyDiffGame(ABC):
 
     def __init__(self,
                  A: np.array,
-                 B: Union[list[np.array], np.array],
+                 B: np.array,
                  Q: Union[list[np.array], np.array],
                  R: Union[list[np.array], np.array],
+                 Ms: list[np.array] = None,
                  x_0: np.array = None,
                  x_T: np.array = None,
                  T_f: float = None,
@@ -76,11 +77,13 @@ class PyDiffGame(ABC):
                  force_finite_horizon: bool = False,
                  debug: bool = False):
 
-        self.__continuous = 'ContinuousPyDiffGame' in [c.__name__ for c in type(self).__bases__]
+        self.__continuous = self.__class__.__name__ == 'ContinuousPyDiffGame' \
+                            or 'ContinuousPyDiffGame' in [c.__name__ for c in type(self).__bases__]
         self._A = A
-        self._B = B if isinstance(B, list) else [B]
+        self._B = B
         self._n = self._A.shape[0]
-        self._N = len(self._B)
+        self._m = self._B.shape[1]
+        self._N = len(Ms) if Ms is not None else 1
         self._P_size = self._n ** 2
         self._Q = Q if isinstance(Q, list) else [Q]
         self._R = R if isinstance(R, list) else [R]
@@ -88,6 +91,25 @@ class PyDiffGame(ABC):
         self._x_T = x_T
         self.__infinite_horizon = (not force_finite_horizon) and (T_f is None or P_f is None)
         self._T_f = PyDiffGame.__T_f_default if T_f is None else T_f
+
+        self._Bs = []
+
+        if Ms:
+            self._Ms = Ms
+            self._M = np.concatenate(Ms)
+            self._M_inv = inv(self._M)
+
+            l = 0
+
+            for M_i in Ms:
+                m_i = M_i.shape[0]
+                M_i_tilde = self._M_inv[:, l:l + m_i]
+                l += m_i
+                B_i = (B @ M_i_tilde).reshape((self._n, m_i))
+                self._Bs += [B_i]
+        else:
+            self._Bs += [B]
+
         self._P_f = self.__get_are_P_f() if P_f is None else P_f
         self._L = L
         self._delta = self._T_f / self._L
@@ -120,13 +142,17 @@ class PyDiffGame(ABC):
 
         if self._A.shape != (self._n, self._n):
             raise ValueError('A must be a square 2-d numpy array with shape nxn')
-        if any([B_i.shape[0] != self._n for B_i in self._B]):
-            raise ValueError('B must be a list of 2-d numpy arrays with n rows')
-        if not all([(B_i.shape[1] == R_i.shape[0] == R_i.shape[1] if R_i.ndim > 1 else B_i.shape[1] == R_i.shape[0])
-                    and (np.all(eigvals(R_i) > 0) if R_i.ndim > 1 else R_i > 0)
-                    for B_i, R_i in zip(self._B, self._R)]):
-            raise ValueError('R must be a list of square 2-d positive definite numpy arrays with shape '
-                             'corresponding to the second dimensions of the arrays in B')
+        if self._B.shape[0] != self._n:
+            raise ValueError('B must be a 2-d numpy array with n rows')
+        if not self.__is_controllable():
+            warnings.warn("Warning: The given system is not fully controllable")
+        if self._N > 1:
+            if not all([(M_i.shape[0] == R_ii.shape[0] == R_ii.shape[1]
+                        if R_ii.ndim > 1 else M_i.shape[0] == R_ii.shape[0])
+                        and (np.all(eigvals(R_ii) > 0) if R_ii.ndim > 1 else R_ii > 0)
+                        for M_i, R_ii in zip(self._Ms, self._R)]):
+                raise ValueError('R must be a list of square 2-d positive definite numpy arrays with shape '
+                                 'corresponding to the second dimensions of the arrays in M')
         if any([Q_i.shape != (self._n, self._n) for Q_i in self._Q]):
             raise ValueError('Q must be a list of square 2-d positive semi-definite numpy arrays with shape nxn')
         if any([np.all(eigvals(Q_i) < 0) for Q_i in self._Q]):
@@ -152,6 +178,12 @@ class PyDiffGame(ABC):
             raise ValueError('The number of data points must be a positive integer')
         if self.__eta <= 0:
             raise ValueError('The number of last matrix norms to consider for convergence must be a positive integer')
+
+    def __is_controllable(self) -> bool:
+        controllability_matrix = np.concatenate([self._B] +
+                                                [matrix_power(self._A, i) @ self._B for i in range(1, self._n)],
+                                                axis=1)
+        return matrix_rank(controllability_matrix) == self._n
 
     def _converge_DREs_to_AREs(self):
         """
@@ -429,7 +461,7 @@ class PyDiffGame(ABC):
         are_solver = solve_continuous_are if self.__continuous else solve_discrete_are
         P_f = []
 
-        for B_i, Q_i, R_ii in zip(self._B, self._Q, self._R):
+        for B_i, Q_i, R_ii in zip(self._Bs, self._Q, self._R):
             try:
                 P_f_i = are_solver(self._A, B_i, Q_i, R_ii)
             except LinAlgError:
@@ -491,7 +523,7 @@ class PyDiffGame(ABC):
             A_cl[k] = A - sum_{i=1}^N B_i K_i[k]
         """
 
-        A_cl = self._A - sum([self._B[i] @ (self._get_K_i(i, k) if k is not None else self._get_K_i(i))
+        A_cl = self._A - sum([self._Bs[i] @ (self._get_K_i(i, k) if k is not None else self._get_K_i(i))
                               for i in range(self._N)])
         if k is not None:
             self._A_cl[k] = A_cl
