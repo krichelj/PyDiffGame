@@ -79,7 +79,10 @@ class InvertedPendulum(ContinuousPyDiffGame):
         self.__origin = (0.0, 0.0)
         self.__show_animation = show_animation
 
-        state_variables_names = ['x', '\\theta', '\\dot{x}', '\\dot{\\theta}']
+        state_variables_names = ['x',
+                                 '\\theta',
+                                 '\\dot{x}',
+                                 '\\dot{\\theta}']
 
         super().__init__(A=A,
                          B=B_lqr if regular_LQR else B_multiplayer,

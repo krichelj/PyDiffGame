@@ -30,6 +30,7 @@ class DiscretePyDiffGame(PyDiffGame):
                  B: Union[list[np.array], np.array],
                  Q: Union[list[np.array], np.array],
                  R: Union[list[np.array], np.array],
+                 Ms: list[np.array] = None,
                  is_input_discrete: bool = False,
                  x_0: np.array = None,
                  x_T: np.array = None,
@@ -47,6 +48,7 @@ class DiscretePyDiffGame(PyDiffGame):
                          B=B,
                          Q=Q,
                          R=R,
+                         Ms=Ms,
                          x_0=x_0,
                          x_T=x_T,
                          T_f=T_f,
@@ -63,7 +65,7 @@ class DiscretePyDiffGame(PyDiffGame):
         if not is_input_discrete:
             self.__discretize_game()
 
-        self.__K_rows_num = sum([B_i.shape[1] for B_i in self._B])
+        self.__K_rows_num = sum([B_i.shape[1] for B_i in self._Bs])
 
         def __solve_for_K_k(K_k_previous: np.array, k_1: int) -> np.array:
             """
@@ -93,14 +95,14 @@ class DiscretePyDiffGame(PyDiffGame):
                 K_k_previous_i = K_k_previous[i_indices]
                 P_k_1_i = P_k_1[i]
                 R_ii = self._R[i]
-                B_i = self._B[i]
+                B_i = self._Bs[i]
                 B_i_T = B_i.T
 
                 A_cl_k_i = self._A
 
                 for j in range(self._N):
                     if j != i:
-                        B_j = self._B[j]
+                        B_j = self._Bs[j]
                         j_indices = self.__get_indices_tuple(j)
                         K_k_previous_j = K_k_previous[j_indices]
                         A_cl_k_i = A_cl_k_i - B_j @ K_k_previous_j
@@ -131,7 +133,7 @@ class DiscretePyDiffGame(PyDiffGame):
 
         self._A = A_tilda
         B_tilda = e_AT
-        self._B = [B_tilda @ B_i for B_i in self._B]
+        self._Bs = [B_tilda @ B_i for B_i in self._Bs]
         self._Q = [Q_i * self._delta for Q_i in self._Q]
         self._R = [R_i / self._delta for R_i in self._R]
 
@@ -194,9 +196,9 @@ class DiscretePyDiffGame(PyDiffGame):
             The desired controller index
         """
 
-        K_i_offset = sum([self._B[j].shape[1] for j in range(i)]) if i else 0
+        K_i_offset = sum([self._Bs[j].shape[1] for j in range(i)]) if i else 0
         first_K_i_index = K_i_offset
-        second_K_i_index = first_K_i_index + self._B[i].shape[1]
+        second_K_i_index = first_K_i_index + self._Bs[i].shape[1]
 
         return range(first_K_i_index, second_K_i_index)
 
