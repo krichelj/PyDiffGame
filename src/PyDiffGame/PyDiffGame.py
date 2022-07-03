@@ -77,8 +77,8 @@ class PyDiffGame(ABC):
                  force_finite_horizon: bool = False,
                  debug: bool = False):
 
-        self.__continuous = self.__class__.__name__ == 'ContinuousPyDiffGame' \
-                            or 'ContinuousPyDiffGame' in [c.__name__ for c in type(self).__bases__]
+        self.__continuous = 'ContinuousPyDiffGame' in [c.__name__ for c in
+                                                       set(type(self).__bases__).union({self.__class__})]
         self._A = A
         self._B = B
         self._n = self._A.shape[0]
@@ -94,7 +94,7 @@ class PyDiffGame(ABC):
 
         self._Bs = []
 
-        if Ms:
+        if Ms is not None:
             self._Ms = Ms
             self._M = np.concatenate(Ms)
             self._M_inv = inv(self._M)
@@ -721,12 +721,12 @@ class PyDiffGame(ABC):
 class PyDiffGameComparison(ABC):
 
     def __init__(self,
-                 optimizers: dict[str, PyDiffGame]):
-        self.__optimizers = optimizers
+                 games: dict[str, PyDiffGame]):
+        self.__games = games
 
-    def run_optimizers(self):
-        for opt in self.__optimizers.values():
-            opt.run_simulation()
+    def run_simulations(self):
+        for game in self.__games.values():
+            game.run_simulation()
 
 
 def timed(f: Callable) -> Callable:
