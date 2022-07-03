@@ -34,33 +34,23 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
                                  'x_2',
                                  '\\dot{x}_1',
                                  '\\dot{x}_2']
+        args = {'A': A,
+                'B': B,
+                'Q': Qs,
+                'R': R_lqr,
+                'x_0': x_0,
+                'x_T': x_T,
+                'T_f': T_f,
+                'state_variables_names': state_variables_names,
+                'epsilon': epsilon,
+                'L': L,
+                'eta': eta,
+                'force_finite_horizon': T_f is not None
+                }
 
-        optimizers = {**{f'LQR_{i}': ContinuousLQR(A=A,
-                                                   B=B,
-                                                   Q=Qs,
-                                                   R=R_lqr,
-                                                   x_0=x_0,
-                                                   x_T=x_T,
-                                                   T_f=T_f,
-                                                   state_variables_names=state_variables_names,
-                                                   epsilon=epsilon,
-                                                   L=L,
-                                                   eta=eta,
-                                                   force_finite_horizon=T_f is not None)
-                         for i, Q_i in enumerate(Qs)},
-                      **{'game': ContinuousPyDiffGame(A=A,
-                                                      B=B,
-                                                      Q=Qs,
-                                                      R=Rs,
-                                                      Ms=Ms,
-                                                      x_0=x_0,
-                                                      x_T=x_T,
-                                                      T_f=T_f,
-                                                      state_variables_names=state_variables_names,
-                                                      epsilon=epsilon,
-                                                      L=L,
-                                                      eta=eta,
-                                                      force_finite_horizon=T_f is not None)}}
+        optimizers = {f'LQR_1': ContinuousLQR(**args),
+                      'game': ContinuousPyDiffGame(**args | {'R': Rs, 'Ms': Ms})
+                      }
 
         super().__init__(optimizers=optimizers)
 
@@ -68,7 +58,7 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
 m, k = 10, 100
 q, r = 1000, 10000
 
-M_1 = 1 / (2 * m) * np.array([[1, 10]])
+M_1 = 1 / (2 * m) * np.array([[1, 1]])
 M_2 = 1 / (2 * m) * np.array([[1, -1]])
 Ms = [M_1, M_2]
 
@@ -84,7 +74,7 @@ x_0 = np.array([1,  # x_1
                 0,  # x_1_dot
                 0]  # x_2_dot
                )
-x_T = np.array([10,  # x_1
+x_T = np.array([35,  # x_1
                 20,  # x_2
                 0,  # x_1_dot
                 0]  # x_2_dot
