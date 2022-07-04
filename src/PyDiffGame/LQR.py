@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Collection
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
@@ -23,7 +24,7 @@ class ContinuousLQR(ContinuousPyDiffGame):
                  T_f: float = None,
                  P_f: np.array = None,
                  show_legend: bool = True,
-                 state_variables_names: list = None,
+                 state_variables_names: Collection = None,
                  epsilon: float = PyDiffGame.epsilon_default,
                  L: int = PyDiffGame.L_default,
                  eta: int = PyDiffGame.eta_default,
@@ -70,7 +71,7 @@ class DiscreteLQR(DiscretePyDiffGame):
                  T_f: float = None,
                  P_f: np.array = None,
                  show_legend: bool = True,
-                 state_variables_names: list = None,
+                 state_variables_names: Collection = None,
                  epsilon: float = PyDiffGame.epsilon_default,
                  L: int = PyDiffGame.L_default,
                  eta: int = PyDiffGame.eta_default,
