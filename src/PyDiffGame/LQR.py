@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Collection
+from typing import Collection, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
@@ -19,17 +19,17 @@ class ContinuousLQR(ContinuousPyDiffGame):
                  B: np.array,
                  Q: np.array,
                  R: np.array,
-                 x_0: np.array = None,
-                 x_T: np.array = None,
-                 T_f: float = None,
-                 P_f: np.array = None,
-                 show_legend: bool = True,
-                 state_variables_names: Collection = None,
-                 epsilon: float = PyDiffGame.epsilon_default,
-                 L: int = PyDiffGame.L_default,
-                 eta: int = PyDiffGame.eta_default,
-                 force_finite_horizon: bool = False,
-                 debug: bool = False):
+                 x_0: Optional[np.array] = None,
+                 x_T: Optional[np.array] = None,
+                 T_f: Optional[float] = None,
+                 P_f: Optional[np.array] = None,
+                 show_legend: Optional[bool] = True,
+                 state_variables_names: Optional[Collection[str]] = None,
+                 epsilon: Optional[float] = PyDiffGame.epsilon_default,
+                 L: Optional[int] = PyDiffGame.L_default,
+                 eta: Optional[int] = PyDiffGame.eta_default,
+                 force_finite_horizon: Optional[bool] = False,
+                 debug: Optional[bool] = False):
 
         super().__init__(A=A,
                          B=B,
@@ -66,17 +66,17 @@ class DiscreteLQR(DiscretePyDiffGame):
                  B: np.array,
                  Q: np.array,
                  R: np.array,
-                 x_0: np.array = None,
-                 x_T: np.array = None,
-                 T_f: float = None,
-                 P_f: np.array = None,
-                 show_legend: bool = True,
-                 state_variables_names: Collection = None,
-                 epsilon: float = PyDiffGame.epsilon_default,
-                 L: int = PyDiffGame.L_default,
-                 eta: int = PyDiffGame.eta_default,
-                 force_finite_horizon: bool = False,
-                 debug: bool = False):
+                 x_0: Optional[np.array] = None,
+                 x_T: Optional[np.array] = None,
+                 T_f: Optional[float] = None,
+                 P_f: Optional[np.array] = None,
+                 show_legend: Optional[bool] = True,
+                 state_variables_names: Optional[Collection[str]] = None,
+                 epsilon: Optional[float] = PyDiffGame.epsilon_default,
+                 L: Optional[int] = PyDiffGame.L_default,
+                 eta: Optional[int] = PyDiffGame.eta_default,
+                 force_finite_horizon: Optional[bool] = False,
+                 debug: Optional[bool] = False):
 
         super().__init__(A=A,
                          B=B,

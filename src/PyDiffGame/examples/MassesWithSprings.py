@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.linalg import inv
 from numpy.random import random
-from typing import Collection
+from typing import Collection, Optional
 # from scipy.stats import ortho_group
 
 from PyDiffGame.PyDiffGame import PyDiffGame
@@ -18,12 +18,12 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
                  q: float,
                  r: float,
                  Ms: Collection[np.array],
-                 x_0: np.array = None,
-                 x_T: np.array = None,
-                 T_f: float = None,
-                 epsilon: float = PyDiffGame.epsilon_default,
-                 L: int = PyDiffGame.L_default,
-                 eta: int = PyDiffGame.eta_default):
+                 x_0: Optional[np.array] = None,
+                 x_T: Optional[np.array] = None,
+                 T_f: Optional[float] = None,
+                 epsilon: Optional[float] = PyDiffGame.epsilon_default,
+                 L: Optional[int] = PyDiffGame.L_default,
+                 eta: Optional[int] = PyDiffGame.eta_default):
         M = m * np.eye(N)
         K = - 2 * k * np.eye(N) + k * np.array([[int(abs(i - j) == 1) for j in range(N)] for i in range(N)])
         M_inv = inv(M)
