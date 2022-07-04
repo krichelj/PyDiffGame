@@ -9,7 +9,7 @@ from numpy.linalg import eigvals, norm, LinAlgError, inv, matrix_power, matrix_r
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
 import warnings
-from typing import Callable, Union
+from typing import Callable, Union, Collection
 
 from abc import ABC, abstractmethod
 
@@ -23,11 +23,11 @@ class PyDiffGame(ABC):
     ----------
     A: 2-d np.array of shape(n, n)
         The system dynamics matrix
-    B: list of 2-d np.arrays of len(N), each array B_i of shape(n, m_i)
+    B: collection of 2-d np.arrays of len(N), each array B_i of shape(n, m_i)
         System input matrices for each control objective
-    Q: list of 2-d np.arrays of len(N), each array Q_i of shape(n, n)
+    Q: collection of 2-d np.arrays of len(N), each array Q_i of shape(n, n)
         Cost function state weights for each control objective
-    R: list of 2-d np.arrays of len(N), each array R_i of shape(m_i, m_i)
+    R: collection of 2-d np.arrays of len(N), each array R_i of shape(m_i, m_i)
         Cost function input weights for each control objective
     x_0: 1-d np.array of shape(n), optional
         Initial state vector
@@ -35,12 +35,12 @@ class PyDiffGame(ABC):
         Final state vector, in case of signal tracking
     T_f: positive float, optional, default = 10
         System dynamics horizon. Should be given in the case of finite horizon
-    P_f: list of 2-d np.arrays of len(N), each array P_f_i of shape(n, n), optional
+    P_f: collection of 2-d np.arrays of len(N), each array P_f_i of shape(n, n), optional
         default = uncoupled solution of scipy's solve_are
         Final condition for the Riccati equation array. Should be given in the case of finite horizon
     show_legend: boolean, optional, default = True
         Indicates whether to display a legend in the plots
-    state_variables_names: list of strings of len(n), optional
+    state_variables_names: collection of strings of len(n), optional
         The state variables' names to display
     epsilon: float in the interval (0,1), optional, default = 10 ** (-7)
         Numerical convergence threshold
@@ -62,15 +62,15 @@ class PyDiffGame(ABC):
     def __init__(self,
                  A: np.array,
                  B: np.array,
-                 Q: Union[list[np.array], np.array],
-                 R: Union[list[np.array], np.array],
-                 Ms: list[np.array] = None,
+                 Q: Union[Collection[np.array], np.array],
+                 R: Union[Collection[np.array], np.array],
+                 Ms: Collection[np.array] = None,
                  x_0: np.array = None,
                  x_T: np.array = None,
                  T_f: float = None,
-                 P_f: Union[list[np.array], np.array] = None,
+                 P_f: Union[Collection[np.array], np.array] = None,
                  show_legend: bool = True,
-                 state_variables_names: list[str] = None,
+                 state_variables_names: Collection[str] = None,
                  epsilon: float = epsilon_default,
                  L: int = L_default,
                  eta: int = eta_default,
@@ -85,8 +85,8 @@ class PyDiffGame(ABC):
         self._m = self._B.shape[1]
         self._N = len(Ms) if Ms is not None else 1
         self._P_size = self._n ** 2
-        self._Q = Q if isinstance(Q, list) else [Q]
-        self._R = R if isinstance(R, list) else [R]
+        self._Q = [Q] if isinstance(Q, np.ndarray) else Q
+        self._R = [R] if isinstance(R, np.ndarray) else R
         self._x_0 = x_0
         self._x_T = x_T
         self.__infinite_horizon = (not force_finite_horizon) and (T_f is None or P_f is None)
@@ -121,7 +121,7 @@ class PyDiffGame(ABC):
         self._backward_time = self._forward_time[::-1]
         self._A_cl = np.empty_like(self._A)
         self._P: list[np.array] = []
-        self._K: list[np.array] = []
+        self._K: Collection[np.array] = []
         self.__epsilon = epsilon
         self._x = self._x_0
         self.__eta = eta
@@ -151,10 +151,10 @@ class PyDiffGame(ABC):
                         if R_ii.ndim > 1 else M_i.shape[0] == R_ii.shape[0])
                         and (np.all(eigvals(R_ii) > 0) if R_ii.ndim > 1 else R_ii > 0)
                         for M_i, R_ii in zip(self._Ms, self._R)]):
-                raise ValueError('R must be a list of square 2-d positive definite numpy arrays with shape '
+                raise ValueError('R must be a collection of square 2-d positive definite numpy arrays with shape '
                                  'corresponding to the second dimensions of the arrays in M')
         if any([Q_i.shape != (self._n, self._n) for Q_i in self._Q]):
-            raise ValueError('Q must be a list of square 2-d positive semi-definite numpy arrays with shape nxn')
+            raise ValueError('Q must be a collection of square 2-d positive semi-definite numpy arrays with shape nxn')
         if any([np.all(eigvals(Q_i) < 0) for Q_i in self._Q]):
             if all([np.all(eigvals(Q_i) >= -1e-7) for Q_i in self._Q]):
                 warnings.warn("Warning: there is a matrix in Q that has negative (but really small) eigenvalues")
@@ -167,7 +167,7 @@ class PyDiffGame(ABC):
         if self._T_f and self._T_f <= 0:
             raise ValueError('T_f must be a positive real number')
         if not all([P_f_i.shape[0] == P_f_i.shape[1] == self._n for P_f_i in self._P_f]):
-            raise ValueError('P_f must be a list of 2-d positive semi-definite numpy arrays with shape nxn')
+            raise ValueError('P_f must be a collection of 2-d positive semi-definite numpy arrays with shape nxn')
         if not all([eig >= 0 for eig_set in [eigvals(P_f_i) for P_f_i in self._P_f] for eig in eig_set]):
             warnings.warn("Warning: there is a matrix in P_f that has negative eigenvalues. Convergence may not occur")
         if len(self.__state_variables_names) != self._n:
@@ -701,6 +701,9 @@ class PyDiffGame(ABC):
 
         return len(self) == len(other) and self.get_costs().sum() == other.get_costs().sum()
 
+    def __hash__(self):
+        return hash(repr(self))
+
     def __lt__(self,
                other: PyDiffGame) -> bool:
         """
@@ -721,11 +724,11 @@ class PyDiffGame(ABC):
 class PyDiffGameComparison(ABC):
 
     def __init__(self,
-                 games: dict[str, PyDiffGame]):
+                 games: Collection[PyDiffGame]):
         self.__games = games
 
     def run_simulations(self):
-        for game in self.__games.values():
+        for game in self.__games:
             game.run_simulation()
 
 

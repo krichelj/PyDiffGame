@@ -128,7 +128,7 @@ class InvertedPendulum(ContinuousPyDiffGame):
 
         return Y
 
-    def __run_animation(self):
+    def __run_animation(self) -> (Line2D, Rectangle):
         pend_x, pend_theta, pend_x_dot, pend_theta_dot = self.__simulate_non_linear_system()
 
         pendulumArm = Line2D(xdata=self.__origin,

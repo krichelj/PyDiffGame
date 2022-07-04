@@ -2,7 +2,7 @@ import numpy as np
 from scipy.optimize import fsolve
 import quadpy
 from numpy.linalg import eigvals, inv
-from typing import Union
+from typing import Union, Collection
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 
@@ -27,17 +27,17 @@ class DiscretePyDiffGame(PyDiffGame):
 
     def __init__(self,
                  A: np.array,
-                 B: Union[list[np.array], np.array],
-                 Q: Union[list[np.array], np.array],
-                 R: Union[list[np.array], np.array],
-                 Ms: list[np.array] = None,
+                 B: Union[Collection[np.array], np.array],
+                 Q: Union[Collection[np.array], np.array],
+                 R: Union[Collection[np.array], np.array],
+                 Ms: Collection[np.array] = None,
                  is_input_discrete: bool = False,
                  x_0: np.array = None,
                  x_T: np.array = None,
                  T_f: float = None,
-                 P_f: Union[list[np.array], np.array] = None,
+                 P_f: Union[Collection[np.array], np.array] = None,
                  show_legend: bool = True,
-                 state_variables_names: list = None,
+                 state_variables_names: Collection = None,
                  epsilon: float = PyDiffGame.epsilon_default,
                  L: int = PyDiffGame.L_default,
                  eta: int = PyDiffGame.eta_default,
@@ -268,8 +268,7 @@ class DiscretePyDiffGame(PyDiffGame):
             R_ii = self._R[i]
             Q_i = self._Q[i]
 
-            P_k[i] = A_cl_k.T @ P_k_1_i @ A_cl_k + (K_k_i_T @ R_ii if R_ii.ndim > 1 else K_k_i_T * R_ii) \
-                     @ K_k_i + Q_i
+            P_k[i] = A_cl_k.T @ P_k_1_i @ A_cl_k + (K_k_i_T @ R_ii if R_ii.ndim > 1 else K_k_i_T * R_ii) @ K_k_i + Q_i
 
         self._P[k] = P_k
 
