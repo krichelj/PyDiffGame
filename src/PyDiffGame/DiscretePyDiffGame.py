@@ -2,7 +2,7 @@ import numpy as np
 from scipy.optimize import fsolve
 import quadpy
 from numpy.linalg import eigvals, inv
-from typing import Union, Collection
+from typing import Collection, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 
@@ -27,22 +27,22 @@ class DiscretePyDiffGame(PyDiffGame):
 
     def __init__(self,
                  A: np.array,
-                 B: Union[Collection[np.array], np.array],
-                 Q: Union[Collection[np.array], np.array],
-                 R: Union[Collection[np.array], np.array],
-                 Ms: Collection[np.array] = None,
-                 is_input_discrete: bool = False,
-                 x_0: np.array = None,
-                 x_T: np.array = None,
-                 T_f: float = None,
-                 P_f: Union[Collection[np.array], np.array] = None,
-                 show_legend: bool = True,
-                 state_variables_names: Collection = None,
-                 epsilon: float = PyDiffGame.epsilon_default,
-                 L: int = PyDiffGame.L_default,
-                 eta: int = PyDiffGame.eta_default,
-                 force_finite_horizon: bool = False,
-                 debug: bool = False):
+                 B: Collection[np.array] | np.array,
+                 Q: Collection[np.array] | np.array,
+                 R: Collection[np.array] | np.array,
+                 Ms: Optional[Collection[np.array]] = None,
+                 is_input_discrete: Optional[bool] = False,
+                 x_0: Optional[np.array] = None,
+                 x_T: Optional[np.array] = None,
+                 T_f: Optional[float] = None,
+                 P_f: Optional[Collection[np.array] | np.array] = None,
+                 show_legend: Optional[bool] = True,
+                 state_variables_names: Optional[Collection] = None,
+                 epsilon: Optional[float] = PyDiffGame.epsilon_default,
+                 L: Optional[int] = PyDiffGame.L_default,
+                 eta: Optional[int] = PyDiffGame.eta_default,
+                 force_finite_horizon: Optional[bool] = False,
+                 debug: Optional[bool] = False):
 
         super().__init__(A=A,
                          B=B,
@@ -67,7 +67,8 @@ class DiscretePyDiffGame(PyDiffGame):
 
         self.__K_rows_num = sum([B_i.shape[1] for B_i in self._Bs])
 
-        def __solve_for_K_k(K_k_previous: np.array, k_1: int) -> np.array:
+        def __solve_for_K_k(K_k_previous: np.array,
+                            k_1: int) -> np.array:
             """
             fsolve Controllers Solver function
 
@@ -186,7 +187,8 @@ class DiscretePyDiffGame(PyDiffGame):
                             self._n))
         self._x[0] = self._x_0
 
-    def __get_K_i_shape(self, i: int) -> range:
+    def __get_K_i_shape(self,
+                        i: int) -> range:
         """
         Returns the i'th controller shape indices
 
@@ -205,7 +207,8 @@ class DiscretePyDiffGame(PyDiffGame):
     def __get_indices_tuple(self, i: int):
         return i, self.__get_K_i_shape(i)
 
-    def _update_K_from_last_state(self, k_1: int):
+    def _update_K_from_last_state(self,
+                                  k_1: int):
         """
         After initializing, in order to solve for the controllers K_i and matrices P_i,
         we start by solving for the controllers by the update rule:
@@ -237,13 +240,17 @@ class DiscretePyDiffGame(PyDiffGame):
 
         self._K[k] = K_k_reshaped
 
-    def _get_K_i(self, i: int, k: int) -> np.array:
+    def _get_K_i(self,
+                 i: int,
+                 k: int) -> np.array:
         return self._K[k][self.__get_indices_tuple(i)]
 
-    def _get_P_f_i(self, i: int) -> np.array:
+    def _get_P_f_i(self,
+                   i: int) -> np.array:
         return self._P_f[i]
 
-    def _update_Ps_from_last_state(self, k_1: int):
+    def _update_Ps_from_last_state(self,
+                                   k_1: int):
         """
         Updates the matrices P_i with
         A_cl[k] = A - sum_{i=1}^N B_i K_i[k]
@@ -272,7 +279,8 @@ class DiscretePyDiffGame(PyDiffGame):
 
         self._P[k] = P_k
 
-    def is_A_cl_stable(self, k: int) -> bool:
+    def is_A_cl_stable(self,
+                       k: int) -> bool:
         """
         Tests Lyapunov stability of the closed loop:
         A discrete dynamic system governed by the matrix A_cl has Lyapunov stability iff:

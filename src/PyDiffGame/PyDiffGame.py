@@ -9,12 +9,12 @@ from numpy.linalg import eigvals, norm, LinAlgError, inv, matrix_power, matrix_r
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
 import warnings
-from typing import Callable, Union, Collection
+from typing import Callable, Collection, Hashable, Sized, Final, ClassVar, Optional
 
 from abc import ABC, abstractmethod
 
 
-class PyDiffGame(ABC):
+class PyDiffGame(ABC, Hashable, Sized):
     """
     Differential game abstract base class
 
@@ -53,29 +53,29 @@ class PyDiffGame(ABC):
     """
 
     # class fields
-    __T_f_default: int = 5
-    L_default: int = 1000
-    epsilon_default: float = 10 ** (-7)
-    eta_default: int = 5
-    _g = 9.81
+    __T_f_default: Final[ClassVar[int]] = 5
+    L_default: Final[ClassVar[int]] = 1000
+    epsilon_default: Final[ClassVar[float]] = 10 ** (-7)
+    eta_default: Final[ClassVar[int]] = 5
+    _g: Final[ClassVar[float]] = 9.81
 
     def __init__(self,
                  A: np.array,
                  B: np.array,
-                 Q: Union[Collection[np.array], np.array],
-                 R: Union[Collection[np.array], np.array],
-                 Ms: Collection[np.array] = None,
-                 x_0: np.array = None,
-                 x_T: np.array = None,
-                 T_f: float = None,
-                 P_f: Union[Collection[np.array], np.array] = None,
-                 show_legend: bool = True,
-                 state_variables_names: Collection[str] = None,
-                 epsilon: float = epsilon_default,
-                 L: int = L_default,
-                 eta: int = eta_default,
-                 force_finite_horizon: bool = False,
-                 debug: bool = False):
+                 Q: Collection[np.array] | np.array,
+                 R: Collection[np.array] | np.array,
+                 Ms: Optional[Collection[np.array]] = None,
+                 x_0: Optional[np.array] = None,
+                 x_T: Optional[np.array] = None,
+                 T_f: Optional[float] = None,
+                 P_f: Optional[Collection[np.array]] | np.array = None,
+                 show_legend: Optional[bool] = True,
+                 state_variables_names: Optional[Collection[str]] = None,
+                 epsilon: Optional[float] = epsilon_default,
+                 L: Optional[int] = L_default,
+                 eta: Optional[int] = eta_default,
+                 force_finite_horizon: Optional[bool] = False,
+                 debug: Optional[bool] = False):
 
         self.__continuous = 'ContinuousPyDiffGame' in [c.__name__ for c in
                                                        set(type(self).__bases__).union({self.__class__})]
@@ -255,8 +255,8 @@ class PyDiffGame(ABC):
                                  t: np.array,
                                  variables: np.array,
                                  is_P: bool,
-                                 title: str = None,
-                                 two_state_spaces: bool = False):
+                                 title: Optional[str] = None,
+                                 two_state_spaces: Optional[bool] = False):
         """
         Displays plots for the state variables with respect to time and the convergence of the values of P
 
@@ -308,8 +308,8 @@ class PyDiffGame(ABC):
         plt.show()
 
     def __get_temporal_state_variables_title(self,
-                                             linear_system: bool = True,
-                                             two_state_spaces=False):
+                                             linear_system: Optional[bool] = True,
+                                             two_state_spaces: Optional[bool] = False):
         if two_state_spaces:
             title = f"{self._N}-Player Game"
         else:
@@ -322,8 +322,8 @@ class PyDiffGame(ABC):
         return title
 
     def _plot_temporal_state_variables(self,
-                                       state_variables: np.array,
-                                       linear_system: bool = True):
+                                       state_variables: Optional[np.array],
+                                       linear_system: Optional[bool] = True):
         """
         Displays plots for the state variables with respect to time
 
@@ -363,8 +363,8 @@ class PyDiffGame(ABC):
 
     @_post_convergence
     def save_figure(self,
-                    figure_path: Union[str, Path] = Path(fr'{os.getcwd()}/figures'),
-                    filename: str = 'last_image'):
+                    figure_path: Optional[str | Path] = Path(fr'{os.getcwd()}/figures'),
+                    filename: Optional[str] = 'last_image'):
         """
         Saves the current figure
 
@@ -510,7 +510,7 @@ class PyDiffGame(ABC):
         pass
 
     def _update_A_cl_from_last_state(self,
-                                     k: int = None):
+                                     k: Optional[int] = None):
         """
         Updates the closed-loop dynamics with the updated controllers based on the relation:
         A_cl = A - sum_{i=1}^N B_i K_i
@@ -661,7 +661,7 @@ class PyDiffGame(ABC):
         return np.array(costs)
 
     def run_simulation(self,
-                       plot_state_space: bool = True):
+                       plot_state_space: Optional[bool] = True):
         if plot_state_space:
             self.__solve_game_simulate_state_space_and_plot()
         else:

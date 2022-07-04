@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.integrate import odeint
+from typing import Optional
 
 from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
 
@@ -12,9 +13,9 @@ class OligopolisticCompetition(ContinuousPyDiffGame):
                  beta: np.array,
                  c: np.array,
                  p: float,
-                 x_0: np.array = None,
-                 T_f: float = 5,
-                 epsilon: float = 10 ** (-3)):
+                 x_0: Optional[np.array] = None,
+                 T_f: Optional[float] = 5,
+                 epsilon: Optional[float] = 10 ** (-3)):
         self.__r = r
         self.__s = s
         self.__beta = beta

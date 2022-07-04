@@ -6,32 +6,33 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.lines import Line2D
 from scipy.integrate import solve_ivp
+from typing import Final, ClassVar, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
 
 
 class InvertedPendulum(ContinuousPyDiffGame):
-    __q_s_default = 1
-    __q_m_default = 100 * __q_s_default
-    __q_l_default = 100 * __q_m_default
-    __r_default = 1
+    __q_s_default: Final[ClassVar[float]] = 1
+    __q_m_default: Final[ClassVar[float]] = 100 * __q_s_default
+    __q_l_default: Final[ClassVar[float]] = 100 * __q_m_default
+    __r_default: Final[ClassVar[float]] = 1
 
     def __init__(self,
                  m_c: float,
                  m_p: float,
                  p_L: float,
-                 q_s: float = __q_s_default,
-                 q_m: float = __q_m_default,
-                 q_l: float = __q_l_default,
-                 r: float = __r_default,
-                 x_0: np.array = None,
-                 x_T: np.array = None,
-                 T_f: float = None,
-                 epsilon: float = PyDiffGame.epsilon_default,
-                 L: int = PyDiffGame.L_default,
-                 regular_LQR: bool = False,
-                 show_animation: bool = True
+                 q_s: Optional[float] = __q_s_default,
+                 q_m: Optional[float] = __q_m_default,
+                 q_l: Optional[float] = __q_l_default,
+                 r: Optional[float] = __r_default,
+                 x_0: Optional[np.array] = None,
+                 x_T: Optional[np.array] = None,
+                 T_f: Optional[float] = None,
+                 epsilon: Optional[float] = PyDiffGame.epsilon_default,
+                 L: Optional[int] = PyDiffGame.L_default,
+                 regular_LQR: Optional[bool] = False,
+                 show_animation: Optional[bool] = True
                  ):
         self.__m_c = m_c
         self.__m_p = m_p
@@ -184,7 +185,7 @@ class InvertedPendulum(ContinuousPyDiffGame):
                              blit=True)
         plt.show()
 
-    def run_simulation(self, plot_state_space: bool = True):
+    def run_simulation(self, plot_state_space: Optional[bool] = True):
         super(InvertedPendulum, self).run_simulation(plot_state_space)
 
         if self.__show_animation:
