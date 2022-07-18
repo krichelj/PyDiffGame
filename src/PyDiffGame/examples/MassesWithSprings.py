@@ -1,13 +1,9 @@
 import numpy as np
 from numpy.linalg import inv
-from numpy.random import random
 from typing import Collection, Optional
-# from scipy.stats import ortho_group
 
 from PyDiffGame.PyDiffGame import PyDiffGame
-from PyDiffGame.PyDiffGame import PyDiffGameComparison
-from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
-from PyDiffGame.LQR import ContinuousLQR
+from PyDiffGame.PyDiffGameComparison import PyDiffGameComparison
 
 
 class MassesWithSpringsComparison(PyDiffGameComparison):
@@ -42,39 +38,40 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
 
         state_variables_names = ['x_{' + str(i) + '}' for i in range(1, N + 1)] + \
                                 ['\\dot{x}_{' + str(i) + '}' for i in range(1, N + 1)]
-        args = {'A': A,
-                'B': B,
-                'Q': Q_lqr,
-                'R': R_lqr,
-                'x_0': x_0,
-                'x_T': x_T,
-                'T_f': T_f,
-                'state_variables_names': state_variables_names,
-                'epsilon': epsilon,
-                'L': L,
-                'eta': eta,
-                'force_finite_horizon': T_f is not None}
+        LQR_args = {'A': A,
+                    'B': B,
+                    'Q': Q_lqr,
+                    'R': R_lqr,
+                    'x_0': x_0,
+                    'x_T': x_T,
+                    'T_f': T_f,
+                    'state_variables_names': state_variables_names,
+                    'epsilon': epsilon,
+                    'L': L,
+                    'eta': eta,
+                    'force_finite_horizon': T_f is not None}
 
-        games = {ContinuousLQR(**args),
-                 ContinuousPyDiffGame(**args | {'Q': Qs, 'R': Rs, 'Ms': Ms})}
-
-        super().__init__(games=games)
+        super().__init__(continuous=True,
+                         args=LQR_args,
+                         QRMs=[(Qs, Rs, Ms)])
 
 
 N = 2
 m, k = 10, 100
 q, r = 100, 2000
 
-# M_1 = 1 / (2 * m) * np.array([[1, -1]])
-# M_2 = 1 / (2 * m) * np.array([[1,  1]])
+M1 = 1 / (2 * m) * np.array([[1, -1]])
+M2 = 1 / (2 * m) * np.array([[1, 1]])
+
 # M_3 = 1 / (2 * m) * np.array([[0, 0, 1]])
 
 # o = ortho_group.rvs(dim=N)
 
-Ms = [1 / (2 * m) * random(size=(1, N)) for _ in range(N)]
+Ms = [M1, M2]
+# Ms = [1 / (2 * m) * random(size=(1, N)) for _ in range(N)]
 
 x_0 = np.array([i for i in range(1, N + 1)] + [0] * N)
-x_T = np.array([10 * i for i in range(1, N + 1)] + [0] * N)
+x_T = 10 * x_0
 
 epsilon = 10 ** (-3)
 
@@ -88,3 +85,18 @@ masses_with_springs = MassesWithSpringsComparison(N=N,
                                                   x_T=x_T,
                                                   epsilon=epsilon)
 masses_with_springs.run_simulations()
+
+# game = masses_with_springs.games[-1]
+#
+# for i in range(len(game)):
+#     M_i = game._Ms[i]
+#     R_ii = game._R[i].reshape((M_i.shape[0], M_i.shape[0]))
+#
+#     R_i = M_i.T @ R_ii @ M_i
+#     R_i_inv = inv(R_i)
+#
+#     P_i = game._get_P_f_i(i)
+#
+#     K_i = R_i_inv @ game._B.T @ P_i
+#     print(K_i)
+#     print(game._get_K_i(i))

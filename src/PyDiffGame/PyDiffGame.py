@@ -54,10 +54,30 @@ class PyDiffGame(ABC, Hashable, Sized):
 
     # class fields
     __T_f_default: Final[ClassVar[int]] = 5
-    L_default: Final[ClassVar[int]] = 1000
-    epsilon_default: Final[ClassVar[float]] = 10 ** (-7)
-    eta_default: Final[ClassVar[int]] = 5
+    _epsilon_default: Final[ClassVar[float]] = 10 ** (-7)
+    _L_default: Final[ClassVar[int]] = 1000
+    _eta_default: Final[ClassVar[int]] = 5
     _g: Final[ClassVar[float]] = 9.81
+
+    @classmethod
+    @property
+    def epsilon_default(cls) -> float:
+        return cls._epsilon_default
+
+    @classmethod
+    @property
+    def L_default(cls) -> int:
+        return cls._L_default
+
+    @classmethod
+    @property
+    def eta_default(cls) -> float:
+        return cls._eta_default
+
+    @classmethod
+    @property
+    def g(cls) -> float:
+        return cls._g
 
     def __init__(self,
                  A: np.array,
@@ -71,9 +91,9 @@ class PyDiffGame(ABC, Hashable, Sized):
                  P_f: Optional[Collection[np.array]] | np.array = None,
                  show_legend: Optional[bool] = True,
                  state_variables_names: Optional[Collection[str]] = None,
-                 epsilon: Optional[float] = epsilon_default,
-                 L: Optional[int] = L_default,
-                 eta: Optional[int] = eta_default,
+                 epsilon: Optional[float] = _epsilon_default,
+                 L: Optional[int] = _L_default,
+                 eta: Optional[int] = _eta_default,
                  force_finite_horizon: Optional[bool] = False,
                  debug: Optional[bool] = False):
 
@@ -82,7 +102,6 @@ class PyDiffGame(ABC, Hashable, Sized):
         self._A = A
         self._B = B
         self._n = self._A.shape[0]
-        self._m = self._B.shape[1]
         self._N = len(Ms) if Ms is not None else 1
         self._P_size = self._n ** 2
         self._Q = [Q] if isinstance(Q, np.ndarray) else Q
@@ -95,17 +114,17 @@ class PyDiffGame(ABC, Hashable, Sized):
         self._Bs = []
 
         if Ms is not None:
-            self._Ms = Ms
-            self._M = np.concatenate(Ms)
+            self._Ms = list(Ms)
+            self._M = np.concatenate(Ms, axis=0)
             self._M_inv = inv(self._M)
 
             l = 0
 
-            for M_i in Ms:
+            for M_i in self._Ms:
                 m_i = M_i.shape[0]
                 M_i_tilde = self._M_inv[:, l:l + m_i]
                 l += m_i
-                B_i = (B @ M_i_tilde).reshape((self._n, m_i))
+                B_i = (self._B @ M_i_tilde).reshape((self._n, m_i))
                 self._Bs += [B_i]
         else:
             self._Bs += [B]
@@ -121,7 +140,7 @@ class PyDiffGame(ABC, Hashable, Sized):
         self._backward_time = self._forward_time[::-1]
         self._A_cl = np.empty_like(self._A)
         self._P: list[np.array] = []
-        self._K: Collection[np.array] = []
+        self._K: list[np.array] = []
         self.__epsilon = epsilon
         self._x = self._x_0
         self.__eta = eta
@@ -148,7 +167,7 @@ class PyDiffGame(ABC, Hashable, Sized):
             warnings.warn("Warning: The given system is not fully controllable")
         if self._N > 1:
             if not all([(M_i.shape[0] == R_ii.shape[0] == R_ii.shape[1]
-                        if R_ii.ndim > 1 else M_i.shape[0] == R_ii.shape[0])
+            if R_ii.ndim > 1 else M_i.shape[0] == R_ii.shape[0])
                         and (np.all(eigvals(R_ii) > 0) if R_ii.ndim > 1 else R_ii > 0)
                         for M_i, R_ii in zip(self._Ms, self._R)]):
                 raise ValueError('R must be a collection of square 2-d positive definite numpy arrays with shape '
@@ -321,9 +340,9 @@ class PyDiffGame(ABC, Hashable, Sized):
 
         return title
 
-    def _plot_temporal_state_variables(self,
-                                       state_variables: Optional[np.array],
-                                       linear_system: Optional[bool] = True):
+    def plot_temporal_state_variables(self,
+                                      state_variables: Optional[np.array],
+                                      linear_system: Optional[bool] = True):
         """
         Displays plots for the state variables with respect to time
 
@@ -332,6 +351,8 @@ class PyDiffGame(ABC, Hashable, Sized):
 
         state_variables: 2-d np.array of shape(L, n)
             The temporal state variables y-axis information to plot
+        linear_system: bool, optional
+            Indicates whether the system is linear or not
         """
 
         self._plot_temporal_variables(t=self._forward_time,
@@ -344,7 +365,7 @@ class PyDiffGame(ABC, Hashable, Sized):
         Plots the state vector variables wth respect to time
         """
 
-        self._plot_temporal_state_variables(state_variables=self._x)
+        self.plot_temporal_state_variables(state_variables=self._x)
 
     def __plot_y(self,
                  C: np.array):
@@ -359,7 +380,7 @@ class PyDiffGame(ABC, Hashable, Sized):
         """
 
         y = C @ self._x.T
-        self._plot_temporal_state_variables(state_variables=y.T)
+        self.plot_temporal_state_variables(state_variables=y.T)
 
     @_post_convergence
     def save_figure(self,
@@ -668,8 +689,20 @@ class PyDiffGame(ABC, Hashable, Sized):
             self.__solve_game_and_simulate_state_space()
 
     @property
-    def P(self) -> list:
+    def P(self) -> list[np.array]:
         return self._P
+
+    @property
+    def K(self) -> list[np.array]:
+        return self._K
+
+    @property
+    def x_0(self) -> np.array:
+        return self._x_0
+
+    @property
+    def x_T(self) -> np.array:
+        return self._x_T
 
     @property
     def x(self) -> np.array:
@@ -682,6 +715,18 @@ class PyDiffGame(ABC, Hashable, Sized):
     @property
     def T_f(self) -> float:
         return self._T_f
+
+    @property
+    def L(self) -> int:
+        return self._L
+
+    @property
+    def Bs(self) -> Collection:
+        return self._Bs
+
+    @property
+    def M_inv(self) -> np.array:
+        return self._M_inv
 
     def __len__(self) -> int:
         """
@@ -719,17 +764,6 @@ class PyDiffGame(ABC, Hashable, Sized):
         return self.get_costs().sum() < other.get_costs().sum()
 
     _post_convergence = staticmethod(_post_convergence)
-
-
-class PyDiffGameComparison(ABC):
-
-    def __init__(self,
-                 games: Collection[PyDiffGame]):
-        self.__games = games
-
-    def run_simulations(self):
-        for game in self.__games:
-            game.run_simulation()
 
 
 def timed(f: Callable) -> Callable:

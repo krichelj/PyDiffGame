@@ -17,7 +17,7 @@ class ContinuousPyDiffGame(PyDiffGame):
 
     def __init__(self,
                  A: np.array,
-                 B: Collection[np.array] | np.array,
+                 B: np.array,
                  Q: Collection[np.array] | np.array,
                  R: Collection[np.array] | np.array,
                  Ms: Optional[Collection[np.array]] = None,
@@ -27,9 +27,9 @@ class ContinuousPyDiffGame(PyDiffGame):
                  P_f: Optional[Collection[np.array]] = None,
                  show_legend: Optional[bool] = True,
                  state_variables_names: Optional[Collection[str]] = None,
-                 epsilon: Optional[float] = PyDiffGame.epsilon_default,
-                 L: Optional[int] = PyDiffGame.L_default,
-                 eta: Optional[int] = PyDiffGame.eta_default,
+                 epsilon: Optional[float] = PyDiffGame._epsilon_default,
+                 L: Optional[int] = PyDiffGame._L_default,
+                 eta: Optional[int] = PyDiffGame._eta_default,
                  force_finite_horizon: Optional[bool] = False,
                  debug: Optional[bool] = False):
 
@@ -92,7 +92,7 @@ class ContinuousPyDiffGame(PyDiffGame):
 
             return dP_tdt
 
-        self.__ode_func = __solve_N_coupled_diff_riccati
+        self._ode_func = __solve_N_coupled_diff_riccati
 
     def _update_K_from_last_state(self, t: int):
         """
@@ -127,7 +127,7 @@ class ContinuousPyDiffGame(PyDiffGame):
                     [sum_{j=1, j!=i}^N P_j(t) B_j R^{-1}_{jj} B^T_j] P_i(t)
         """
 
-        self._P = odeint(func=self.__ode_func,
+        self._P = odeint(func=self._ode_func,
                          y0=np.ravel(self._P_f),
                          t=self._backward_time,
                          tfirst=True)
