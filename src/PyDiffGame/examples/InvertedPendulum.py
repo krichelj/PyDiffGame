@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 from time import time
 from numpy import pi, sin, cos
@@ -9,10 +11,10 @@ from scipy.integrate import solve_ivp
 from typing import Final, ClassVar, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
-from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
+from PyDiffGame.PyDiffGameComparison import PyDiffGameComparison
 
 
-class InvertedPendulum(ContinuousPyDiffGame):
+class InvertedPendulum(PyDiffGameComparison):
     __q_s_default: Final[ClassVar[float]] = 1
     __q_m_default: Final[ClassVar[float]] = 100 * __q_s_default
     __q_l_default: Final[ClassVar[float]] = 100 * __q_m_default
@@ -30,9 +32,7 @@ class InvertedPendulum(ContinuousPyDiffGame):
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
                  epsilon: Optional[float] = PyDiffGame.epsilon_default,
-                 L: Optional[int] = PyDiffGame.L_default,
-                 regular_LQR: Optional[bool] = False,
-                 show_animation: Optional[bool] = True
+                 L: Optional[int] = PyDiffGame.L_default
                  ):
         self.__m_c = m_c
         self.__m_p = m_p
@@ -42,8 +42,8 @@ class InvertedPendulum(ContinuousPyDiffGame):
 
         # # original linear system
         linearized_D = self.__m_c * self.__m_p * self.__l ** 2 + self.__I * (self.__m_c + self.__m_p)
-        a21 = self.__m_p ** 2 * PyDiffGame._g * self.__l ** 2 / linearized_D
-        a31 = self.__m_p * PyDiffGame._g * self.__l * (self.__m_c + self.__m_p) / linearized_D
+        a21 = self.__m_p ** 2 * PyDiffGame.g * self.__l ** 2 / linearized_D
+        a31 = self.__m_p * PyDiffGame.g * self.__l * (self.__m_c + self.__m_p) / linearized_D
 
         A = np.array([[0, 0, 1, 0],
                       [0, 0, 0, 1],
@@ -55,82 +55,109 @@ class InvertedPendulum(ContinuousPyDiffGame):
         b22 = b31
         b32 = (m_c + m_p) / linearized_D
 
-        B_x = np.array([[0],
-                        [0],
-                        [1],
-                        [0]])
-        B_theta = np.array([[0],
-                            [0],
-                            [0],
-                            [1]])
-        B_lqr = np.array([[0, 0],
-                          [0, 0],
-                          [b21, b22],
-                          [b31, b32]])
-        B_multiplayer = [B_x, B_theta]
+        B = np.array([[0, 0],
+                      [0, 0],
+                      [b21, b22],
+                      [b31, b32]])
+        M1 = B[2, :].reshape(1, 2)
+        M2 = B[3, :].reshape(1, 2)
+        Ms = [M1, M2]
 
         Q_x = np.diag([q_l, q_s, q_m, q_s])
         Q_theta = np.diag([q_s, q_l, q_s, q_m])
         Q_lqr = (Q_x + Q_theta) / 2
-        Q_multiplayer = [Q_x, Q_theta]
+        Qs = [Q_x, Q_theta]
 
         R_lqr = np.diag([r, r])
-        R_multiplayer = [np.array([r * 1000])] * 2
+        Rs = [np.array([r * 1000])] * 2
 
         self.__origin = (0.0, 0.0)
-        self.__show_animation = show_animation
 
         state_variables_names = ['x',
                                  '\\theta',
                                  '\\dot{x}',
                                  '\\dot{\\theta}']
 
-        super().__init__(A=A,
-                         B=B_lqr if regular_LQR else B_multiplayer,
-                         Q=Q_lqr if regular_LQR else Q_multiplayer,
-                         R=R_lqr if regular_LQR else R_multiplayer,
-                         x_0=x_0,
-                         x_T=x_T,
-                         T_f=T_f,
-                         state_variables_names=state_variables_names,
-                         epsilon=epsilon,
-                         L=L,
-                         force_finite_horizon=T_f is not None
-                         )
+        LQR_args = {'A': A,
+                    'B': B,
+                    'Q': Q_lqr,
+                    'R': R_lqr,
+                    'x_0': x_0,
+                    'x_T': x_T,
+                    'T_f': T_f,
+                    'state_variables_names': state_variables_names,
+                    'epsilon': epsilon,
+                    'L': L,
+                    'force_finite_horizon': T_f is not None}
 
-    def __simulate_non_linear_system(self) -> np.array:
-        K = self._K[0]
+        super().__init__(continuous=True,
+                         args=LQR_args,
+                         QRMs=[(Qs, Rs, Ms)])
+
+        self.__lqr, self.__game = self._games
+
+    def __get_next_non_linear_x(self, x_t: np.array, F_t: float, M_t: float) -> np.array:
+        x, theta, x_dot, theta_dot = x_t
+        masses = self.__m_p + self.__m_c
+        m_p_l = self.__m_p * self.__l
+        sin_theta = sin(theta)
+        cos_theta = cos(theta)
+        g_sin = PyDiffGame.g * sin_theta
+        sin_dot_sq = sin_theta * (theta_dot ** 2)
+
+        theta_ddot = 1 / (m_p_l * self.__l + self.__I - (m_p_l ** 2) * (cos_theta ** 2) / masses) * \
+                     (M_t - m_p_l * (cos_theta / masses * (F_t + m_p_l * sin_dot_sq) + g_sin))
+        x_ddot = 1 / masses * (F_t + m_p_l * (sin_dot_sq - cos_theta * theta_ddot))
+
+        non_linear_x = np.array([x_dot, theta_dot, x_ddot, theta_ddot], dtype=float)
+
+        return non_linear_x
+
+    def __simulate_lqr_non_linear_system(self) -> np.array:
+        K = self.__lqr.K[0]
 
         def stateSpace(_, x_t: np.array) -> np.array:
-            u_t = - K @ (x_t - self._x_T)
+            u_t = - K @ (x_t - self.__game.x_T)
             F_t, M_t = u_t.T
-            x, theta, x_dot, theta_dot = x_t
-            masses = self.__m_p + self.__m_c
-            m_p_l = self.__m_p * self.__l
-            sin_theta = sin(theta)
-            cos_theta = cos(theta)
-            g_sin = PyDiffGame._g * sin_theta
-            sin_dot_sq = sin_theta * (theta_dot ** 2)
-            theta_ddot = 1 / (m_p_l * self.__l + self.__I - (m_p_l ** 2) * (cos_theta ** 2) / masses) * \
-                             (M_t - m_p_l * (cos_theta / masses * (F_t + m_p_l * sin_dot_sq) + g_sin))
-            x_ddot = 1 / masses * (F_t + m_p_l * (sin_dot_sq - cos_theta * theta_ddot))
-
-            return np.array([x_dot, theta_dot, x_ddot, theta_ddot])
+            return self.__get_next_non_linear_x(x_t, F_t, M_t)
 
         pendulum_state = solve_ivp(fun=stateSpace,
-                                   t_span=[0.0, self._T_f],
-                                   y0=self._x_0,
-                                   t_eval=self._forward_time,
+                                   t_span=[0.0, self.__game.T_f],
+                                   y0=self.__game.x_0,
+                                   t_eval=self.__game.forward_time,
                                    rtol=1e-8)
 
         Y = pendulum_state.y
-        self._plot_temporal_state_variables(state_variables=Y.T,
-                                            linear_system=False)
+        self.__game.plot_temporal_state_variables(state_variables=Y.T,
+                                                  linear_system=False)
+
+        return Y
+
+    def __simulate_game_non_linear_system(self) -> np.array:
+        K_x, k_theta = self.__game.K
+
+        def stateSpace(_, x_t: np.array) -> np.array:
+            x_curr = x_t - self.__game.x_T
+            v_x = - K_x[0] @ x_curr
+            v_theta = - k_theta[0] @ x_curr
+            F_t, M_t = self.__game.M_inv @ np.array([[v_x], [v_theta]])
+
+            return self.__get_next_non_linear_x(x_t, F_t, M_t)
+
+        pendulum_state = solve_ivp(fun=stateSpace,
+                                   t_span=[0.0, self.__game.T_f],
+                                   y0=self.__game.x_0,
+                                   t_eval=self.__game.forward_time,
+                                   rtol=1e-8)
+
+        Y = pendulum_state.y
+        self.__game.plot_temporal_state_variables(state_variables=Y.T,
+                                                  linear_system=False)
 
         return Y
 
     def __run_animation(self) -> (Line2D, Rectangle):
-        pend_x, pend_theta, pend_x_dot, pend_theta_dot = self.__simulate_non_linear_system()
+        pend_x, pend_theta, pend_x_dot, pend_theta_dot = self.__simulate_game_non_linear_system()
 
         pendulumArm = Line2D(xdata=self.__origin,
                              ydata=self.__origin,
@@ -140,18 +167,12 @@ class InvertedPendulum(ContinuousPyDiffGame):
                          height=0.15,
                          color='b')
 
-        if self._x_T is None:
-            x_limits = (-5, 5)
-        else:
-            x = np.max(np.abs(self._x[:, 0]))
-            x_limits = (-x, x)
-
         fig = plt.figure()
         ax = fig.add_subplot(111,
                              aspect='equal',
                              xlim=(-10, 10),
                              ylim=(-5, 5),
-                             title="Inverted Pendulum Simulation")
+                             title="Inverted LQR Pendulum Simulation")
 
         def init() -> (Line2D, Rectangle):
             ax.add_patch(cart)
@@ -175,23 +196,21 @@ class InvertedPendulum(ContinuousPyDiffGame):
         t0 = time()
         animate(0)
         t1 = time()
-        interval = self._T_f - (t1 - t0)
+        interval = self.__game.T_f - (t1 - t0)
 
         anim = FuncAnimation(fig=fig,
                              func=animate,
                              init_func=init,
-                             frames=self._L,
+                             frames=self.__game.L,
                              interval=interval,
                              blit=True)
         plt.show()
 
-    def run_simulation(self, plot_state_space: Optional[bool] = True):
-        super(InvertedPendulum, self).run_simulation(plot_state_space)
+    def run_simulations(self, plot_state_space: Optional[bool] = True, run_animation: Optional[bool] = True):
+        super().run_simulations(plot_state_space=plot_state_space)
 
-        if self.__show_animation:
+        if run_animation:
             self.__run_animation()
-
-        self.__simulate_non_linear_system()
 
 
 x_0 = np.array([0,  # x
@@ -208,24 +227,11 @@ x_T = np.array([7,  # x
 m_c_i, m_p_i, p_L_i = 50, 8, 3
 epsilon = 10 ** (-5)
 
-lqr_inverted_pendulum = InvertedPendulum(m_c=m_c_i,
-                                         m_p=m_p_i,
-                                         p_L=p_L_i,
-                                         x_0=x_0,
-                                         x_T=x_T,
-                                         regular_LQR=True,
-                                         show_animation=False,
-                                         epsilon=epsilon
-                                         )
-lqr_inverted_pendulum.run_simulation(plot_state_space=True)
-
-game_inverted_pendulum = InvertedPendulum(m_c=m_c_i,
-                                          m_p=m_p_i,
-                                          p_L=p_L_i,
-                                          x_0=x_0,
-                                          x_T=x_T,
-                                          show_animation=False,
-                                          epsilon=epsilon
-                                          )
-game_inverted_pendulum.run_simulation(plot_state_space=False)
-lqr_inverted_pendulum.plot_two_state_spaces(game_inverted_pendulum)
+inverted_pendulum = InvertedPendulum(m_c=m_c_i,
+                                     m_p=m_p_i,
+                                     p_L=p_L_i,
+                                     x_0=x_0,
+                                     x_T=x_T,
+                                     epsilon=epsilon
+                                     )
+inverted_pendulum.run_simulations()

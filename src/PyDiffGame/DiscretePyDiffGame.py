@@ -38,9 +38,9 @@ class DiscretePyDiffGame(PyDiffGame):
                  P_f: Optional[Collection[np.array] | np.array] = None,
                  show_legend: Optional[bool] = True,
                  state_variables_names: Optional[Collection] = None,
-                 epsilon: Optional[float] = PyDiffGame.epsilon_default,
-                 L: Optional[int] = PyDiffGame.L_default,
-                 eta: Optional[int] = PyDiffGame.eta_default,
+                 epsilon: Optional[float] = PyDiffGame._epsilon_default,
+                 L: Optional[int] = PyDiffGame._L_default,
+                 eta: Optional[int] = PyDiffGame._eta_default,
                  force_finite_horizon: Optional[bool] = False,
                  debug: Optional[bool] = False):
 
