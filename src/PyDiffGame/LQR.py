@@ -4,6 +4,7 @@ from typing import Sequence, Optional
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
 from PyDiffGame.DiscretePyDiffGame import DiscretePyDiffGame
+from PyDiffGame.Objective import LQRObjective
 
 
 class ContinuousLQR(ContinuousPyDiffGame):
@@ -17,8 +18,7 @@ class ContinuousLQR(ContinuousPyDiffGame):
     def __init__(self,
                  A: np.array,
                  B: np.array,
-                 Q: np.array,
-                 R: np.array,
+                 objective: LQRObjective,
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
@@ -33,8 +33,7 @@ class ContinuousLQR(ContinuousPyDiffGame):
 
         super().__init__(A=A,
                          B=B,
-                         Q=Q,
-                         R=R,
+                         objectives=[objective],
                          x_0=x_0,
                          x_T=x_T,
                          T_f=T_f,
@@ -64,8 +63,7 @@ class DiscreteLQR(DiscretePyDiffGame):
     def __init__(self,
                  A: np.array,
                  B: np.array,
-                 Q: np.array,
-                 R: np.array,
+                 objective: LQRObjective,
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
@@ -80,8 +78,7 @@ class DiscreteLQR(DiscretePyDiffGame):
 
         super().__init__(A=A,
                          B=B,
-                         Q=Q,
-                         R=R,
+                         objectives=[objective],
                          x_0=x_0,
                          x_T=x_T,
                          T_f=T_f,

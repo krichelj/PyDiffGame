@@ -4,6 +4,7 @@ from numpy.linalg import eigvals, inv
 from typing import Sequence, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
+from PyDiffGame.Objective import Objective
 
 
 class ContinuousPyDiffGame(PyDiffGame):
@@ -18,9 +19,7 @@ class ContinuousPyDiffGame(PyDiffGame):
     def __init__(self,
                  A: np.array,
                  B: np.array,
-                 Q: Sequence[np.array] | np.array,
-                 R: Sequence[np.array] | np.array,
-                 Ms: Optional[Sequence[np.array]] = None,
+                 objectives: Sequence[Objective],
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
@@ -35,9 +34,7 @@ class ContinuousPyDiffGame(PyDiffGame):
 
         super().__init__(A=A,
                          B=B,
-                         Q=Q,
-                         R=R,
-                         Ms=Ms,
+                         objectives=objectives,
                          x_0=x_0,
                          x_T=x_T,
                          T_f=T_f,
@@ -71,15 +68,15 @@ class ContinuousPyDiffGame(PyDiffGame):
 
             P_t = [(P_t[i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n) for i in range(self._N)]
             dP_tdt = np.zeros((self._P_size,))
-            A_cl_t = self._A - sum([(self._Bs[j] @ inv(self._R[j])
-                                     if self._R[j].ndim > 1 else self._Bs[j] / self._R[j]) @ self._Bs[j].T @ P_t[j]
+            A_cl_t = self._A - sum([(self._Bs[j] @ inv(self._Rs[j])
+                                     if self._Rs[j].ndim > 1 else self._Bs[j] / self._Rs[j]) @ self._Bs[j].T @ P_t[j]
                                     for j in range(self._N)])
 
             for i in range(self._N):
                 P_t_i = P_t[i]
                 B_i = self._Bs[i]
-                R_ii = self._R[i]
-                Q_i = self._Q[i]
+                R_ii = self._Rs[i]
+                Q_i = self._Qs[i]
 
                 dP_t_idt = - A_cl_t.T @ P_t_i - P_t_i @ A_cl_t - Q_i - P_t_i @ (B_i @ inv(R_ii)
                                                                                 if R_ii.ndim > 1
@@ -107,7 +104,7 @@ class ContinuousPyDiffGame(PyDiffGame):
 
         P_t = [(self._P[t][i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n) for i in range(self._N)]
         self._K = [(inv(R_ii) @ B_i.T if R_ii.ndim > 1 else 1 / R_ii * B_i.T) @ P_i
-                   for R_ii, B_i, P_i in zip(self._R, self._Bs, P_t)]
+                   for R_ii, B_i, P_i in zip(self._Rs, self._Bs, P_t)]
 
     def _get_K_i(self, i: int) -> np.array:
         return self._K[i]
