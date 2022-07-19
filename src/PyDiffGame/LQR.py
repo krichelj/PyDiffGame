@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Collection, Optional
+from typing import Sequence, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
@@ -24,7 +24,7 @@ class ContinuousLQR(ContinuousPyDiffGame):
                  T_f: Optional[float] = None,
                  P_f: Optional[np.array] = None,
                  show_legend: Optional[bool] = True,
-                 state_variables_names: Optional[Collection[str]] = None,
+                 state_variables_names: Optional[Sequence[str]] = None,
                  epsilon: Optional[float] = PyDiffGame._epsilon_default,
                  L: Optional[int] = PyDiffGame._L_default,
                  eta: Optional[int] = PyDiffGame._eta_default,
@@ -71,7 +71,7 @@ class DiscreteLQR(DiscretePyDiffGame):
                  T_f: Optional[float] = None,
                  P_f: Optional[np.array] = None,
                  show_legend: Optional[bool] = True,
-                 state_variables_names: Optional[Collection[str]] = None,
+                 state_variables_names: Optional[Sequence[str]] = None,
                  epsilon: Optional[float] = PyDiffGame._epsilon_default,
                  L: Optional[int] = PyDiffGame._L_default,
                  eta: Optional[int] = PyDiffGame._eta_default,

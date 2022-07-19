@@ -9,7 +9,7 @@ from numpy.linalg import eigvals, norm, LinAlgError, inv, matrix_power, matrix_r
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
 import warnings
-from typing import Callable, Collection, Hashable, Sized, Final, ClassVar, Optional
+from typing import Callable, Hashable, Sized, Final, ClassVar, Optional, Sequence
 
 from abc import ABC, abstractmethod
 
@@ -82,15 +82,15 @@ class PyDiffGame(ABC, Hashable, Sized):
     def __init__(self,
                  A: np.array,
                  B: np.array,
-                 Q: Collection[np.array] | np.array,
-                 R: Collection[np.array] | np.array,
-                 Ms: Optional[Collection[np.array]] = None,
+                 Q: Sequence[np.array] | np.array,
+                 R: Sequence[np.array] | np.array,
+                 Ms: Optional[Sequence[np.array]] = None,
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
-                 P_f: Optional[Collection[np.array]] | np.array = None,
+                 P_f: Optional[Sequence[np.array]] | np.array = None,
                  show_legend: Optional[bool] = True,
-                 state_variables_names: Optional[Collection[str]] = None,
+                 state_variables_names: Optional[Sequence[str]] = None,
                  epsilon: Optional[float] = _epsilon_default,
                  L: Optional[int] = _L_default,
                  eta: Optional[int] = _eta_default,
@@ -721,7 +721,7 @@ class PyDiffGame(ABC, Hashable, Sized):
         return self._L
 
     @property
-    def Bs(self) -> Collection:
+    def Bs(self) -> Sequence:
         return self._Bs
 
     @property

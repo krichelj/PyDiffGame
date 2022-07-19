@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.linalg import inv
-from typing import Collection, Optional
+from typing import Sequence, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.PyDiffGameComparison import PyDiffGameComparison
@@ -13,7 +13,7 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
                  k: float,
                  q: float,
                  r: float,
-                 Ms: Collection[np.array],
+                 Ms: Sequence[np.array],
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
@@ -53,7 +53,7 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
 
         super().__init__(continuous=True,
                          args=LQR_args,
-                         QRMs=[(Qs, Rs, Ms)])
+                         Os=[(Qs, Rs, Ms)])
 
 
 N = 2
@@ -62,8 +62,6 @@ q, r = 100, 2000
 
 M1 = 1 / (2 * m) * np.array([[1, -1]])
 M2 = 1 / (2 * m) * np.array([[1, 1]])
-
-# M_3 = 1 / (2 * m) * np.array([[0, 0, 1]])
 
 # o = ortho_group.rvs(dim=N)
 
@@ -85,18 +83,3 @@ masses_with_springs = MassesWithSpringsComparison(N=N,
                                                   x_T=x_T,
                                                   epsilon=epsilon)
 masses_with_springs.run_simulations()
-
-# game = masses_with_springs.games[-1]
-#
-# for i in range(len(game)):
-#     M_i = game._Ms[i]
-#     R_ii = game._R[i].reshape((M_i.shape[0], M_i.shape[0]))
-#
-#     R_i = M_i.T @ R_ii @ M_i
-#     R_i_inv = inv(R_i)
-#
-#     P_i = game._get_P_f_i(i)
-#
-#     K_i = R_i_inv @ game._B.T @ P_i
-#     print(K_i)
-#     print(game._get_K_i(i))

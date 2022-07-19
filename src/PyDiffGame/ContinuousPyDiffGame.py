@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.integrate import odeint
 from numpy.linalg import eigvals, inv
-from typing import Collection, Optional
+from typing import Sequence, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 
@@ -18,15 +18,15 @@ class ContinuousPyDiffGame(PyDiffGame):
     def __init__(self,
                  A: np.array,
                  B: np.array,
-                 Q: Collection[np.array] | np.array,
-                 R: Collection[np.array] | np.array,
-                 Ms: Optional[Collection[np.array]] = None,
+                 Q: Sequence[np.array] | np.array,
+                 R: Sequence[np.array] | np.array,
+                 Ms: Optional[Sequence[np.array]] = None,
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
-                 P_f: Optional[Collection[np.array]] = None,
+                 P_f: Optional[Sequence[np.array]] = None,
                  show_legend: Optional[bool] = True,
-                 state_variables_names: Optional[Collection[str]] = None,
+                 state_variables_names: Optional[Sequence[str]] = None,
                  epsilon: Optional[float] = PyDiffGame._epsilon_default,
                  L: Optional[int] = PyDiffGame._L_default,
                  eta: Optional[int] = PyDiffGame._eta_default,
