@@ -4,6 +4,7 @@ from typing import Sequence, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.PyDiffGameComparison import PyDiffGameComparison
+from PyDiffGame.Objective import GameObjective, LQRObjective, Objective
 
 
 class MassesWithSpringsComparison(PyDiffGameComparison):
@@ -38,22 +39,24 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
 
         state_variables_names = ['x_{' + str(i) + '}' for i in range(1, N + 1)] + \
                                 ['\\dot{x}_{' + str(i) + '}' for i in range(1, N + 1)]
-        LQR_args = {'A': A,
-                    'B': B,
-                    'Q': Q_lqr,
-                    'R': R_lqr,
-                    'x_0': x_0,
-                    'x_T': x_T,
-                    'T_f': T_f,
-                    'state_variables_names': state_variables_names,
-                    'epsilon': epsilon,
-                    'L': L,
-                    'eta': eta,
-                    'force_finite_horizon': T_f is not None}
+        args = {'A': A,
+                'B': B,
+                'x_0': x_0,
+                'x_T': x_T,
+                'T_f': T_f,
+                'state_variables_names': state_variables_names,
+                'epsilon': epsilon,
+                'L': L,
+                'eta': eta,
+                'force_finite_horizon': T_f is not None}
+
+        lqr_objective = LQRObjective(Q=Q_lqr, R_ii=R_lqr)
+        game_objectives = [GameObjective(Q=Q, R_ii=R, M_i=M_i) for Q, R, M_i in zip(Qs, Rs, Ms)]
+        objectives = [lqr_objective] + game_objectives
 
         super().__init__(continuous=True,
-                         args=LQR_args,
-                         Os=[(Qs, Rs, Ms)])
+                         args=args,
+                         objectives=objectives)
 
 
 N = 2

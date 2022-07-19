@@ -1,37 +1,62 @@
 import numpy as np
 from abc import ABC
-from typing import Sequence
 
 
 class Objective(ABC):
+    """
+    Objective abstract base class
+
+
+    Parameters
+    ----------
+    Q: 2-d np.array of shape(n, n)
+        Cost function state weights for the objective
+    R_ii: 2-d np.array of shape(m_i, m_i)
+        Cost function input weights for the objective with regard to the i'th input
+    """
+
     def __init__(self,
-                 Qs: Sequence[np.array],
-                 Rs: Sequence[np.array]):
-        self._Qs = Qs
-        self._Rs = Rs
+                 Q: np.array,
+                 R_ii: np.array):
+        self._Q = Q
+        self._R_ii = R_ii
 
-    def __iter__(self):
-        self._i = 0
-        return self
+    @property
+    def Q(self) -> np.array:
+        return self._Q
 
-    def __next__(self):
-        res = self._Qs[self._i], self._i
-        return
+    @property
+    def R(self) -> np.array:
+        return self._R_ii
 
 
 class LQRObjective(Objective):
-    def __init__(self,
-                 Q: np.array,
-                 R: np.array):
-        super().__init__(Qs=[Q],
-                         Rs=[R])
+    """
+    LQR objective marker class
+    """
+
+    pass
 
 
 class GameObjective(Objective):
+    """
+    Game objective class
+
+
+    Parameters
+    ----------
+    M_i: 2-d np.array of shape(m_i, m)
+        Division matrix for the i'th virtual input
+    """
+
     def __init__(self,
-                 Qs: Sequence[np.array],
-                 Rs: Sequence[np.array],
-                 Ms: Sequence[np.array]):
-        self.__Ms = Ms
-        super().__init__(Qs=Qs,
-                         Rs=Rs)
+                 Q: np.array,
+                 R_ii: np.array,
+                 M_i: np.array):
+        self.__M_i = M_i
+        super().__init__(Q=Q,
+                         R_ii=R_ii)
+
+    @property
+    def M_i(self) -> np.array:
+        return self.__M_i

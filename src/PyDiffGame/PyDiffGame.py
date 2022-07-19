@@ -13,6 +13,8 @@ from typing import Callable, Hashable, Sized, Final, ClassVar, Optional, Sequenc
 
 from abc import ABC, abstractmethod
 
+from PyDiffGame.Objective import Objective, GameObjective
+
 
 class PyDiffGame(ABC, Hashable, Sized):
     """
@@ -23,24 +25,22 @@ class PyDiffGame(ABC, Hashable, Sized):
     ----------
     A: 2-d np.array of shape(n, n)
         The system dynamics matrix
-    B: collection of 2-d np.arrays of len(N), each array B_i of shape(n, m_i)
+    B: sequence of 2-d np.arrays of len(N), each array B_i of shape(n, m_i)
         System input matrices for each control objective
-    Q: collection of 2-d np.arrays of len(N), each array Q_i of shape(n, n)
-        Cost function state weights for each control objective
-    R: collection of 2-d np.arrays of len(N), each array R_i of shape(m_i, m_i)
-        Cost function input weights for each control objective
+    objectives: sequence of Objective objects
+        Desired objectives for the game
     x_0: 1-d np.array of shape(n), optional
         Initial state vector
     x_T: 1-d np.array of shape(n), optional
         Final state vector, in case of signal tracking
     T_f: positive float, optional, default = 10
         System dynamics horizon. Should be given in the case of finite horizon
-    P_f: collection of 2-d np.arrays of len(N), each array P_f_i of shape(n, n), optional
+    P_f: sequence of 2-d np.arrays of len(N), each array P_f_i of shape(n, n), optional
         default = uncoupled solution of scipy's solve_are
         Final condition for the Riccati equation array. Should be given in the case of finite horizon
     show_legend: boolean, optional, default = True
         Indicates whether to display a legend in the plots
-    state_variables_names: collection of strings of len(n), optional
+    state_variables_names: sequence of strings of len(n), optional
         The state variables' names to display
     epsilon: float in the interval (0,1), optional, default = 10 ** (-7)
         Numerical convergence threshold
@@ -82,9 +82,7 @@ class PyDiffGame(ABC, Hashable, Sized):
     def __init__(self,
                  A: np.array,
                  B: np.array,
-                 Q: Sequence[np.array] | np.array,
-                 R: Sequence[np.array] | np.array,
-                 Ms: Optional[Sequence[np.array]] = None,
+                 objectives: Sequence[Objective],
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
@@ -102,10 +100,10 @@ class PyDiffGame(ABC, Hashable, Sized):
         self._A = A
         self._B = B
         self._n = self._A.shape[0]
-        self._N = len(Ms) if Ms is not None else 1
+        self._N = len(objectives)
         self._P_size = self._n ** 2
-        self._Q = [Q] if isinstance(Q, np.ndarray) else Q
-        self._R = [R] if isinstance(R, np.ndarray) else R
+        self._Qs = [o.Q for o in objectives]
+        self._Rs = [o.R for o in objectives]
         self._x_0 = x_0
         self._x_T = x_T
         self.__infinite_horizon = (not force_finite_horizon) and (T_f is None or P_f is None)
@@ -113,7 +111,9 @@ class PyDiffGame(ABC, Hashable, Sized):
 
         self._Bs = []
 
-        if Ms is not None:
+        Ms = [o.M_i for o in objectives if isinstance(o, GameObjective)]
+
+        if len(Ms):
             self._Ms = list(Ms)
             self._M = np.concatenate(Ms, axis=0)
             self._M_inv = inv(self._M)
@@ -167,15 +167,15 @@ class PyDiffGame(ABC, Hashable, Sized):
             warnings.warn("Warning: The given system is not fully controllable")
         if self._N > 1:
             if not all([(M_i.shape[0] == R_ii.shape[0] == R_ii.shape[1]
-            if R_ii.ndim > 1 else M_i.shape[0] == R_ii.shape[0])
+                        if R_ii.ndim > 1 else M_i.shape[0] == R_ii.shape[0])
                         and (np.all(eigvals(R_ii) > 0) if R_ii.ndim > 1 else R_ii > 0)
-                        for M_i, R_ii in zip(self._Ms, self._R)]):
-                raise ValueError('R must be a collection of square 2-d positive definite numpy arrays with shape '
+                        for M_i, R_ii in zip(self._Ms, self._Rs)]):
+                raise ValueError('R must be a sequence of square 2-d positive definite numpy arrays with shape '
                                  'corresponding to the second dimensions of the arrays in M')
-        if any([Q_i.shape != (self._n, self._n) for Q_i in self._Q]):
-            raise ValueError('Q must be a collection of square 2-d positive semi-definite numpy arrays with shape nxn')
-        if any([np.all(eigvals(Q_i) < 0) for Q_i in self._Q]):
-            if all([np.all(eigvals(Q_i) >= -1e-7) for Q_i in self._Q]):
+        if any([Q_i.shape != (self._n, self._n) for Q_i in self._Qs]):
+            raise ValueError('Q must be a sequence of square 2-d positive semi-definite numpy arrays with shape nxn')
+        if any([np.all(eigvals(Q_i) < 0) for Q_i in self._Qs]):
+            if all([np.all(eigvals(Q_i) >= -1e-7) for Q_i in self._Qs]):
                 warnings.warn("Warning: there is a matrix in Q that has negative (but really small) eigenvalues")
             else:
                 raise ValueError('Q must contain positive semi-definite numpy arrays')
@@ -186,7 +186,7 @@ class PyDiffGame(ABC, Hashable, Sized):
         if self._T_f and self._T_f <= 0:
             raise ValueError('T_f must be a positive real number')
         if not all([P_f_i.shape[0] == P_f_i.shape[1] == self._n for P_f_i in self._P_f]):
-            raise ValueError('P_f must be a collection of 2-d positive semi-definite numpy arrays with shape nxn')
+            raise ValueError('P_f must be a sequence of 2-d positive semi-definite numpy arrays with shape nxn')
         if not all([eig >= 0 for eig_set in [eigvals(P_f_i) for P_f_i in self._P_f] for eig in eig_set]):
             warnings.warn("Warning: there is a matrix in P_f that has negative eigenvalues. Convergence may not occur")
         if len(self.__state_variables_names) != self._n:
@@ -482,7 +482,7 @@ class PyDiffGame(ABC, Hashable, Sized):
         are_solver = solve_continuous_are if self.__continuous else solve_discrete_are
         P_f = []
 
-        for B_i, Q_i, R_ii in zip(self._Bs, self._Q, self._R):
+        for B_i, Q_i, R_ii in zip(self._Bs, self._Qs, self._Rs):
             try:
                 P_f_i = are_solver(self._A, B_i, Q_i, R_ii)
             except LinAlgError:
@@ -667,8 +667,8 @@ class PyDiffGame(ABC, Hashable, Sized):
         costs = []
 
         for i in range(self._N):
-            Q_i = self._Q[i]
-            R_ii = self._R[i]
+            Q_i = self._Qs[i]
+            R_ii = self._Rs[i]
 
             cost_i = 0
 

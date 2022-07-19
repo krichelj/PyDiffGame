@@ -5,6 +5,7 @@ from numpy.linalg import eigvals, inv
 from typing import Sequence, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
+from PyDiffGame.Objective import Objective
 
 
 class DiscretePyDiffGame(PyDiffGame):
@@ -28,9 +29,7 @@ class DiscretePyDiffGame(PyDiffGame):
     def __init__(self,
                  A: np.array,
                  B: Sequence[np.array] | np.array,
-                 Q: Sequence[np.array] | np.array,
-                 R: Sequence[np.array] | np.array,
-                 Ms: Optional[Sequence[np.array]] = None,
+                 objectives: Sequence[Objective],
                  is_input_discrete: Optional[bool] = False,
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
@@ -46,9 +45,7 @@ class DiscretePyDiffGame(PyDiffGame):
 
         super().__init__(A=A,
                          B=B,
-                         Q=Q,
-                         R=R,
-                         Ms=Ms,
+                         objectives=objectives,
                          x_0=x_0,
                          x_T=x_T,
                          T_f=T_f,
@@ -136,7 +133,7 @@ class DiscretePyDiffGame(PyDiffGame):
         B_tilda = e_AT
         self._Bs = [B_tilda @ B_i for B_i in self._Bs]
         self._Q = [Q_i * self._delta for Q_i in self._Q]
-        self._R = [R_i / self._delta for R_i in self._R]
+        self._R = [R_i / self._delta for R_i in self._Rs]
 
     def __simpson_integrate_Q(self):
         """

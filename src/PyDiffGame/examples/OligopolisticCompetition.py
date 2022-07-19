@@ -33,8 +33,8 @@ class OligopolisticCompetition(ContinuousPyDiffGame):
 
         super().__init__(A=A,
                          B=B,
-                         Q=Q,
-                         R=R,
+                         Qs=Q,
+                         Rs=R,
                          x_0=x_0,
                          T_f=T_f,
                          epsilon=epsilon)
