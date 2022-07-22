@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-import time
 from scipy import interpolate
 import numpy as np
 from numpy.linalg import eigvals, norm, LinAlgError, inv, matrix_power, matrix_rank
@@ -10,7 +9,6 @@ import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
 import warnings
 from typing import Callable, Hashable, Sized, Final, ClassVar, Optional, Sequence
-
 from abc import ABC, abstractmethod
 
 from PyDiffGame.Objective import Objective, GameObjective
@@ -114,7 +112,7 @@ class PyDiffGame(ABC, Hashable, Sized):
         Ms = [o.M_i for o in objectives if isinstance(o, GameObjective)]
 
         if len(Ms):
-            self._Ms = list(Ms)
+            self._Ms = Ms
             self._M = np.concatenate(Ms, axis=0)
             self._M_inv = inv(self._M)
 
@@ -123,9 +121,9 @@ class PyDiffGame(ABC, Hashable, Sized):
             for M_i in self._Ms:
                 m_i = M_i.shape[0]
                 M_i_tilde = self._M_inv[:, l:l + m_i]
-                l += m_i
                 B_i = (self._B @ M_i_tilde).reshape((self._n, m_i))
                 self._Bs += [B_i]
+                l += m_i
         else:
             self._Bs += [B]
 
@@ -139,8 +137,8 @@ class PyDiffGame(ABC, Hashable, Sized):
                                          num=self._L)
         self._backward_time = self._forward_time[::-1]
         self._A_cl = np.empty_like(self._A)
-        self._P: list[np.array] = []
-        self._K: list[np.array] = []
+        self._P = []
+        self._K = []
         self.__epsilon = epsilon
         self._x = self._x_0
         self.__eta = eta
@@ -163,7 +161,7 @@ class PyDiffGame(ABC, Hashable, Sized):
             raise ValueError('A must be a square 2-d numpy array with shape nxn')
         if self._B.shape[0] != self._n:
             raise ValueError('B must be a 2-d numpy array with n rows')
-        if not self.__is_controllable():
+        if not self.__is_fully_controllable():
             warnings.warn("Warning: The given system is not fully controllable")
         if self._N > 1:
             if not all([(M_i.shape[0] == R_ii.shape[0] == R_ii.shape[1]
@@ -198,11 +196,13 @@ class PyDiffGame(ABC, Hashable, Sized):
         if self.__eta <= 0:
             raise ValueError('The number of last matrix norms to consider for convergence must be a positive integer')
 
-    def __is_controllable(self) -> bool:
+    def __is_fully_controllable(self) -> bool:
         controllability_matrix = np.concatenate([self._B] +
                                                 [matrix_power(self._A, i) @ self._B for i in range(1, self._n)],
                                                 axis=1)
-        return matrix_rank(controllability_matrix) == self._n
+        controllability_matrix_rank = matrix_rank(controllability_matrix)
+        full_controllability = controllability_matrix_rank == self._n
+        return full_controllability
 
     def _converge_DREs_to_AREs(self):
         """
@@ -764,15 +764,3 @@ class PyDiffGame(ABC, Hashable, Sized):
         return self.get_costs().sum() < other.get_costs().sum()
 
     _post_convergence = staticmethod(_post_convergence)
-
-
-def timed(f: Callable) -> Callable:
-    def time_wrapper(*args, **kwargs):
-        start = time.time()
-        output = f(*args, **kwargs)
-        end = time.time()
-        print(f'{f.__name__} function took {(end - start) * 1000.0} ms')
-
-        return output
-
-    return time_wrapper

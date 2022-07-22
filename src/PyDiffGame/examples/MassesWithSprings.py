@@ -1,10 +1,9 @@
 import numpy as np
-from numpy.linalg import inv
 from typing import Sequence, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.PyDiffGameComparison import PyDiffGameComparison
-from PyDiffGame.Objective import GameObjective, LQRObjective, Objective
+from PyDiffGame.Objective import GameObjective, LQRObjective
 
 
 class MassesWithSpringsComparison(PyDiffGameComparison):
@@ -22,20 +21,33 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
                  L: Optional[int] = PyDiffGame.L_default,
                  eta: Optional[int] = PyDiffGame.eta_default):
         M = m * np.eye(N)
-        K = - 2 * k * np.eye(N) + k * np.array([[int(abs(i - j) == 1) for j in range(N)] for i in range(N)])
-        M_inv = inv(M)
+        K = k * (- 2 * np.eye(N) + np.array([[int(abs(i - j) == 1) for j in range(N)] for i in range(N)]))
+
+        M_inv = np.linalg.inv(M)
         N_z = np.zeros((N, N))
         N_e = np.eye(N)
+
         A = np.concatenate([np.concatenate([N_z, N_e],
                                            axis=1),
                             np.concatenate([M_inv @ K, N_z],
                                            axis=1)],
                            axis=0)
-        B = np.concatenate([N_z, M_inv], axis=0)
-        Qs = [np.diag([0.0] * i + [q] + [0.0] * (N - 1) + [q ** 2] + [0.0] * (N - i - 1)) for i in range(N)]
+        B_u = M_inv
+        B_u[int(N/2), int(N/2)] = 0
+        if N > 2:
+            B_u[-1, -1] = 0
+            if N > 3:
+                B_u[0, 0] = 0
+
+        B = np.concatenate([N_z, B_u],
+                           axis=0)
+
+        print(B)
+
+        Qs = [np.diag([0.0] * i + [q] + [0.0] * (N - 1) + [q] + [0.0] * (N - i - 1)) for i in range(N)]
         Rs = [np.array([r])] * N
-        R_lqr = r * N_e
-        Q_lqr = sum(Qs) / N
+        # R_lqr = r * N_e
+        # Q_lqr = sum(Qs) / N
 
         state_variables_names = ['x_{' + str(i) + '}' for i in range(1, N + 1)] + \
                                 ['\\dot{x}_{' + str(i) + '}' for i in range(1, N + 1)]
@@ -50,30 +62,31 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
                 'eta': eta,
                 'force_finite_horizon': T_f is not None}
 
-        lqr_objective = LQRObjective(Q=Q_lqr, R_ii=R_lqr)
+        # lqr_objective = LQRObjective(Q=Q_lqr, R_ii=R_lqr)
         game_objectives = [GameObjective(Q=Q, R_ii=R, M_i=M_i) for Q, R, M_i in zip(Qs, Rs, Ms)]
-        objectives = [lqr_objective] + game_objectives
+        # objectives = [lqr_objective]
+        objectives = game_objectives
 
         super().__init__(continuous=True,
                          args=args,
                          objectives=objectives)
 
 
-N = 2
-m, k = 10, 100
-q, r = 100, 2000
+N = 3
+m = 10
+k = m * 5
 
-M1 = 1 / (2 * m) * np.array([[1, -1]])
-M2 = 1 / (2 * m) * np.array([[1, 1]])
+q = 1
+r = 5 * q
 
-# o = ortho_group.rvs(dim=N)
+# M1 = 1 / (2 * m) * np.array([[1, -1]])
+# M2 = 1 / (2 * m) * np.array([[1, 1]])
+# Ms = [M1, M2]
 
-Ms = [M1, M2]
-# Ms = [1 / (2 * m) * random(size=(1, N)) for _ in range(N)]
+Ms = [1 / (2 * m) * np.random.random(size=(1, N)) for _ in range(N)]
 
 x_0 = np.array([i for i in range(1, N + 1)] + [0] * N)
 x_T = 10 * x_0
-
 epsilon = 10 ** (-3)
 
 masses_with_springs = MassesWithSpringsComparison(N=N,
