@@ -15,6 +15,7 @@ class ContinuousLQR(ContinuousPyDiffGame):
     Considers the system:
     dx(t)/dt = A x(t) + B u(t)
     """
+
     def __init__(self,
                  A: np.array,
                  B: np.array,
