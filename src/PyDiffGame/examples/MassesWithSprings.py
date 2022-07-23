@@ -27,22 +27,21 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
         N_z = np.zeros((N, N))
         N_e = np.eye(N)
 
+        M_inv_K = M_inv @ K
+        M_inv_K[N-1, N-2] = M_inv_K[N-2, N-1] = 0
         A = np.concatenate([np.concatenate([N_z, N_e],
                                            axis=1),
-                            np.concatenate([M_inv @ K, N_z],
+                            np.concatenate([M_inv_K, N_z],
                                            axis=1)],
                            axis=0)
-        B_u = M_inv
-        B_u[int(N/2), int(N/2)] = 0
-        if N > 2:
-            B_u[-1, -1] = 0
-            if N > 3:
-                B_u[0, 0] = 0
+        print(A)
+        B_u = N_z
+        non_zero_index = np.random.randint(low=0, high=N)
+        B_u[non_zero_index, non_zero_index] = M_inv[non_zero_index, non_zero_index]
 
-        B = np.concatenate([N_z, B_u],
+        B = np.concatenate([N_z,
+                            B_u],
                            axis=0)
-
-        print(B)
 
         Qs = [np.diag([0.0] * i + [q] + [0.0] * (N - 1) + [q] + [0.0] * (N - i - 1)) for i in range(N)]
         Rs = [np.array([r])] * N
@@ -72,7 +71,7 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
                          objectives=objectives)
 
 
-N = 3
+N = 4
 m = 10
 k = m * 5
 
