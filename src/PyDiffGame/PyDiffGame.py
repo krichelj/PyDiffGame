@@ -56,6 +56,7 @@ class PyDiffGame(ABC, Hashable, Sized):
     _L_default: Final[ClassVar[int]] = 1000
     _eta_default: Final[ClassVar[int]] = 5
     _g: Final[ClassVar[float]] = 9.81
+    __max_convergence_iterations = 40
 
     @classmethod
     @property
@@ -215,10 +216,14 @@ class PyDiffGame(ABC, Hashable, Sized):
         last_norms = []
         curr_iteration_T_f = self._T_f
         x_T = self._x_T if self._x_T is not None else np.zeros_like(self._x_0)
+        convergence_iterations = 0
 
-        while not x_converged:
+        while not x_converged and convergence_iterations < PyDiffGame.__max_convergence_iterations:
+            convergence_iterations += 1
+            P_convergence_iterations = 0
 
-            while not P_converged:
+            while not P_converged and P_convergence_iterations < PyDiffGame.__max_convergence_iterations:
+                P_convergence_iterations += 1
                 self._backward_time = np.linspace(start=self._T_f,
                                                   stop=self._T_f - self._delta,
                                                   num=self._L)
