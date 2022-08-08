@@ -22,27 +22,18 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
                  eta: Optional[int] = PyDiffGame.eta_default):
         M = m * np.eye(N)
         K = k * (- 2 * np.eye(N) + np.array([[int(abs(i - j) == 1) for j in range(N)] for i in range(N)]))
-
         M_inv = np.linalg.inv(M)
         N_z = np.zeros((N, N))
         N_e = np.eye(N)
-
         M_inv_K = M_inv @ K
-        M_inv_K[N-1, N-2] = M_inv_K[N-2, N-1] = 0
         A = np.concatenate([np.concatenate([N_z, N_e],
                                            axis=1),
                             np.concatenate([M_inv_K, N_z],
                                            axis=1)],
                            axis=0)
-        print(A)
-        B_u = N_z
-        non_zero_index = np.random.randint(low=0, high=N)
-        B_u[non_zero_index, non_zero_index] = M_inv[non_zero_index, non_zero_index]
-
         B = np.concatenate([N_z,
-                            B_u],
+                            M_inv],
                            axis=0)
-
         Qs = [np.diag([0.0] * i + [q] + [0.0] * (N - 1) + [q] + [0.0] * (N - i - 1)) for i in range(N)]
         Rs = [np.array([r])] * N
         # R_lqr = r * N_e

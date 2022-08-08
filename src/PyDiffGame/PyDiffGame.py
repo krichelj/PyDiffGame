@@ -56,7 +56,7 @@ class PyDiffGame(ABC, Hashable, Sized):
     _L_default: Final[ClassVar[int]] = 1000
     _eta_default: Final[ClassVar[int]] = 5
     _g: Final[ClassVar[float]] = 9.81
-    __max_convergence_iterations = 40
+    __max_convergence_iterations: Final[ClassVar[int]] = 40
 
     @classmethod
     @property
@@ -114,7 +114,7 @@ class PyDiffGame(ABC, Hashable, Sized):
 
         if len(Ms):
             self._Ms = Ms
-            self._M = np.concatenate(Ms, axis=0)
+            self._M = np.concatenate(self._Ms, axis=0)
             self._M_inv = inv(self._M)
 
             l = 0
@@ -303,7 +303,7 @@ class PyDiffGame(ABC, Hashable, Sized):
 
         self._fig = plt.figure(dpi=150)
         self._fig.set_size_inches(8, 6)
-        plt.plot(t, variables)
+        plt.plot(t[:variables.shape[0]], variables)
         plt.xlabel('Time')
 
         if title:
@@ -732,6 +732,10 @@ class PyDiffGame(ABC, Hashable, Sized):
     @property
     def M_inv(self) -> np.array:
         return self._M_inv
+
+    @property
+    def epsilon(self) -> float:
+        return self.__epsilon
 
     def __len__(self) -> int:
         """
