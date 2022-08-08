@@ -15,7 +15,7 @@ from PyDiffGame.PyDiffGameComparison import PyDiffGameComparison
 from PyDiffGame.Objective import GameObjective, LQRObjective
 
 
-class InvertedPendulum(PyDiffGameComparison):
+class InvertedPendulumComparison(PyDiffGameComparison):
     __q_s_default: Final[ClassVar[float]] = 1
     __q_m_default: Final[ClassVar[float]] = 100 * __q_s_default
     __q_l_default: Final[ClassVar[float]] = 100 * __q_m_default
@@ -43,13 +43,13 @@ class InvertedPendulum(PyDiffGameComparison):
 
         # # original linear system
         linearized_D = self.__m_c * self.__m_p * self.__l ** 2 + self.__I * (self.__m_c + self.__m_p)
-        a21 = self.__m_p ** 2 * PyDiffGame.g * self.__l ** 2 / linearized_D
-        a31 = self.__m_p * PyDiffGame.g * self.__l * (self.__m_c + self.__m_p) / linearized_D
+        a32 = self.__m_p ** 2 * PyDiffGame.g * self.__l ** 2 / linearized_D
+        a42 = self.__m_p * PyDiffGame.g * self.__l * (self.__m_c + self.__m_p) / linearized_D
 
         A = np.array([[0, 0, 1, 0],
                       [0, 0, 0, 1],
-                      [0, a21, 0, 0],
-                      [0, a31, 0, 0]])
+                      [0, a32, 0, 0],
+                      [0, a42, 0, 0]])
 
         b21 = (m_p * self.__l ** 2 + self.__I) / linearized_D
         b31 = m_p * self.__l / linearized_D
@@ -102,66 +102,57 @@ class InvertedPendulum(PyDiffGameComparison):
 
     def __get_next_non_linear_x(self, x_t: np.array, F_t: float, M_t: float) -> np.array:
         x, theta, x_dot, theta_dot = x_t
-        masses = self.__m_p + self.__m_c
-        m_p_l = self.__m_p * self.__l
-        sin_theta = sin(theta)
-        cos_theta = cos(theta)
-        g_sin = PyDiffGame.g * sin_theta
-        sin_dot_sq = sin_theta * (theta_dot ** 2)
+        # x_d, theta_d, x_dot_d, theta_dot_d = x_t - self.__game.x_T
 
-        theta_ddot = 1 / (m_p_l * self.__l + self.__I - (m_p_l ** 2) * (cos_theta ** 2) / masses) * \
-                     (M_t - m_p_l * (cos_theta / masses * (F_t + m_p_l * sin_dot_sq) + g_sin))
-        x_ddot = 1 / masses * (F_t + m_p_l * (sin_dot_sq - cos_theta * theta_ddot))
+        theta_ddot = 1 / (self.__m_p * self.__l ** 2 + self.__I - (self.__m_p * self.__l) ** 2 * cos(theta) ** 2 /
+                          (self.__m_p + self.__m_c)) * \
+                     (M_t - self.__m_p * self.__l * (cos(theta) / (self.__m_p + self.__m_c) *
+                                                     (F_t + self.__m_p * self.__l * sin(theta) * theta_dot ** 2) +
+                                                     PyDiffGame.g * sin(theta)))
+        x_ddot = 1 / (self.__m_p + self.__m_c) * (F_t + self.__m_p * self.__l * (sin(theta) * theta_dot ** 2 -
+                                                                                 cos(theta) * theta_ddot))
 
         non_linear_x = np.array([x_dot, theta_dot, x_ddot, theta_ddot], dtype=float)
 
         return non_linear_x
 
-    def __simulate_lqr_non_linear_system(self) -> np.array:
-        K = self.__lqr.K[0]
-
-        def stateSpace(_, x_t: np.array) -> np.array:
-            u_t = - K @ (x_t - self.__game.x_T)
+    def __get_F_M(self, K: np.array, x_t: np.array, LQR: bool = False):
+        if LQR:
+            u_t = - K[0] @ x_t
             F_t, M_t = u_t.T
-            return self.__get_next_non_linear_x(x_t, F_t, M_t)
+        else:
+            K_x, K_theta = K
+            v_x = - K_x @ x_t
+            v_theta = - K_theta @ x_t
+            v = np.array([v_x, v_theta])
+            F_t, M_t = self.__game.M_inv @ v
 
-        pendulum_state = solve_ivp(fun=stateSpace,
-                                   t_span=[0.0, self.__game.T_f],
-                                   y0=self.__game.x_0,
-                                   t_eval=self.__game.forward_time,
-                                   rtol=1e-8)
+        return F_t, M_t
 
-        Y = pendulum_state.y
-        self.__game.plot_temporal_state_variables(state_variables=Y.T,
-                                                  linear_system=False)
+    def __simulate_non_linear_system(self, LQR: bool = False) -> np.array:
+        tool = self.__lqr if LQR else self.__game
+        K = tool.K
 
-        return Y
-
-    def __simulate_game_non_linear_system(self) -> np.array:
-        K_x, k_theta = self.__game.K
-
-        def stateSpace(_, x_t: np.array) -> np.array:
-            x_curr = x_t - self.__game.x_T
-            v_x = - K_x[0] @ x_curr
-            v_theta = - k_theta[0] @ x_curr
-            F_t, M_t = self.__game.M_inv @ np.array([[v_x], [v_theta]])
+        def nonlinear_state_space(_, x_t: np.array) -> np.array:
+            x_t = x_t - tool.x_T
+            F_t, M_t = self.__get_F_M(K, x_t, LQR)
 
             return self.__get_next_non_linear_x(x_t, F_t, M_t)
 
-        pendulum_state = solve_ivp(fun=stateSpace,
-                                   t_span=[0.0, self.__game.T_f],
-                                   y0=self.__game.x_0,
-                                   t_eval=self.__game.forward_time,
-                                   rtol=1e-8)
+        pendulum_state = solve_ivp(fun=nonlinear_state_space,
+                                   t_span=[0.0, tool.T_f],
+                                   y0=tool.x_0,
+                                   t_eval=tool.forward_time,
+                                   rtol=tool.epsilon)
 
         Y = pendulum_state.y
-        self.__game.plot_temporal_state_variables(state_variables=Y.T,
-                                                  linear_system=False)
+        tool.plot_temporal_state_variables(state_variables=Y.T,
+                                           linear_system=False)
 
         return Y
 
     def __run_animation(self) -> (Line2D, Rectangle):
-        pend_x, pend_theta, pend_x_dot, pend_theta_dot = self.__simulate_game_non_linear_system()
+        x_t, theta_t, x_dot_t, theta_dot_t = self.__simulate_non_linear_system(LQR=False)
 
         pendulumArm = Line2D(xdata=self.__origin,
                              ydata=self.__origin,
@@ -176,7 +167,7 @@ class InvertedPendulum(PyDiffGameComparison):
                              aspect='equal',
                              xlim=(-10, 10),
                              ylim=(-5, 5),
-                             title="Inverted LQR Pendulum Simulation")
+                             title="Inverted Pendulum Simulation")
 
         def init() -> (Line2D, Rectangle):
             ax.add_patch(cart)
@@ -185,7 +176,7 @@ class InvertedPendulum(PyDiffGameComparison):
             return pendulumArm, cart
 
         def animate(i: int) -> (Line2D, Rectangle):
-            x_i, theta_i = pend_x[i], pend_theta[i]
+            x_i, theta_i = x_t[i], theta_t[i]
             pendulum_x_coordinates = [x_i, x_i + self.__p_L * sin(theta_i)]
             pendulum_y_coordinates = [0, - self.__p_L * cos(theta_i)]
             pendulumArm.set_xdata(pendulum_x_coordinates)
@@ -223,19 +214,19 @@ x_0 = np.array([0,  # x
                 4]  # theta_dot
                )
 x_T = np.array([7,  # x
-                pi / 4,  # theta
+                pi,  # theta
                 2,  # x_dot
                 6]  # theta_dot
                )
 
 m_c_i, m_p_i, p_L_i = 50, 8, 3
-epsilon = 10 ** (-5)
+epsilon = 10 ** (-3)
 
-inverted_pendulum = InvertedPendulum(m_c=m_c_i,
-                                     m_p=m_p_i,
-                                     p_L=p_L_i,
-                                     x_0=x_0,
-                                     x_T=x_T,
-                                     epsilon=epsilon
-                                     )
+inverted_pendulum = InvertedPendulumComparison(m_c=m_c_i,
+                                               m_p=m_p_i,
+                                               p_L=p_L_i,
+                                               x_0=x_0,
+                                               x_T=x_T,
+                                               epsilon=epsilon
+                                               )
 inverted_pendulum.run_simulations()
