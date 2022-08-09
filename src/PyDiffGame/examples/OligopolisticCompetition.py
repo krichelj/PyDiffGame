@@ -134,7 +134,7 @@ class OligopolisticCompetition(ContinuousPyDiffGame):
                    t=self._forward_time)
 
         self._plot_temporal_variables(t=self._forward_time,
-                                      variables=p,
+                                      temporal_variables=p,
                                       is_P=False,
                                       title=f"p_t")
         # self._plot(t=self._forward_time,
