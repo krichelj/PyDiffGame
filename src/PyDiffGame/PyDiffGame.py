@@ -56,7 +56,7 @@ class PyDiffGame(ABC, Hashable, Sized):
     _L_default: Final[ClassVar[int]] = 1000
     _eta_default: Final[ClassVar[int]] = 5
     _g: Final[ClassVar[float]] = 9.81
-    __max_convergence_iterations: Final[ClassVar[int]] = 40
+    __max_convergence_iterations: Final[ClassVar[int]] = 120
 
     @classmethod
     @property
@@ -107,7 +107,6 @@ class PyDiffGame(ABC, Hashable, Sized):
         self._x_T = x_T
         self.__infinite_horizon = (not force_finite_horizon) and (T_f is None or P_f is None)
         self._T_f = PyDiffGame.__T_f_default if T_f is None else T_f
-
         self._Bs = []
 
         Ms = [o.M_i for o in objectives if isinstance(o, GameObjective)]
@@ -198,12 +197,17 @@ class PyDiffGame(ABC, Hashable, Sized):
             raise ValueError('The number of last matrix norms to consider for convergence must be a positive integer')
 
     def __is_fully_controllable(self) -> bool:
+        """
+        Tests full controllability of an LTI system by the equivalent condition of full rank
+        of the controllability Gramian
+        """
+
         controllability_matrix = np.concatenate([self._B] +
                                                 [matrix_power(self._A, i) @ self._B for i in range(1, self._n)],
                                                 axis=1)
         controllability_matrix_rank = matrix_rank(controllability_matrix)
-        full_controllability = controllability_matrix_rank == self._n
-        return full_controllability
+
+        return controllability_matrix_rank == self._n
 
     def _converge_DREs_to_AREs(self):
         """
@@ -277,7 +281,7 @@ class PyDiffGame(ABC, Hashable, Sized):
     @_post_convergence
     def _plot_temporal_variables(self,
                                  t: np.array,
-                                 variables: np.array,
+                                 temporal_variables: np.array,
                                  is_P: bool,
                                  title: Optional[str] = None,
                                  two_state_spaces: Optional[bool] = False):
@@ -288,7 +292,7 @@ class PyDiffGame(ABC, Hashable, Sized):
         ----------
         t: 1-d np.array array of len(L)
             The time axis information to plot
-        variables: 2-d np.arrays of shape(L, n)
+        temporal_variables: 2-d np.arrays of shape(L, n)
             The y-axis information to plot
         is_P: boolean
             Indicates whether to accommodate plotting for all the values in P_i or just for x
@@ -298,12 +302,12 @@ class PyDiffGame(ABC, Hashable, Sized):
             Indicates whether to plot two state spaces
         """
 
-        num_of_variables = variables.shape[1]
+        num_of_variables = temporal_variables.shape[1]
         variables_range = range(1, num_of_variables + 1)
 
         self._fig = plt.figure(dpi=150)
         self._fig.set_size_inches(8, 6)
-        plt.plot(t[:variables.shape[0]], variables)
+        plt.plot(t[:temporal_variables.shape[0]], temporal_variables)
         plt.xlabel('Time')
 
         if title:
@@ -345,9 +349,9 @@ class PyDiffGame(ABC, Hashable, Sized):
 
         return title
 
-    def plot_temporal_state_variables(self,
-                                      state_variables: Optional[np.array],
-                                      linear_system: Optional[bool] = True):
+    def plot_state_variables(self,
+                             state_variables: np.array,
+                             linear_system: Optional[bool] = True):
         """
         Displays plots for the state variables with respect to time
 
@@ -361,7 +365,7 @@ class PyDiffGame(ABC, Hashable, Sized):
         """
 
         self._plot_temporal_variables(t=self._forward_time,
-                                      variables=state_variables,
+                                      temporal_variables=state_variables,
                                       is_P=False,
                                       title=self.__get_temporal_state_variables_title(linear_system=linear_system))
 
@@ -370,7 +374,7 @@ class PyDiffGame(ABC, Hashable, Sized):
         Plots the state vector variables wth respect to time
         """
 
-        self.plot_temporal_state_variables(state_variables=self._x)
+        self.plot_state_variables(state_variables=self._x)
 
     def __plot_y(self,
                  C: np.array):
@@ -385,7 +389,7 @@ class PyDiffGame(ABC, Hashable, Sized):
         """
 
         y = C @ self._x.T
-        self.plot_temporal_state_variables(state_variables=y.T)
+        self.plot_state_variables(state_variables=y.T)
 
     @_post_convergence
     def save_figure(self,
@@ -467,7 +471,7 @@ class PyDiffGame(ABC, Hashable, Sized):
         other_title = other.__get_temporal_state_variables_title(two_state_spaces=True)
 
         self._plot_temporal_variables(t=longer_period,
-                                      variables=augmented_state_space,
+                                      temporal_variables=augmented_state_space,
                                       is_P=False,
                                       title=f"{self_title} " + "$(T_{f_1} = " +
                                             f"{self._T_f})$ \nvs\n {other_title} " + "$(T_{f_2} = " + f"{other.T_f})$",
@@ -594,7 +598,7 @@ class PyDiffGame(ABC, Hashable, Sized):
         """
 
         self._plot_temporal_variables(t=self._backward_time,
-                                      variables=self._P,
+                                      temporal_variables=self._P,
                                       is_P=True)
 
     def __solve_and_plot_finite_horizon(self):

@@ -185,7 +185,7 @@ class InvertedPendulum(PyDiffGameComparison):
         g_sin = PyDiffGame.g * sin_theta
         sin_dot_sq = sin_theta * (theta_dot ** 2)
 
-        theta_ddot = 1 / (m_p_l * self.__l + self.__I - (m_p_l ** 2) * (cos_theta ** 2) / masses) * \
+        theta_ddot = 1 / (m_p_l * self.__l + self.__I - (m_p_l ** 2) * (cos_theta ** 2) / masses) *
                      (M_t - m_p_l * (cos_theta / masses * (F_t + m_p_l * sin_dot_sq) + g_sin))
         x_ddot = 1 / masses * (F_t + m_p_l * (sin_dot_sq - cos_theta * theta_ddot))
 
@@ -208,8 +208,8 @@ class InvertedPendulum(PyDiffGameComparison):
                                    rtol=1e-8)
 
         Y = pendulum_state.y
-        self.__game.plot_temporal_state_variables(state_variables=Y.T,
-                                                  linear_system=False)
+        self.__game.plot_state_variables(state_variables=Y.T,
+                                         linear_system=False)
 
         return Y
 
@@ -231,8 +231,8 @@ class InvertedPendulum(PyDiffGameComparison):
                                    rtol=1e-8)
 
         Y = pendulum_state.y
-        self.__game.plot_temporal_state_variables(state_variables=Y.T,
-                                                  linear_system=False)
+        self.__game.plot_state_variables(state_variables=Y.T,
+                                         linear_system=False)
 
         return Y
 
