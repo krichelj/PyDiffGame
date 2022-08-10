@@ -16,8 +16,8 @@ from PyDiffGame.Objective import GameObjective, LQRObjective
 
 
 class InvertedPendulumComparison(PyDiffGameComparison):
-    __q_default: Final[ClassVar[float]] = 10
-    __r_default: Final[ClassVar[float]] = 1
+    __q_default: Final[ClassVar[float]] = 50
+    __r_default: Final[ClassVar[float]] = 100
 
     def __init__(self,
                  m_c: float,
@@ -39,7 +39,7 @@ class InvertedPendulumComparison(PyDiffGameComparison):
 
         # # original linear system
         linearized_D = self.__m_c * self.__m_p * self.__l ** 2 + self.__I * (self.__m_c + self.__m_p)
-        a32 = self.__m_p ** 2 * PyDiffGame.g * self.__l ** 2 / linearized_D
+        a32 = self.__m_p * PyDiffGame.g * self.__l ** 2 / linearized_D
         a42 = self.__m_p * PyDiffGame.g * self.__l * (self.__m_c + self.__m_p) / linearized_D
 
         A = np.array([[0, 0, 1, 0],
@@ -200,18 +200,18 @@ class InvertedPendulumComparison(PyDiffGameComparison):
 
 
 x_0 = np.array([0,  # x
-                pi / 2 + pi / 3,  # theta
+                pi / 2,  # theta
                 2,  # x_dot
                 4]  # theta_dot
                )
-x_T = np.array([5,  # x
-                pi - pi/4,  # theta
-                2,  # x_dot
-                6]  # theta_dot
+x_T = np.array([8,  # x
+                pi,  # theta
+                0,  # x_dot
+                0]  # theta_dot
                )
 
 m_c_i, m_p_i, p_L_i = 50, 10, 5
-epsilon = 10 ** (-5)
+epsilon = 10 ** (-3)
 
 inverted_pendulum = InvertedPendulumComparison(m_c=m_c_i,
                                                m_p=m_p_i,
