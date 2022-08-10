@@ -161,7 +161,7 @@ class PyDiffGame(ABC, Hashable, Sized):
             raise ValueError('A must be a square 2-d numpy array with shape nxn')
         if self._B.shape[0] != self._n:
             raise ValueError('B must be a 2-d numpy array with n rows')
-        if not self.__is_fully_controllable():
+        if not self.is_fully_controllable():
             warnings.warn("Warning: The given system is not fully controllable")
         if self._N > 1:
             if not all([(M_i.shape[0] == R_ii.shape[0] == R_ii.shape[1]
@@ -196,7 +196,7 @@ class PyDiffGame(ABC, Hashable, Sized):
         if self.__eta <= 0:
             raise ValueError('The number of last matrix norms to consider for convergence must be a positive integer')
 
-    def __is_fully_controllable(self) -> bool:
+    def is_fully_controllable(self) -> bool:
         """
         Tests full controllability of an LTI system by the equivalent condition of full rank
         of the controllability Gramian
@@ -247,7 +247,7 @@ class PyDiffGame(ABC, Hashable, Sized):
 
             if self._x_0 is not None:
                 curr_x_T_f_norm = self.simulate_x_T_f()
-                x_converged = norm(curr_x_T_f_norm - x_T) < self.__epsilon
+                x_converged = norm(x_T - curr_x_T_f_norm) < self.__epsilon
                 curr_iteration_T_f += 1
                 self._T_f = curr_iteration_T_f
                 self._forward_time = np.linspace(start=0,
