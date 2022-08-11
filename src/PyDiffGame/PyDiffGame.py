@@ -31,22 +31,22 @@ class PyDiffGame(ABC, Hashable, Sized):
         Initial state vector
     x_T: 1-d np.array of shape(n), optional
         Final state vector, in case of signal tracking
-    T_f: positive float, optional, default = 10
+    T_f: positive float, optional
         System dynamics horizon. Should be given in the case of finite horizon
     P_f: sequence of 2-d np.arrays of len(N), each array P_f_i of shape(n, n), optional
         default = uncoupled solution of scipy's solve_are
         Final condition for the Riccati equation array. Should be given in the case of finite horizon
-    show_legend: boolean, optional, default = True
+    show_legend: boolean, optional
         Indicates whether to display a legend in the plots
     state_variables_names: sequence of strings of len(n), optional
         The state variables' names to display
-    epsilon: float in the interval (0,1), optional, default = 10 ** (-7)
+    epsilon: float in the interval (0,1), optional
         Numerical convergence threshold
-    L: positive int, optional, default = 1000
+    L: positive int, optional
         Number of data points
-    eta: positive int, optional, default = 5
+    eta: positive int, optional
         The number of last matrix norms to consider for convergence
-    debug: boolean, optional, default = False
+    debug: boolean, optional
         Indicates whether to display debug information
     """
 
@@ -271,7 +271,9 @@ class PyDiffGame(ABC, Hashable, Sized):
             A decorated version of the method requiring convergence
         """
 
-        def decorated_f(self: PyDiffGame, *args, **kwargs):
+        def decorated_f(self: PyDiffGame,
+                        *args,
+                        **kwargs):
             if not self._converged:
                 raise RuntimeError('Must first simulate the differential game')
             return f(self, *args, **kwargs)
@@ -622,6 +624,15 @@ class PyDiffGame(ABC, Hashable, Sized):
     def _solve_state_space(self):
         """
         Propagates the game through time and solves for it
+        """
+
+        pass
+
+    @_post_convergence
+    def run_animation(self,
+                      *args):
+        """
+        Animates the state progression of the system
         """
 
         pass

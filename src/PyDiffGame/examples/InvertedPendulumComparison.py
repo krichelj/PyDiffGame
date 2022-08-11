@@ -92,9 +92,9 @@ class InvertedPendulumComparison(PyDiffGameComparison):
         game_objectives = [GameObjective(Q=Q, R_ii=R, M_i=M_i) for Q, R, M_i in zip(Qs, Rs, Ms)]
         objectives = [lqr_objective] + game_objectives
 
-        super().__init__(continuous=True,
-                         args=args,
-                         objectives=objectives)
+        super().__init__(args=args,
+                         objectives=objectives,
+                         continuous=True)
 
         self.__lqr, self.__game = self._games
 
@@ -142,7 +142,7 @@ class InvertedPendulumComparison(PyDiffGameComparison):
 
         return Y
 
-    def __run_animation(self, LQR: bool) -> (Line2D, Rectangle):
+    def run_animation(self, LQR: bool) -> (Line2D, Rectangle):
         x_t, theta_t, x_dot_t, theta_dot_t = self.__simulate_non_linear_system(LQR=LQR)
 
         pendulumArm = Line2D(xdata=self.__origin,
@@ -175,11 +175,11 @@ class InvertedPendulumComparison(PyDiffGameComparison):
             x_i, theta_i = x_t[i], theta_t[i]
             pendulum_x_coordinates = [x_i, x_i + self.__p_L * sin(theta_i)]
             pendulum_y_coordinates = [0, - self.__p_L * cos(theta_i)]
-            pendulumArm.set_xdata(pendulum_x_coordinates)
-            pendulumArm.set_ydata(pendulum_y_coordinates)
+            pendulumArm.set_xdata(x=pendulum_x_coordinates)
+            pendulumArm.set_ydata(y=pendulum_y_coordinates)
 
             cart_x_y = [x_i - cart.get_width() / 2, - cart.get_height()]
-            cart.set_xy(cart_x_y)
+            cart.set_xy(xy=cart_x_y)
 
             return pendulumArm, cart
 
@@ -202,7 +202,7 @@ class InvertedPendulumComparison(PyDiffGameComparison):
 
         if run_animation:
             for LQR in [True, False]:
-                self.__run_animation(LQR)
+                self.run_animation(LQR)
 
 
 x_0 = np.array([0,  # x
