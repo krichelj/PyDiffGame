@@ -13,7 +13,7 @@ class DiscretePyDiffGame(PyDiffGame):
     Discrete differential game base class
 
 
-    Considers the system:
+    Considers control design according to the system:
     x[k+1] = A_tilda x[k] + sum_{j=1}^N B_j_tilda v_j[k]
 
     where A_tilda and each B_j_tilda are in discrete form, meaning they correlate to a discrete system,

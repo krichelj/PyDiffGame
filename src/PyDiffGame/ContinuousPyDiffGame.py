@@ -12,7 +12,7 @@ class ContinuousPyDiffGame(PyDiffGame):
     Continuous differential game base class
 
 
-    Considers the system:
+    Considers control design according to the system:
     dx(t)/dt = A x(t) + sum_{j=1}^N B_j v_j(t)
     """
 
