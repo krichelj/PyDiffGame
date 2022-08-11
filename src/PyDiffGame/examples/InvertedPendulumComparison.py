@@ -17,7 +17,7 @@ from PyDiffGame.Objective import GameObjective, LQRObjective
 
 class InvertedPendulumComparison(PyDiffGameComparison):
     __q_default: Final[ClassVar[float]] = 50
-    __r_default: Final[ClassVar[float]] = 100
+    __r_default: Final[ClassVar[float]] = 10
 
     def __init__(self,
                  m_c: float,
@@ -142,8 +142,8 @@ class InvertedPendulumComparison(PyDiffGameComparison):
 
         return Y
 
-    def __run_animation(self) -> (Line2D, Rectangle):
-        x_t, theta_t, x_dot_t, theta_dot_t = self.__simulate_non_linear_system(LQR=True)
+    def __run_animation(self, LQR: bool) -> (Line2D, Rectangle):
+        x_t, theta_t, x_dot_t, theta_dot_t = self.__simulate_non_linear_system(LQR=LQR)
 
         pendulumArm = Line2D(xdata=self.__origin,
                              ydata=self.__origin,
@@ -154,10 +154,15 @@ class InvertedPendulumComparison(PyDiffGameComparison):
                          color='b')
 
         fig = plt.figure()
+        tool = self.__lqr if LQR else self.__game
+        x_T = tool.x_T
+        x_T_x = x_T[0]
+        square_side = 1.1 * max(self.__p_L, x_T_x)
+
         ax = fig.add_subplot(111,
                              aspect='equal',
-                             xlim=(-10, 10),
-                             ylim=(-10, 10),
+                             xlim=(-square_side, square_side),
+                             ylim=(-square_side, square_side),
                              title="Inverted Pendulum Simulation")
 
         def init() -> (Line2D, Rectangle):
@@ -196,13 +201,14 @@ class InvertedPendulumComparison(PyDiffGameComparison):
         super().run_simulations(plot_state_space=plot_state_space)
 
         if run_animation:
-            self.__run_animation()
+            for LQR in [True, False]:
+                self.__run_animation(LQR)
 
 
 x_0 = np.array([0,  # x
                 pi / 2,  # theta
-                2,  # x_dot
-                4]  # theta_dot
+                0,  # x_dot
+                0]  # theta_dot
                )
 x_T = np.array([8,  # x
                 pi,  # theta
@@ -210,7 +216,7 @@ x_T = np.array([8,  # x
                 0]  # theta_dot
                )
 
-m_c_i, m_p_i, p_L_i = 50, 10, 5
+m_c_i, m_p_i, p_L_i = 8, 15, 3
 epsilon = 10 ** (-3)
 
 inverted_pendulum = InvertedPendulumComparison(m_c=m_c_i,

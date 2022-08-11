@@ -56,7 +56,7 @@ class PyDiffGame(ABC, Hashable, Sized):
     _L_default: Final[ClassVar[int]] = 1000
     _eta_default: Final[ClassVar[int]] = 5
     _g: Final[ClassVar[float]] = 9.81
-    __max_convergence_iterations: Final[ClassVar[int]] = 120
+    __max_convergence_iterations: Final[ClassVar[int]] = 60
 
     @classmethod
     @property
