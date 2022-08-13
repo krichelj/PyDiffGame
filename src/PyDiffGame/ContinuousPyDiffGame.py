@@ -166,7 +166,7 @@ class ContinuousPyDiffGame(PyDiffGame):
 
         return stability
 
-    @PyDiffGame._post_convergence
+    @PyDiffGame.post_convergence
     def _solve_state_space(self):
         """
         Propagates the game forward through time and solves for it by solving the continuous differential equation:

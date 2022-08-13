@@ -155,15 +155,14 @@ class InvertedPendulumComparison(PyDiffGameComparison):
 
         fig = plt.figure()
         tool = self.__lqr if LQR else self.__game
-        x_T = tool.x_T
-        x_T_x = x_T[0]
-        square_side = 1.1 * max(self.__p_L, x_T_x)
+        x_max = max(x_t)
+        square_side = 1.1 * max(self.__p_L, x_max)
 
         ax = fig.add_subplot(111,
                              aspect='equal',
                              xlim=(-square_side, square_side),
                              ylim=(-square_side, square_side),
-                             title="Inverted Pendulum Simulation")
+                             title=f"Inverted Pendulum {'LQR' if LQR else 'Game'} Simulation")
 
         def init() -> (Line2D, Rectangle):
             ax.add_patch(cart)
@@ -187,22 +186,16 @@ class InvertedPendulumComparison(PyDiffGameComparison):
         t0 = time()
         animate(0)
         t1 = time()
-        interval = self.__game.T_f - (t1 - t0)
+        frames = tool.L
+        interval = tool.T_f - (t1 - t0)
 
         anim = FuncAnimation(fig=fig,
                              func=animate,
                              init_func=init,
-                             frames=self.__game.L,
+                             frames=frames,
                              interval=interval,
                              blit=True)
         plt.show()
-
-    def run_simulations(self, plot_state_space: Optional[bool] = True, run_animation: Optional[bool] = True):
-        super().run_simulations(plot_state_space=plot_state_space)
-
-        if run_animation:
-            for LQR in [True, False]:
-                self.run_animation(LQR)
 
 
 x_0 = np.array([0,  # x
@@ -210,7 +203,7 @@ x_0 = np.array([0,  # x
                 0,  # x_dot
                 0]  # theta_dot
                )
-x_T = np.array([8,  # x
+x_T = np.array([15,  # x
                 pi,  # theta
                 0,  # x_dot
                 0]  # theta_dot
@@ -224,6 +217,5 @@ inverted_pendulum = InvertedPendulumComparison(m_c=m_c_i,
                                                p_L=p_L_i,
                                                x_0=x_0,
                                                x_T=x_T,
-                                               epsilon=epsilon
-                                               )
+                                               epsilon=epsilon)
 inverted_pendulum.run_simulations()
