@@ -334,7 +334,7 @@ class DiscretePyDiffGame(PyDiffGame):
 
             self._update_Ps_from_last_state(k_1=k_1)
 
-    @PyDiffGame.post_convergence
+    @PyDiffGame._post_convergence
     def _solve_state_space(self):
         """
         Propagates the game through time and solves for it by solving the discrete difference equation:

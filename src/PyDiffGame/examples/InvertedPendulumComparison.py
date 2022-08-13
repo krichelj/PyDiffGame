@@ -11,11 +11,11 @@ from scipy.integrate import solve_ivp
 from typing import Final, ClassVar, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
-from PyDiffGame.PyDiffGameComparison import PyDiffGameComparison
+from PyDiffGame.LQRPyDiffGameComparison import LQRPyDiffGameComparison
 from PyDiffGame.Objective import GameObjective, LQRObjective
 
 
-class InvertedPendulumComparison(PyDiffGameComparison):
+class InvertedPendulumComparison(LQRPyDiffGameComparison):
     __q_default: Final[ClassVar[float]] = 50
     __r_default: Final[ClassVar[float]] = 10
 
@@ -90,16 +90,15 @@ class InvertedPendulumComparison(PyDiffGameComparison):
 
         lqr_objective = LQRObjective(Q=Q_lqr, R_ii=R_lqr)
         game_objectives = [GameObjective(Q=Q, R_ii=R, M_i=M_i) for Q, R, M_i in zip(Qs, Rs, Ms)]
-        objectives = [lqr_objective] + game_objectives
 
         super().__init__(args=args,
-                         objectives=objectives,
+                         LQR_objective=lqr_objective,
+                         game_objectives=game_objectives,
                          continuous=True)
 
-        self.__lqr, self.__game = self._games
-
-    def __simulate_non_linear_system(self, LQR: bool = False) -> np.array:
-        tool = self.__lqr if LQR else self.__game
+    def _simulate_non_linear_system(self,
+                                    LQR: bool = False) -> np.array:
+        tool = self._LQR if LQR else self._game
         K = tool.K
         x_T = tool.x_T
 
@@ -114,7 +113,7 @@ class InvertedPendulumComparison(PyDiffGameComparison):
                 v_x = - K_x @ x_t
                 v_theta = - K_theta @ x_t
                 v = np.array([v_x, v_theta])
-                F_t, M_t = self.__game.M_inv @ v
+                F_t, M_t = self._game.M_inv @ v
 
             x, theta, x_dot, theta_dot = x_t
 
@@ -143,7 +142,7 @@ class InvertedPendulumComparison(PyDiffGameComparison):
         return Y
 
     def run_animation(self, LQR: bool) -> (Line2D, Rectangle):
-        x_t, theta_t, x_dot_t, theta_dot_t = self.__simulate_non_linear_system(LQR=LQR)
+        x_t, theta_t, x_dot_t, theta_dot_t = self._simulate_non_linear_system(LQR=LQR)
 
         pendulumArm = Line2D(xdata=self.__origin,
                              ydata=self.__origin,
@@ -154,7 +153,6 @@ class InvertedPendulumComparison(PyDiffGameComparison):
                          color='b')
 
         fig = plt.figure()
-        tool = self.__lqr if LQR else self.__game
         x_max = max(x_t)
         square_side = 1.1 * max(self.__p_L, x_max)
 
@@ -186,6 +184,8 @@ class InvertedPendulumComparison(PyDiffGameComparison):
         t0 = time()
         animate(0)
         t1 = time()
+
+        tool = self._LQR if LQR else self._game
         frames = tool.L
         interval = tool.T_f - (t1 - t0)
 
@@ -203,7 +203,7 @@ x_0 = np.array([0,  # x
                 0,  # x_dot
                 0]  # theta_dot
                )
-x_T = np.array([15,  # x
+x_T = np.array([10,  # x
                 pi,  # theta
                 0,  # x_dot
                 0]  # theta_dot
@@ -218,4 +218,4 @@ inverted_pendulum = InvertedPendulumComparison(m_c=m_c_i,
                                                x_0=x_0,
                                                x_T=x_T,
                                                epsilon=epsilon)
-inverted_pendulum.run_simulations()
+inverted_pendulum.run_simulations(plot_state_spaces=False)

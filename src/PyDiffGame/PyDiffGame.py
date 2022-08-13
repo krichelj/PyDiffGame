@@ -256,7 +256,7 @@ class PyDiffGame(ABC, Hashable, Sized):
             else:
                 x_converged = True
 
-    def post_convergence(f: Callable) -> Callable:
+    def _post_convergence(f: Callable) -> Callable:
         """
         A decorator static-method to apply on methods that need only be called after convergence
 
@@ -280,7 +280,7 @@ class PyDiffGame(ABC, Hashable, Sized):
 
         return decorated_f
 
-    @post_convergence
+    @_post_convergence
     def _plot_temporal_variables(self,
                                  t: np.array,
                                  temporal_variables: np.array,
@@ -393,7 +393,7 @@ class PyDiffGame(ABC, Hashable, Sized):
         y = C @ self._x.T
         self.plot_state_variables(state_variables=y.T)
 
-    @post_convergence
+    @_post_convergence
     def save_figure(self,
                     figure_path: Optional[str | Path] = Path(fr'{os.getcwd()}/figures'),
                     filename: Optional[str] = 'last_image'):
@@ -593,7 +593,7 @@ class PyDiffGame(ABC, Hashable, Sized):
 
         pass
 
-    @post_convergence
+    @_post_convergence
     def __plot_finite_horizon_convergence(self):
         """
         Plots the convergence of the values for the matrices P_i
@@ -620,7 +620,7 @@ class PyDiffGame(ABC, Hashable, Sized):
         pass
 
     @abstractmethod
-    @post_convergence
+    @_post_convergence
     def _solve_state_space(self):
         """
         Propagates the game through time and solves for it
@@ -668,7 +668,7 @@ class PyDiffGame(ABC, Hashable, Sized):
 
         pass
 
-    @post_convergence
+    @_post_convergence
     def get_costs(self) -> np.array:
         """
         Calculates the cost function value using the formula:
@@ -778,4 +778,4 @@ class PyDiffGame(ABC, Hashable, Sized):
 
         return self.get_costs().sum() < other.get_costs().sum()
 
-    post_convergence = staticmethod(post_convergence)
+    _post_convergence = staticmethod(_post_convergence)
