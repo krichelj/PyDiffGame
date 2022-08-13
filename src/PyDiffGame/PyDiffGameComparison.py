@@ -59,4 +59,14 @@ class PyDiffGameComparison(ABC):
             game.run_simulation(plot_state_space=plot_state_space)
 
             if run_animation:
-                game
+                LQR = 'LQR' in [c.__name__ for c in set(type(game).__bases__).union({game.__class__})]
+                print(LQR)
+                self.run_animation(LQR=LQR)
+
+    def run_animation(self,
+                      LQR: bool):
+        """
+        Animates the state progression of the system
+        """
+
+        pass
