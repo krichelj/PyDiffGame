@@ -165,7 +165,7 @@ class PyDiffGame(ABC, Hashable, Sized):
             warnings.warn("Warning: The given system is not fully controllable")
         if self._N > 1:
             if not all([(M_i.shape[0] == R_ii.shape[0] == R_ii.shape[1]
-                        if R_ii.ndim > 1 else M_i.shape[0] == R_ii.shape[0])
+            if R_ii.ndim > 1 else M_i.shape[0] == R_ii.shape[0])
                         and (np.all(eigvals(R_ii) > 0) if R_ii.ndim > 1 else R_ii > 0)
                         for M_i, R_ii in zip(self._Ms, self._Rs)]):
                 raise ValueError('R must be a sequence of square 2-d positive definite numpy arrays with shape '
@@ -672,7 +672,7 @@ class PyDiffGame(ABC, Hashable, Sized):
     def get_costs(self) -> np.array:
         """
         Calculates the cost function value using the formula:
-        J_i = int_{t=0}^T_f [ x(t)^T ( Q_i + sum_{j=1}^N  K_j(t)^T R_{ij} K_j(t) ) x(t) ] dt
+        J_i = int_{t=0}^T_f [ x_tilde(t)^T Q_i x_tilde(t) + sum_{j=1}^N  v_j_tilde(t)^T R_{ij} v_j_tilde(t) ) ] dt
         """
 
         costs = []
@@ -683,10 +683,18 @@ class PyDiffGame(ABC, Hashable, Sized):
 
             cost_i = 0
 
+            k_i_T = self._get_K_i(i) if self.__continuous else self._get_K_i(i, self._L-1)
+            v_i_T = - k_i_T @ self.x_T
+
             for l in range(self._L):
                 x_l = self._x[l]
+                x_l_tilde = self.x_T - x_l
                 K_i_l = self._get_K_i(i) if self.__continuous else self._get_K_i(i, l)
-                cost_i += x_l.T @ (Q_i + (K_i_l.T @ R_ii @ K_i_l if R_ii.ndim > 1 else R_ii * K_i_l.T @ K_i_l)) @ x_l
+                v_i_l = - K_i_l @ x_l
+                v_i_l_tilde = v_i_T - v_i_l
+
+                cost_i += x_l_tilde.T @ Q_i @ x_l_tilde + v_i_l_tilde.T @ R_ii @ v_i_l_tilde \
+                    if R_ii.ndim > 1 else R_ii * v_i_l_tilde.T @ v_i_l_tilde
 
             costs += [cost_i]
 

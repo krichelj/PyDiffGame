@@ -62,7 +62,6 @@ class LQRPyDiffGameComparison(ABC):
                         run_animations: Optional[bool] = True,
                         calculate_costs: Optional[bool] = True):
 
-
         def run_simulation(tool: PyDiffGame, LQR: bool):
             tool.run_simulation(plot_state_space=plot_state_spaces)
 
