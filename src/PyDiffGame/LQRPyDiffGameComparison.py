@@ -57,6 +57,9 @@ class LQRPyDiffGameComparison(ABC):
             if isinstance(self.__args[c], type(np.array)):
                 raise ValueError(f'The {c_name} matrix {c} must be a numpy array')
 
+    def is_fully_controllable(self):
+        return self._LQR.is_fully_controllable()
+
     def run_simulations(self,
                         plot_state_spaces: Optional[bool] = True,
                         run_animations: Optional[bool] = True,

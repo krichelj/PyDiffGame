@@ -209,7 +209,8 @@ x_T = np.array([10,  # x
                 0]  # theta_dot
                )
 
-m_c_i, m_p_i, p_L_i = 8, 15, 3
+
+m_c_i, m_p_i, p_L_i = 8, 15, 10
 epsilon = 10 ** (-3)
 
 inverted_pendulum = InvertedPendulumComparison(m_c=m_c_i,
