@@ -171,24 +171,26 @@ class PyDiffGame(ABC, Callable, Sequence):
         if self._B is not None:
             if self._B.shape[0] != self._n:
                 raise ValueError('B must be a 2-d numpy array with n rows')
-        if self._B is not None and not self.is_fully_controllable():
-            warnings.warn("Warning: The given system is not fully controllable")
+            if not self.is_fully_controllable():
+                warnings.warn("Warning: The given system is not fully controllable")
+        else:
+            if not all([B_i.shape[0] == self._n and B_i.shape[1] == R_ii.shape[0] == R_ii.shape[1]
+                        if R_ii.ndim > 1 else B_i.shape[1] == R_ii.shape[0] for B_i, R_ii in zip(self._Bs, self._Rs)]):
+                raise ValueError('R must be a sequence of square 2-d numpy arrays with shape '
+                                 'corresponding to the second dimensions of the arrays in Bs')
         if self._N == 0:
             raise ValueError('At least one objective must be specified')
-        if self._N > 1 and self._Ms:
-            if not all([(M_i.shape[0] == R_ii.shape[0] == R_ii.shape[1]
-                        if R_ii.ndim > 1 else M_i.shape[0] == R_ii.shape[0])
-                        and (np.all(eigvals(R_ii) > 0) if R_ii.ndim > 1 else R_ii > 0)
-                        for M_i, R_ii in zip(self._Ms, self._Rs)]):
-                raise ValueError('R must be a sequence of square 2-d positive definite numpy arrays with shape '
-                                 'corresponding to the second dimensions of the arrays in M')
-        if any([Q_i.shape != (self._n, self._n) for Q_i in self._Qs]):
+        if self._N > 1 and self._Ms and not all([M_i.shape[0] == R_ii.shape[0] == R_ii.shape[1]
+                                                if R_ii.ndim > 1 else  M_i.shape[0] == R_ii.shape[0]
+                                                 for M_i, R_ii in zip(self._Ms, self._Rs)]):
+            raise ValueError('R must be a sequence of square 2-d numpy arrays with shape '
+                             'corresponding to the second dimensions of the arrays in M')
+        if not all([np.all(eigvals(R_ii) > 0) if R_ii.ndim > 1 else R_ii > 0 for R_ii in self._Rs]):
+            raise ValueError('R must be a sequence of square 2-d positive definite numpy arrays')
+        if not all([Q_i.shape == (self._n, self._n) for Q_i in self._Qs]):
             raise ValueError('Q must be a sequence of square 2-d positive semi-definite numpy arrays with shape nxn')
-        if any([np.all(eigvals(Q_i) < 0) for Q_i in self._Qs]):
-            if all([np.all(eigvals(Q_i) >= -1e-7) for Q_i in self._Qs]):
-                warnings.warn("Warning: there is a matrix in Q that has negative (but really small) eigenvalues")
-            else:
-                raise ValueError('Q must contain positive semi-definite numpy arrays')
+        if not all([np.all(eigvals(Q_i) >= 0) for Q_i in self._Qs]):
+            raise ValueError('Q must contain positive semi-definite numpy arrays')
         if self._x_0 is not None and self._x_0.shape != (self._n,):
             raise ValueError('x_0 must be a 1-d numpy array with length n')
         if self._x_T is not None and self._x_T.shape != (self._n,):
@@ -521,8 +523,9 @@ class PyDiffGame(ABC, Callable, Sequence):
             try:
                 P_f_i = are_solver(self._A, B_i, Q_i, R_ii)
             except LinAlgError:
-                rand = np.random.rand(*self._A.shape)
-                P_f_i = rand @ rand.T
+                # rand = np.random.rand(*self._A.shape)
+                # P_f_i = rand @ rand.T
+                P_f_i = Q_i
 
             P_f += [P_f_i]
 
@@ -694,6 +697,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
     @_post_convergence
     def get_costs(self,
+                  non_linear: Optional[bool] = False,
                   x_only: Optional[bool] = False) -> np.array:
         """
         Calculates the cost functionals values using the formula:
@@ -705,11 +709,14 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         Parameters
         ----------
+        non_linear: bool, optional
+            Indicates whether to calculate the cost with respect to the nonlinear state
         x_only: bool, optional
             Indicates whether to calculate the cost only with respect to x(t)
         """
 
         costs = []
+        x = self._x if not non_linear else self._x_non_linear.T
 
         for i in range(self._N):
             Q_i = self._Qs[i]
@@ -721,10 +728,10 @@ class PyDiffGame(ABC, Callable, Sequence):
             v_i_T = - k_i_T @ self.x_T
 
             for l in range(1, self._L):
-                x_l = self._x[l]
+                x_l = x[l]
                 x_l_tilde = self.x_T - x_l
 
-                x_l_1 = self._x[l - 1]
+                x_l_1 = x[l - 1]
                 x_l_1_tilde = self.x_T - x_l_1
 
                 cost_i += x_l_tilde.T @ Q_i @ x_l_tilde + x_l_1_tilde.T @ Q_i @ x_l_1_tilde
