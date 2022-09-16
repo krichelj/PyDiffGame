@@ -2,11 +2,11 @@ import numpy as np
 from typing import Sequence, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
-from PyDiffGame.LQRPyDiffGameComparison import LQRPyDiffGameComparison
+from PyDiffGame.PyDiffGameComparison import PyDiffGameComparison
 from PyDiffGame.Objective import GameObjective, LQRObjective
 
 
-class MassesWithSpringsComparison(LQRPyDiffGameComparison):
+class MassesWithSpringsComparison(PyDiffGameComparison):
     def __init__(self,
                  N: int,
                  m: float,
@@ -56,8 +56,8 @@ class MassesWithSpringsComparison(LQRPyDiffGameComparison):
         game_objectives = [GameObjective(Q=Q, R_ii=R, M_i=M_i) for Q, R, M_i in zip(Qs, Rs, Ms)]
 
         super().__init__(args=args,
-                         LQR_objective=lqr_objective,
-                         game_objectives=game_objectives,
+                         game_1_objectives=lqr_objective,
+                         game_2_objectives=game_objectives,
                          continuous=True)
 
 

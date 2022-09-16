@@ -11,11 +11,11 @@ from scipy.integrate import solve_ivp
 from typing import Final, ClassVar, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
-from PyDiffGame.LQRPyDiffGameComparison import LQRPyDiffGameComparison
+from PyDiffGame.PyDiffGameComparison import PyDiffGameComparison
 from PyDiffGame.Objective import GameObjective, LQRObjective
 
 
-class InvertedPendulumComparison(LQRPyDiffGameComparison):
+class InvertedPendulumComparison(PyDiffGameComparison):
     __q_default: Final[ClassVar[float]] = 50
     __r_default: Final[ClassVar[float]] = 10
 
@@ -35,7 +35,7 @@ class InvertedPendulumComparison(LQRPyDiffGameComparison):
         self.__m_p = m_p
         self.__p_L = p_L
         self.__l = self.__p_L / 2  # CoM of uniform rod
-        self.__I = 1 / 12 * self.__m_p * self.__p_L ** 2
+        self.__I = 1 / 12 * self.__m_p * self.__p_L ** 2  # center mass moment of inertia of uniform rod
 
         # # original linear system
         linearized_D = self.__m_c * self.__m_p * self.__l ** 2 + self.__I * (self.__m_c + self.__m_p)
@@ -59,14 +59,18 @@ class InvertedPendulumComparison(LQRPyDiffGameComparison):
         M1 = B[2, :].reshape(1, 2)
         M2 = B[3, :].reshape(1, 2)
         Ms = [M1, M2]
-
-        Q_lqr = np.diag([q, q, q ** 2, q ** 2])
-
-        Q_x = np.diag([q, 0, q ** 2, 0])
-        Q_theta = np.diag([0, q, 0, q ** 2])
+        Q_x = np.array([[q, 0, 2 * q, 0],
+                        [0, 0, 0, 0],
+                        [2 * q, 0, 3 * q, 0],
+                        [0, 0, 0, 0]])
+        Q_theta = np.array([[0, 0, 0, 0],
+                            [0, q, 0, 2 * q],
+                            [0, 0, 0, 0],
+                            [0, 2 * q, 0, 3 * q]])
+        Q_lqr = Q_theta + Q_x
         Qs = [Q_x, Q_theta]
 
-        R_lqr = np.diag([r, r])
+        R_lqr = np.diag([r] * 2)
 
         Rs = [np.array([r])] * 2
 
@@ -88,24 +92,25 @@ class InvertedPendulumComparison(LQRPyDiffGameComparison):
                 'eta': eta,
                 'force_finite_horizon': T_f is not None}
 
-        lqr_objective = LQRObjective(Q=Q_lqr, R_ii=R_lqr)
+        lqr_objective = [LQRObjective(Q=Q_lqr, R_ii=R_lqr)]
         game_objectives = [GameObjective(Q=Q, R_ii=R, M_i=M_i) for Q, R, M_i in zip(Qs, Rs, Ms)]
+        games_objectives = [lqr_objective, game_objectives]
 
         super().__init__(args=args,
-                         LQR_objective=lqr_objective,
-                         game_objectives=game_objectives,
+                         games_objectives=games_objectives,
                          continuous=True)
 
     def _simulate_non_linear_system(self,
-                                    LQR: bool = False) -> np.array:
-        tool = self._LQR if LQR else self._game
-        K = tool.K
-        x_T = tool.x_T
+                                    i: int,
+                                    plot: bool = False) -> np.array:
+        game = self._games[i]
+        K = game.K
+        x_T = game.x_T
 
         def nonlinear_state_space(_, x_t: np.array) -> np.array:
             x_t = x_t - x_T
 
-            if LQR:
+            if game.is_LQR():
                 u_t = - K[0] @ x_t
                 F_t, M_t = u_t.T
             else:
@@ -113,7 +118,7 @@ class InvertedPendulumComparison(LQRPyDiffGameComparison):
                 v_x = - K_x @ x_t
                 v_theta = - K_theta @ x_t
                 v = np.array([v_x, v_theta])
-                F_t, M_t = self._game.M_inv @ v
+                F_t, M_t = game.M_inv @ v
 
             x, theta, x_dot, theta_dot = x_t
 
@@ -124,25 +129,35 @@ class InvertedPendulumComparison(LQRPyDiffGameComparison):
                                                               * theta_dot ** 2) + PyDiffGame.g * sin(theta)))
             x_ddot = 1 / (self.__m_p + self.__m_c) * (F_t + self.__m_p * self.__l * (sin(theta) * theta_dot ** 2 -
                                                                                      cos(theta) * theta_ddot))
+            if isinstance(theta_ddot, np.ndarray):
+                theta_ddot = theta_ddot[0]
+                x_ddot = x_ddot[0]
 
-            non_linear_x = np.array([x_dot, theta_dot, x_ddot, theta_ddot], dtype=float)
+            non_linear_x = np.array([x_dot, theta_dot, x_ddot , theta_ddot],
+                                    dtype=float)
 
             return non_linear_x
 
         pendulum_state = solve_ivp(fun=nonlinear_state_space,
-                                   t_span=[0.0, tool.T_f],
-                                   y0=tool.x_0,
-                                   t_eval=tool.forward_time,
-                                   rtol=tool.epsilon)
+                                   t_span=[0.0, game.T_f],
+                                   y0=game.x_0,
+                                   t_eval=game.forward_time,
+                                   rtol=game.epsilon)
 
         Y = pendulum_state.y
-        tool.plot_state_variables(state_variables=Y.T,
-                                  linear_system=False)
+
+        if plot:
+            game.plot_state_variables(state_variables=Y.T,
+                                      linear_system=False)
 
         return Y
 
-    def run_animation(self, LQR: bool) -> (Line2D, Rectangle):
-        x_t, theta_t, x_dot_t, theta_dot_t = self._simulate_non_linear_system(LQR=LQR)
+    def run_animation(self,
+                      i: int) -> (Line2D, Rectangle):
+        game = self._games[i]
+        game._x_non_linear = self._simulate_non_linear_system(i=i,
+                                                              plot=True)
+        x_t, theta_t, x_dot_t, theta_dot_t = game._x_non_linear
 
         pendulumArm = Line2D(xdata=self.__origin,
                              ydata=self.__origin,
@@ -153,14 +168,14 @@ class InvertedPendulumComparison(LQRPyDiffGameComparison):
                          color='b')
 
         fig = plt.figure()
-        x_max = max(x_t)
-        square_side = 1.1 * max(self.__p_L, x_max)
+        x_max = max(abs(max(x_t)), abs(min(x_t)))
+        square_side = 1.1 * min(max(self.__p_L, x_max), 3 * self.__p_L)
 
         ax = fig.add_subplot(111,
                              aspect='equal',
                              xlim=(-square_side, square_side),
                              ylim=(-square_side, square_side),
-                             title=f"Inverted Pendulum {'LQR' if LQR else 'Game'} Simulation")
+                             title=f"Inverted Pendulum {'LQR' if game.is_LQR() else 'Game'} Simulation")
 
         def init() -> (Line2D, Rectangle):
             ax.add_patch(cart)
@@ -185,9 +200,8 @@ class InvertedPendulumComparison(LQRPyDiffGameComparison):
         animate(0)
         t1 = time()
 
-        tool = self._LQR if LQR else self._game
-        frames = tool.L
-        interval = tool.T_f - (t1 - t0)
+        frames = game.L
+        interval = game.T_f - (t1 - t0)
 
         anim = FuncAnimation(fig=fig,
                              func=animate,
@@ -199,7 +213,7 @@ class InvertedPendulumComparison(LQRPyDiffGameComparison):
 
 
 x_0 = np.array([0,  # x
-                pi / 2,  # theta
+                0,  # theta
                 0,  # x_dot
                 0]  # theta_dot
                )
@@ -209,14 +223,15 @@ x_T = np.array([10,  # x
                 0]  # theta_dot
                )
 
-
-m_c_i, m_p_i, p_L_i = 8, 15, 10
+m_c, m_p, p_L = 10, 5, 3
 epsilon = 10 ** (-3)
 
-inverted_pendulum = InvertedPendulumComparison(m_c=m_c_i,
-                                               m_p=m_p_i,
-                                               p_L=p_L_i,
+inverted_pendulum = InvertedPendulumComparison(m_c=m_c,
+                                               m_p=m_p,
+                                               p_L=p_L,
                                                x_0=x_0,
                                                x_T=x_T,
                                                epsilon=epsilon)
-inverted_pendulum.run_simulations(plot_state_spaces=False)
+inverted_pendulum.run_simulations(calculate_costs=True,
+                                  x_only_costs=True)
+inverted_pendulum.plot_two_state_spaces()
