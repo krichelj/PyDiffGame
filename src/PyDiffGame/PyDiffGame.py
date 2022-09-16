@@ -8,13 +8,13 @@ from numpy.linalg import eigvals, norm, LinAlgError, inv, matrix_power, matrix_r
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
 import warnings
-from typing import Callable, Hashable, Sized, Final, ClassVar, Optional, Sequence
+from typing import Callable, Final, ClassVar, Optional, Sequence
 from abc import ABC, abstractmethod
 
 from PyDiffGame.Objective import Objective, GameObjective
 
 
-class PyDiffGame(ABC, Hashable, Sized):
+class PyDiffGame(ABC, Callable, Sequence):
     """
     Differential game abstract base class
 
@@ -80,12 +80,16 @@ class PyDiffGame(ABC, Hashable, Sized):
 
     def __init__(self,
                  A: np.array,
-                 B: np.array,
-                 objectives: Sequence[Objective],
+                 B: Optional[np.array] = None,
+                 Bs: Optional[Sequence[np.array]] = None,
+                 Qs: Optional[Sequence[np.array]] = None,
+                 Rs: Optional[Sequence[np.array]] = None,
+                 Ms: Optional[Sequence[np.array]] = None,
+                 objectives: Optional[Sequence[Objective]] = None,
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
-                 P_f: Optional[Sequence[np.array]] | np.array = None,
+                 P_f: Optional[Sequence[np.array] | np.array] = None,
                  show_legend: Optional[bool] = True,
                  state_variables_names: Optional[Sequence[str]] = None,
                  epsilon: Optional[float] = _epsilon_default,
@@ -99,33 +103,37 @@ class PyDiffGame(ABC, Hashable, Sized):
         self._A = A
         self._B = B
         self._n = self._A.shape[0]
-        self._N = len(objectives)
+        self.__objectives = objectives
+        self._N = len(objectives) if objectives else len(Qs)
         self._P_size = self._n ** 2
-        self._Qs = [o.Q for o in objectives]
-        self._Rs = [o.R for o in objectives]
+        self._Qs = Qs if Qs else [o.Q for o in objectives]
+        self._Rs = Rs if Rs else [o.R for o in objectives]
         self._x_0 = x_0
         self._x_T = x_T
         self.__infinite_horizon = (not force_finite_horizon) and (T_f is None or P_f is None)
         self._T_f = PyDiffGame.__T_f_default if T_f is None else T_f
-        self._Bs = []
+        self._Bs = Bs
+        self._Ms = Ms
 
-        Ms = [o.M_i for o in objectives if isinstance(o, GameObjective)]
+        if not self._Ms and self.__objectives:
+            self._Ms = [o.M_i for o in self.__objectives if isinstance(o, GameObjective)]
 
-        if len(Ms):
-            self._Ms = Ms
-            self._M = np.concatenate(self._Ms, axis=0)
-            self._M_inv = inv(self._M)
+        if self._Bs is None:
+            if self._Ms and len(self._Ms):
+                self._M = np.concatenate(self._Ms, axis=0)
+                self._M_inv = inv(self._M)
 
-            l = 0
+                l = 0
+                self._Bs = []
 
-            for M_i in self._Ms:
-                m_i = M_i.shape[0]
-                M_i_tilde = self._M_inv[:, l:l + m_i]
-                B_i = (self._B @ M_i_tilde).reshape((self._n, m_i))
-                self._Bs += [B_i]
-                l += m_i
-        else:
-            self._Bs += [B]
+                for M_i in self._Ms:
+                    m_i = M_i.shape[0]
+                    M_i_tilde = self._M_inv[:, l:l + m_i]
+                    B_i = (self._B @ M_i_tilde).reshape((self._n, m_i))
+                    self._Bs += [B_i]
+                    l += m_i
+            else:
+                self._Bs = [B]
 
         self._P_f = self.__get_are_P_f() if P_f is None else P_f
         self._L = L
@@ -160,13 +168,16 @@ class PyDiffGame(ABC, Hashable, Sized):
 
         if self._A.shape != (self._n, self._n):
             raise ValueError('A must be a square 2-d numpy array with shape nxn')
-        if self._B.shape[0] != self._n:
-            raise ValueError('B must be a 2-d numpy array with n rows')
-        if not self.is_fully_controllable():
+        if self._B is not None:
+            if self._B.shape[0] != self._n:
+                raise ValueError('B must be a 2-d numpy array with n rows')
+        if self._B is not None and not self.is_fully_controllable():
             warnings.warn("Warning: The given system is not fully controllable")
-        if self._N > 1:
+        if self._N == 0:
+            raise ValueError('At least one objective must be specified')
+        if self._N > 1 and self._Ms:
             if not all([(M_i.shape[0] == R_ii.shape[0] == R_ii.shape[1]
-            if R_ii.ndim > 1 else M_i.shape[0] == R_ii.shape[0])
+                        if R_ii.ndim > 1 else M_i.shape[0] == R_ii.shape[0])
                         and (np.all(eigvals(R_ii) > 0) if R_ii.ndim > 1 else R_ii > 0)
                         for M_i, R_ii in zip(self._Ms, self._Rs)]):
                 raise ValueError('R must be a sequence of square 2-d positive definite numpy arrays with shape '
@@ -188,7 +199,7 @@ class PyDiffGame(ABC, Hashable, Sized):
             raise ValueError('P_f must be a sequence of 2-d positive semi-definite numpy arrays with shape nxn')
         if not all([eig >= 0 for eig_set in [eigvals(P_f_i) for P_f_i in self._P_f] for eig in eig_set]):
             warnings.warn("Warning: there is a matrix in P_f that has negative eigenvalues. Convergence may not occur")
-        if len(self.__state_variables_names) != self._n:
+        if self.__state_variables_names and len(self.__state_variables_names) != self._n:
             raise ValueError('The parameter state_variables_names must be of length n')
         if not 0 < self.__epsilon < 1:
             raise ValueError('The convergence tolerance epsilon must be in the open interval (0,1)')
@@ -736,12 +747,31 @@ class PyDiffGame(ABC, Hashable, Sized):
 
         return np.array(costs)
 
-    def run_simulation(self,
-                       plot_state_space: Optional[bool] = True):
+    def __call__(self,
+                 plot_state_space: Optional[bool] = True):
+        """
+        Runs the game simulation
+        """
+
         if plot_state_space:
             self.__solve_game_simulate_state_space_and_plot()
         else:
             self.__solve_game_and_simulate_state_space()
+
+    def __getitem__(self,
+                    i: int) -> Objective:
+        """
+        Returns the i'th objective of the game
+        """
+
+        return self.__objectives[i]
+
+    def __len__(self) -> int:
+        """
+        We define the length of a differential game to be its number of objectives (N)
+        """
+
+        return self._N
 
     @property
     def P(self) -> list[np.array]:
@@ -786,40 +816,5 @@ class PyDiffGame(ABC, Hashable, Sized):
     @property
     def epsilon(self) -> float:
         return self.__epsilon
-
-    def __len__(self) -> int:
-        """
-        We define the length of a differential game to be its number of objectives (N)
-        """
-
-        return self._N
-
-    def __eq__(self,
-               other: PyDiffGame) -> bool:
-        """
-        Let G1, J1 and G2, J2 be two differential games and their respective costs.
-        We define G1 == G2 iff:
-             - len(G1) == len(G2)
-             - sum_{i=1}^N J1[i] == sum_{i=1}^N J2[i]
-        """
-
-        return len(self) == len(other) and self.get_costs().sum() == other.get_costs().sum()
-
-    def __hash__(self):
-        return hash(repr(self))
-
-    def __lt__(self,
-               other: PyDiffGame) -> bool:
-        """
-        Let G1, J1 and G2, J2 be two differential games and their respective costs.
-        We define G1 < G2 iff:
-            - len(G1) == len(G2) := N, else they are not comparable
-            - sum_{i=1}^N J1[i] < sum_{i=1}^N J2[i]
-        """
-
-        if len(self) != len(other):
-            raise ValueError('The lengths of the differential games do not match, so they are non-comparable')
-
-        return self.get_costs().sum() < other.get_costs().sum()
 
     _post_convergence = staticmethod(_post_convergence)

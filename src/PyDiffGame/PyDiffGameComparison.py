@@ -1,14 +1,15 @@
-from typing import Sequence, Any, Optional
+from typing import Sequence, Any, Optional, Callable
 from abc import ABC
 
 import numpy as np
 
+from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
 from PyDiffGame.DiscretePyDiffGame import DiscretePyDiffGame
 from PyDiffGame.Objective import GameObjective
 
 
-class PyDiffGameComparison(ABC):
+class PyDiffGameComparison(ABC, Callable, Sequence):
     """
     Differential games comparison abstract base class
 
@@ -54,22 +55,6 @@ class PyDiffGameComparison(ABC):
     def are_fully_controllable(self):
         return all(game.is_fully_controllable() for game in self._games.values())
 
-    def run_simulations(self,
-                        plot_state_spaces: Optional[bool] = True,
-                        run_animations: Optional[bool] = True,
-                        calculate_costs: Optional[bool] = False,
-                        x_only_costs: Optional[bool] = False):
-
-        for i, game_i in self._games.items():
-            game_i.run_simulation(plot_state_space=plot_state_spaces)
-
-            if run_animations:
-                self.run_animation(i=i)
-
-            if calculate_costs:
-                game_i_costs = game_i.get_costs(x_only=x_only_costs)
-                print(f'Game {i} costs: {game_i_costs}')
-
     def plot_two_state_spaces(self,
                               i: Optional[int] = 0,
                               j: Optional[int] = 1,
@@ -94,3 +79,28 @@ class PyDiffGameComparison(ABC):
         """
 
         pass
+
+    def __call__(self,
+                 plot_state_spaces: Optional[bool] = True,
+                 run_animations: Optional[bool] = True,
+                 calculate_costs: Optional[bool] = False,
+                 x_only_costs: Optional[bool] = False):
+        """
+        Runs the comparison
+        """
+
+        for i, game_i in self._games.items():
+            game_i(plot_state_space=plot_state_spaces)
+
+            if run_animations:
+                self.run_animation(i=i)
+
+            if calculate_costs:
+                game_i_costs = game_i.get_costs(x_only=x_only_costs)
+                print(f'Game {i} costs: {game_i_costs}')
+
+    def __getitem__(self, i: int) -> PyDiffGame:
+        return self._games[i]
+
+    def __len__(self):
+        return len(self._games)

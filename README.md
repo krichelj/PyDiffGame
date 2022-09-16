@@ -308,8 +308,8 @@ inverted_pendulum = InvertedPendulumComparison(m_c=m_c,
                                                x_0=x_0,
                                                x_T=x_T,
                                                epsilon=epsilon)
-inverted_pendulum.run_simulations(calculate_costs=True,
-                                  x_only_costs=True)
+inverted_pendulum.__call__(calculate_costs=True,
+                           x_only_costs=True)
 inverted_pendulum.plot_two_state_spaces(non_linear=True)
 
 
@@ -318,7 +318,7 @@ inverted_pendulum.plot_two_state_spaces(non_linear=True)
 This will result in the following plot that compares the two systems performance:
 
 <p align="center">
-    <img alt="Logo" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/200_15_1.png"/>
+    <img alt="Logo" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/tut.png"/>
 </p>
 
 # Acknowledgments
