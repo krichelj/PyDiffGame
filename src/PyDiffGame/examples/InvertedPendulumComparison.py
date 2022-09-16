@@ -133,7 +133,7 @@ class InvertedPendulumComparison(PyDiffGameComparison):
                 theta_ddot = theta_ddot[0]
                 x_ddot = x_ddot[0]
 
-            non_linear_x = np.array([x_dot, theta_dot, x_ddot , theta_ddot],
+            non_linear_x = np.array([x_dot, theta_dot, x_ddot, theta_ddot],
                                     dtype=float)
 
             return non_linear_x
@@ -234,4 +234,4 @@ inverted_pendulum = InvertedPendulumComparison(m_c=m_c,
                                                epsilon=epsilon)
 inverted_pendulum.run_simulations(calculate_costs=True,
                                   x_only_costs=True)
-inverted_pendulum.plot_two_state_spaces()
+inverted_pendulum.plot_two_state_spaces(non_linear=True)
