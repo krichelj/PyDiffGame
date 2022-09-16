@@ -84,6 +84,7 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
                  plot_state_spaces: Optional[bool] = True,
                  run_animations: Optional[bool] = True,
                  calculate_costs: Optional[bool] = False,
+                 non_linear_costs: Optional[bool] = False,
                  x_only_costs: Optional[bool] = False):
         """
         Runs the comparison
@@ -96,8 +97,9 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
                 self.run_animation(i=i)
 
             if calculate_costs:
-                game_i_costs = game_i.get_costs(x_only=x_only_costs)
-                print(f'Game {i} costs: {game_i_costs}')
+                game_i_costs = game_i.get_costs(non_linear=non_linear_costs,
+                                                x_only=x_only_costs)
+                print(f"Game {i + 1} {'non-linear ' if non_linear_costs else ''}costs: {game_i_costs}")
 
     def __getitem__(self, i: int) -> PyDiffGame:
         return self._games[i]

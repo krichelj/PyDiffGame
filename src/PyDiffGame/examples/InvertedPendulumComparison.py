@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.lines import Line2D
 from scipy.integrate import solve_ivp
-from typing import Final, ClassVar, Optional
+from typing import Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.PyDiffGameComparison import PyDiffGameComparison
@@ -16,15 +16,12 @@ from PyDiffGame.Objective import GameObjective, LQRObjective
 
 
 class InvertedPendulumComparison(PyDiffGameComparison):
-    __q_default: Final[ClassVar[float]] = 50
-    __r_default: Final[ClassVar[float]] = 10
-
     def __init__(self,
                  m_c: float,
                  m_p: float,
                  p_L: float,
-                 q: Optional[float] = __q_default,
-                 r: Optional[float] = __r_default,
+                 q: float,
+                 r: float,
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
@@ -59,14 +56,14 @@ class InvertedPendulumComparison(PyDiffGameComparison):
         M1 = B[2, :].reshape(1, 2)
         M2 = B[3, :].reshape(1, 2)
         Ms = [M1, M2]
-        Q_x = np.array([[q, 0, 2 * q, 0],
-                        [0, 0, 0, 0],
-                        [2 * q, 0, 3 * q, 0],
-                        [0, 0, 0, 0]])
-        Q_theta = np.array([[0, 0, 0, 0],
-                            [0, q, 0, 2 * q],
+        Q_x = q * np.array([[1, 0, 2, 0],
                             [0, 0, 0, 0],
-                            [0, 2 * q, 0, 3 * q]])
+                            [2, 0, 4, 0],
+                            [0, 0, 0, 0]])
+        Q_theta = q * np.array([[0, 0, 0, 0],
+                                [0, 1, 0, 2],
+                                [0, 0, 0, 0],
+                                [0, 2, 0, 4]])
         Q_lqr = Q_theta + Q_x
         Qs = [Q_x, Q_theta]
 
@@ -212,26 +209,26 @@ class InvertedPendulumComparison(PyDiffGameComparison):
         plt.show()
 
 
-x_0 = np.array([0,  # x
-                0,  # theta
-                0,  # x_dot
-                0]  # theta_dot
-               )
 x_T = np.array([10,  # x
                 pi,  # theta
                 0,  # x_dot
                 0]  # theta_dot
                )
+x_0 = np.zeros_like(x_T)
 
-m_c, m_p, p_L = 10, 5, 3
+m_c, m_p, p_L = 50, 20, 3
+q, r = 100, 10
 epsilon = 10 ** (-3)
 
 inverted_pendulum = InvertedPendulumComparison(m_c=m_c,
                                                m_p=m_p,
                                                p_L=p_L,
+                                               q=q,
+                                               r=r,
                                                x_0=x_0,
                                                x_T=x_T,
                                                epsilon=epsilon)
-inverted_pendulum.__call__(calculate_costs=True,
-                           x_only_costs=True)
+inverted_pendulum(calculate_costs=True,
+                  non_linear_costs=True,
+                  x_only_costs=True)
 inverted_pendulum.plot_two_state_spaces(non_linear=True)
