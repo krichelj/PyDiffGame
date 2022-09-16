@@ -52,12 +52,12 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
                 'eta': eta,
                 'force_finite_horizon': T_f is not None}
 
-        lqr_objective = LQRObjective(Q=Q_lqr, R_ii=R_lqr)
+        lqr_objective = [LQRObjective(Q=Q_lqr, R_ii=R_lqr)]
         game_objectives = [GameObjective(Q=Q, R_ii=R, M_i=M_i) for Q, R, M_i in zip(Qs, Rs, Ms)]
+        games_objectives = [lqr_objective, game_objectives]
 
         super().__init__(args=args,
-                         game_1_objectives=lqr_objective,
-                         game_2_objectives=game_objectives,
+                         games_objectives=games_objectives,
                          continuous=True)
 
 
@@ -87,4 +87,4 @@ masses_with_springs = MassesWithSpringsComparison(N=N,
                                                   x_0=x_0,
                                                   x_T=x_T,
                                                   epsilon=epsilon)
-masses_with_springs.run_simulations()
+masses_with_springs()

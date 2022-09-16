@@ -140,8 +140,8 @@ def get_P_quad_given_angular_rates(x, P_sol):
     B = [B1, B2, B3]
     R = [R1, R2, R3]
     Q = [Q1, Q2, Q3]
-    game = ContinuousPyDiffGame(A=A, B=B, Qs=Q, Rs=R, P_f=P_sol, show_legend=False)
-    game.run_simulation()
+    game = ContinuousPyDiffGame(A=A, Bs=B, Qs=Q, Rs=R, P_f=P_sol, show_legend=False)
+    game()
     Plast = game.P[-1]
 
     return Plast
@@ -307,6 +307,7 @@ def get_higher_level_control2(state, st, a_y):
                                 [0, 0, 0, 1, 0]])
 
     u_sizes = [4, 1]
+    Ms = [dividing_matrix[:, :u_sizes[0]].T, dividing_matrix[:, u_sizes[0]:u_sizes[0] + u_sizes[1]].T]
     Bs = calculate_Bs(u_sizes, dividing_matrix, B)
 
     R2 = np.array([[10]])
@@ -340,8 +341,8 @@ def get_higher_level_control2(state, st, a_y):
         Q = [0.01 * Q1, 0.01 * Q_wall_0]
     P_sol = [0.01 * Q1, 0.01 * Q1]
 
-    game = ContinuousPyDiffGame(A=A, B=Bs, Qs=Q, Rs=R, P_f=P_sol, show_legend=False)
-    game.run_simulation()
+    game = ContinuousPyDiffGame(A=A, Bs=Bs, Qs=Q, Rs=R, P_f=P_sol, show_legend=False)
+    game()
     Plast = game.P[-1]
     N = 2
     M = 9
@@ -451,8 +452,8 @@ def plot_var(var):
 
         plt.title('$a _y = \ $' + str(a_y) + '$ \ [m]$', fontsize=16)
 
-        plt.plot(tTotal_low[1:], quad_rotor_state_PD_dynamic_low
-                                 [a_y][1:, var_indices[0] if var != 'x_dot' else var_indices])
+        plt.plot(tTotal_low[1:],
+                 quad_rotor_state_PD_dynamic_low[a_y][1:, var_indices[0] if var != 'x_dot' else var_indices])
 
         if var in positions.keys():
             plt.plot(tTotal_low[1:], tilda_state_dynamic[a_y][1:, var_indices[1]])

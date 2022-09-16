@@ -18,12 +18,16 @@ class ContinuousPyDiffGame(PyDiffGame):
 
     def __init__(self,
                  A: np.array,
-                 B: np.array,
-                 objectives: Sequence[Objective],
+                 B: Optional[np.array] = None,
+                 Bs: Optional[Sequence[np.array]] = None,
+                 Qs: Optional[Sequence[np.array]] = None,
+                 Rs: Optional[Sequence[np.array]] = None,
+                 Ms: Optional[Sequence[np.array]] = None,
+                 objectives: Optional[Sequence[Objective]] = None,
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
-                 P_f: Optional[Sequence[np.array]] = None,
+                 P_f: Optional[Sequence[np.array] | np.array] = None,
                  show_legend: Optional[bool] = True,
                  state_variables_names: Optional[Sequence[str]] = None,
                  epsilon: Optional[float] = PyDiffGame._epsilon_default,
@@ -34,6 +38,10 @@ class ContinuousPyDiffGame(PyDiffGame):
 
         super().__init__(A=A,
                          B=B,
+                         Bs=Bs,
+                         Qs=Qs,
+                         Rs=Rs,
+                         Ms=Ms,
                          objectives=objectives,
                          x_0=x_0,
                          x_T=x_T,
@@ -68,9 +76,8 @@ class ContinuousPyDiffGame(PyDiffGame):
 
             P_t = [(P_t[i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n) for i in range(self._N)]
             dP_tdt = np.zeros((self._P_size,))
-            A_cl_t = self._A - sum([(self._Bs[j] @ inv(self._Rs[j])
-                                     if self._Rs[j].ndim > 1 else self._Bs[j] / self._Rs[j]) @ self._Bs[j].T @ P_t[j]
-                                    for j in range(self._N)])
+            A_cl_t = self._A - sum([(B_j @ inv(R_j) if R_j.ndim > 1 else B_j / R_j) @ B_j.T @ P_t_j
+                                    for B_j, R_j, P_t_j in zip(self._Bs, self._Rs, P_t)])
 
             for i in range(self._N):
                 P_t_i = P_t[i]
