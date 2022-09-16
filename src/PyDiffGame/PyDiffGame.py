@@ -422,17 +422,22 @@ class PyDiffGame(ABC, Hashable, Sized):
         self._fig.savefig(Path(fr'{figure_path}/{filename}'))
 
     def __augment_two_state_space_vectors(self,
-                                          other: PyDiffGame) -> (np.array, np.array):
+                                          other: PyDiffGame,
+                                          non_linear: bool = False) -> (np.array, np.array):
         """
         Plots the state variables of two converged state spaces
 
         Parameters
         ----------
+
         other: PyDiffGame
             Other converged differential game to augment the current one with
+        non_linear: boolean, optional
+            Indicates whether to augment the non-linear states or not
 
         Returns
         ----------
+
         longer_period: 1-d np.array of len(max(self.L, other.L))
             The longer time period of the two games
         augmented_state_space: 2-d np.array of shape(max(self.L, other.L), self.n + other.n)
@@ -440,12 +445,12 @@ class PyDiffGame(ABC, Hashable, Sized):
         """
 
         f_self = interpolate.interp1d(x=self._forward_time,
-                                      y=self._x,
+                                      y=self._x if not non_linear else self._x_non_linear.T,
                                       axis=0,
                                       fill_value="extrapolate")
 
         f_other = interpolate.interp1d(x=other.forward_time,
-                                       y=other.x,
+                                       y=other.x if not non_linear else other._x_non_linear.T,
                                        axis=0,
                                        fill_value="extrapolate")
 
@@ -470,9 +475,12 @@ class PyDiffGame(ABC, Hashable, Sized):
 
         other: PyDiffGame
             Other converged differential game to plot along with the current one
+        non_linear: boolean, optional
+            Indicates whether to plot the non-linear states or not
         """
 
-        longer_period, augmented_state_space = self.__augment_two_state_space_vectors(other)
+        longer_period, augmented_state_space = self.__augment_two_state_space_vectors(other=other,
+                                                                                      non_linear=non_linear)
 
         self_title = self.__get_temporal_state_variables_title(two_state_spaces=True)
         other_title = other.__get_temporal_state_variables_title(two_state_spaces=True)
