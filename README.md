@@ -87,11 +87,11 @@ from scipy.integrate import solve_ivp
 from typing import Final, ClassVar, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
-from PyDiffGame.LQRPyDiffGameComparison import LQRPyDiffGameComparison
+from PyDiffGame.PyDiffGameComparison import PyDiffGameComparison
 from PyDiffGame.Objective import GameObjective, LQRObjective
 
 
-class InvertedPendulum(LQRPyDiffGameComparison):
+class InvertedPendulum(PyDiffGameComparison):
    __q_s_default: Final[ClassVar[float]] = 1
    __q_m_default: Final[ClassVar[float]] = 100 * __q_s_default
    __q_l_default: Final[ClassVar[float]] = 100 * __q_m_default
@@ -174,7 +174,7 @@ class InvertedPendulum(LQRPyDiffGameComparison):
                        args=args,
                        objectives=objectives)
 
-      self.__lqr, self.__game = self._game
+      self.__lqr, self.__game = self._game_2
 
    def __get_next_non_linear_x(self, x_t: np.array, F_t: float, M_t: float) -> np.array:
       x, theta, x_dot, theta_dot = x_t

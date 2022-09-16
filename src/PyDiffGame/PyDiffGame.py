@@ -141,6 +141,7 @@ class PyDiffGame(ABC, Hashable, Sized):
         self._K = []
         self.__epsilon = epsilon
         self._x = self._x_0
+        self._x_non_linear = None
         self.__eta = eta
         self._converged = False
         self._debug = debug
@@ -208,6 +209,9 @@ class PyDiffGame(ABC, Hashable, Sized):
         controllability_matrix_rank = matrix_rank(controllability_matrix)
 
         return controllability_matrix_rank == self._n
+
+    def is_LQR(self):
+        return len(self) == 1
 
     def _converge_DREs_to_AREs(self):
         """
@@ -456,7 +460,8 @@ class PyDiffGame(ABC, Hashable, Sized):
         return longer_period, augmented_state_space
 
     def plot_two_state_spaces(self,
-                              other: PyDiffGame):
+                              other: PyDiffGame,
+                              non_linear: bool = False):
         """
         Plots the state variables of two converged state spaces
 
@@ -669,10 +674,20 @@ class PyDiffGame(ABC, Hashable, Sized):
         pass
 
     @_post_convergence
-    def get_costs(self) -> np.array:
+    def get_costs(self,
+                  x_only: Optional[bool] = False) -> np.array:
         """
-        Calculates the cost function value using the formula:
-        J_i = int_{t=0}^T_f [ x_tilde(t)^T Q_i x_tilde(t) + sum_{j=1}^N  v_j_tilde(t)^T R_{ij} v_j_tilde(t) ) ] dt
+        Calculates the cost functionals values using the formula:
+        J_i = int_{t=0}^T_f J_i(t) dt =
+              int_{t=0}^T_f [ x_tilde(t)^T Q_i x_tilde(t) + sum_{j=1}^N  v_j_tilde(t)^T R_{ij} v_j_tilde(t) ) ] dt
+
+        and the corresponding Trapezoidal rule approximation:
+        J_i ~ sum_{k=1}^{L} [ J_i(k - 1) + J_i(k - 1) ] * delta / 2
+
+        Parameters
+        ----------
+        x_only: bool, optional
+            Indicates whether to calculate the cost only with respect to x(t)
         """
 
         costs = []
@@ -683,20 +698,33 @@ class PyDiffGame(ABC, Hashable, Sized):
 
             cost_i = 0
 
-            k_i_T = self._get_K_i(i) if self.__continuous else self._get_K_i(i, self._L-1)
+            k_i_T = self._get_K_i(i) if self.__continuous else self._get_K_i(i, self._L - 1)
             v_i_T = - k_i_T @ self.x_T
 
-            for l in range(self._L):
+            for l in range(1, self._L):
                 x_l = self._x[l]
                 x_l_tilde = self.x_T - x_l
-                K_i_l = self._get_K_i(i) if self.__continuous else self._get_K_i(i, l)
-                v_i_l = - K_i_l @ x_l
-                v_i_l_tilde = v_i_T - v_i_l
 
-                cost_i += x_l_tilde.T @ Q_i @ x_l_tilde + v_i_l_tilde.T @ R_ii @ v_i_l_tilde \
-                    if R_ii.ndim > 1 else R_ii * v_i_l_tilde.T @ v_i_l_tilde
+                x_l_1 = self._x[l - 1]
+                x_l_1_tilde = self.x_T - x_l_1
 
-            costs += [cost_i]
+                cost_i += x_l_tilde.T @ Q_i @ x_l_tilde + x_l_1_tilde.T @ Q_i @ x_l_1_tilde
+
+                if not x_only:
+                    K_i_l = self._get_K_i(i) if self.__continuous else self._get_K_i(i, l)
+                    v_i_l = - K_i_l @ x_l
+                    v_i_l_tilde = v_i_T - v_i_l
+
+                    K_i_l_1 = self._get_K_i(i) if self.__continuous else self._get_K_i(i, l - 1)
+                    v_i_l_1 = - K_i_l_1 @ x_l_1
+                    v_i_l_1_tilde = v_i_T - v_i_l_1
+
+                    cost_i += v_i_l_tilde.T @ R_ii @ v_i_l_tilde \
+                        if R_ii.ndim > 1 else R_ii * v_i_l_tilde.T @ v_i_l_tilde + \
+                                              v_i_l_1_tilde.T @ R_ii @ v_i_l_1_tilde \
+                        if R_ii.ndim > 1 else R_ii * v_i_l_1_tilde.T @ v_i_l_1_tilde
+
+            costs += [cost_i * self._delta / 2]
 
         return np.array(costs)
 
