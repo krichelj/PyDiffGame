@@ -1,3 +1,6 @@
+import contextlib
+import os
+import sys
 import numpy as np
 from scipy.integrate import odeint
 from numpy.linalg import eigvals, inv
@@ -73,7 +76,6 @@ class ContinuousPyDiffGame(PyDiffGame):
             dP_tdt: numpy array of numpy 2-d arrays, of len(N), of shape(n, n)
                 Current calculated value for the time-derivative of the matrices P_t
             """
-
             P_t = [(P_t[i * self._P_size:(i + 1) * self._P_size]).reshape(self._n, self._n) for i in range(self._N)]
             dP_tdt = np.zeros((self._P_size,))
             A_cl_t = self._A - sum([(B_j @ inv(R_j) if R_j.ndim > 1 else B_j / R_j) @ B_j.T @ P_t_j
@@ -131,10 +133,11 @@ class ContinuousPyDiffGame(PyDiffGame):
                     [sum_{j=1, j!=i}^N P_j(t) B_j R^{-1}_{jj} B^T_j] P_i(t)
         """
 
-        self._P = odeint(func=self._ode_func,
-                         y0=np.ravel(self._P_f),
-                         t=self._backward_time,
-                         tfirst=True)
+        with stdout_redirected():
+            self._P = odeint(func=self._ode_func,
+                             y0=np.ravel(self._P_f),
+                             t=self._backward_time,
+                             tfirst=True)
 
     def _solve_finite_horizon(self):
         """
@@ -212,12 +215,14 @@ class ContinuousPyDiffGame(PyDiffGame):
 
             return dx_t_dt
 
-        self._x = odeint(func=state_diff_eqn,
-                         y0=self._x_0,
-                         t=self._forward_time)
+        with stdout_redirected():
+            self._x = odeint(func=state_diff_eqn,
+                             y0=self._x_0,
+                             t=self._forward_time)
 
     def simulate_x_T_f(self) -> np.array:
 
+        # @jit(nopython=True)
         def state_diff_eqn(x_t: np.array, _: float) -> np.array:
             self._update_K_from_last_state(t=-1)
             self._update_A_cl_from_last_state()
@@ -225,8 +230,44 @@ class ContinuousPyDiffGame(PyDiffGame):
 
             return dx_t_dt.ravel()
 
-        simulated_x_T = odeint(func=state_diff_eqn,
-                               y0=self._x_0,
-                               t=self._forward_time)[-1]
+        with stdout_redirected():
+            simulated_x_T = odeint(func=state_diff_eqn,
+                                   y0=self._x_0,
+                                   t=self._forward_time)[-1]
 
         return simulated_x_T
+
+
+def fileno(file_or_fd):
+    fd = getattr(file_or_fd, 'fileno', lambda: file_or_fd)()
+    if not isinstance(fd, int):
+        raise ValueError("Expected a file (`.fileno()`) or a file descriptor")
+
+    return fd
+
+
+@contextlib.contextmanager
+def stdout_redirected(to=os.devnull, stdout=None):
+    """
+    https://stackoverflow.com/a/22434262/190597 (J.F. Sebastian)
+    """
+    if stdout is None:
+        stdout = sys.stdout
+
+    stdout_fd = fileno(stdout)
+    # copy stdout_fd before it is overwritten
+    # NOTE: `copied` is inheritable on Windows when duplicating a standard stream
+    with os.fdopen(os.dup(stdout_fd), 'wb') as copied:
+        stdout.flush()  # flush library buffers that dup2 knows nothing about
+        try:
+            os.dup2(fileno(to), stdout_fd)  # $ exec >&to
+        except ValueError:  # filename
+            with open(to, 'wb') as to_file:
+                os.dup2(to_file.fileno(), stdout_fd)  # $ exec > to
+        try:
+            yield stdout  # allow code to be run with the redirected stdout
+        finally:
+            # restore stdout to its previous value
+            # NOTE: dup2 makes stdout_fd inheritable unconditionally
+            stdout.flush()
+            os.dup2(copied.fileno(), stdout_fd)  # $ exec >&copied

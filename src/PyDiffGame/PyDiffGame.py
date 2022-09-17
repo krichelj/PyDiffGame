@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from scipy import interpolate
 import numpy as np
-from math import gcd
+from math import gcd, log10
 from numpy.linalg import eigvals, norm, LinAlgError, inv, matrix_power, matrix_rank
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
@@ -23,6 +23,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
     Parameters
     ----------
+
     A: 2-d np.array of shape(n, n)
         The system dynamics matrix
     B: sequence of 2-d np.arrays of len(N), each array B_i of shape(n, m_i)
@@ -165,6 +166,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         Raises
         ------
+
         Case-specific errors
         """
 
@@ -315,11 +317,13 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         Parameters
         ----------
+
         f: callable
             The method requiring convergence
 
         Returns
         ----------
+
         decorated_f: callable
             A decorated version of the method requiring convergence
         """
@@ -345,6 +349,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         Parameters
         ----------
+
         t: 1-d np.array array of len(L)
             The time axis information to plot
         temporal_variables: 2-d np.arrays of shape(L, n)
@@ -548,6 +553,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         Returns
         ----------
+
         P_f: list of 2-d np.arrays, of len(N), of shape(n, n), solution of scipy's solve_are
             Final condition for the Riccati equation matrix
         """
@@ -584,6 +590,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         Returns
         ----------
+
         K_i: numpy array of numpy 2-d arrays, of len(N), of shape(n, n), solution of scipy's solve_are
             Final condition for the Riccati equation matrix
         """
@@ -598,6 +605,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         Parameters
         ----------
+
         i: int
             The required index
         """
@@ -612,6 +620,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         Parameters
         ----------
+
         k: int, optional
             The current k'th sample index, in case the controller is time-dependant.
             In this case the update rule is:
@@ -642,6 +651,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         Returns
         ----------
+
         is_stable: boolean
             Indicates whether the system has Lyapunov stability or not
         """
@@ -725,11 +735,43 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         Returns
         ----------
+
         x_T_f: numpy 1-d array of shape(n)
             Evaluated terminal state vector x(T_f)
         """
 
         pass
+
+    @_post_convergence
+    def get_x_l_1_tilde(self,
+                        x: np.array,
+                        l: int) -> (np.array, np.array):
+        x_l = x[l]
+        x_l_1 = x[l - 1]
+
+        x_l_tilde = self.x_T - x_l
+        x_l_1_tilde = self.x_T - x_l_1
+
+        return x_l_tilde, x_l_1_tilde
+
+    @_post_convergence
+    def get_v_l_1_tilde(self,
+                        x: np.array,
+                        i: int,
+                        l: int,
+                        v_i_T: np.array) -> (np.array, np.array):
+        x_l = x[l]
+        x_l_1 = x[l - 1]
+
+        K_i_l = self._get_K_i(i) if self.__continuous else self._get_K_i(i, l)
+        v_i_l = - K_i_l @ x_l
+        v_i_l_tilde = v_i_T - v_i_l
+
+        K_i_l_1 = self._get_K_i(i) if self.__continuous else self._get_K_i(i, l - 1)
+        v_i_l_1 = - K_i_l_1 @ x_l_1
+        v_i_l_1_tilde = v_i_T - v_i_l_1
+
+        return v_i_l_tilde, v_i_l_1_tilde
 
     @_post_convergence
     def get_costs(self,
@@ -741,10 +783,13 @@ class PyDiffGame(ABC, Callable, Sequence):
               int_{t=0}^T_f [ x_tilde(t)^T Q_i x_tilde(t) + sum_{j=1}^N  v_j_tilde(t)^T R_{ij} v_j_tilde(t) ) ] dt
 
         and the corresponding Trapezoidal rule approximation:
-        J_i ~ sum_{k=1}^{L} [ J_i(k - 1) + J_i(k - 1) ] * delta / 2
+        J_i ~ sum_{l=1}^{L} [ J_i(l) + J_i(l - 1) ] * delta / 2
+
+        applied with log10 at the end for scaling
 
         Parameters
         ----------
+
         non_linear: bool, optional
             Indicates whether to calculate the cost with respect to the nonlinear state
         x_only: bool, optional
@@ -764,31 +809,63 @@ class PyDiffGame(ABC, Callable, Sequence):
             v_i_T = - k_i_T @ self.x_T
 
             for l in range(1, self._L):
-                x_l = x[l]
-                x_l_tilde = self.x_T - x_l
-
-                x_l_1 = x[l - 1]
-                x_l_1_tilde = self.x_T - x_l_1
+                x_l_tilde, x_l_1_tilde = self.get_x_l_1_tilde(x=x,
+                                                              l=l)
 
                 cost_i += x_l_tilde.T @ Q_i @ x_l_tilde + x_l_1_tilde.T @ Q_i @ x_l_1_tilde
 
                 if not x_only:
-                    K_i_l = self._get_K_i(i) if self.__continuous else self._get_K_i(i, l)
-                    v_i_l = - K_i_l @ x_l
-                    v_i_l_tilde = v_i_T - v_i_l
+                    v_i_l_tilde, v_i_l_1_tilde = self.get_v_l_1_tilde(x=x,
+                                                                      i=i,
+                                                                      l=l,
+                                                                      v_i_T=v_i_T)
+                    cost_i += v_i_l_tilde.T @ R_ii @ v_i_l_tilde + v_i_l_1_tilde.T @ R_ii @ v_i_l_1_tilde
 
-                    K_i_l_1 = self._get_K_i(i) if self.__continuous else self._get_K_i(i, l - 1)
-                    v_i_l_1 = - K_i_l_1 @ x_l_1
-                    v_i_l_1_tilde = v_i_T - v_i_l_1
-
-                    cost_i += v_i_l_tilde.T @ R_ii @ v_i_l_tilde \
-                        if R_ii.ndim > 1 else R_ii * v_i_l_tilde.T @ v_i_l_tilde + \
-                                              v_i_l_1_tilde.T @ R_ii @ v_i_l_1_tilde \
-                        if R_ii.ndim > 1 else R_ii * v_i_l_1_tilde.T @ v_i_l_1_tilde
-
-            costs += [cost_i * self._delta / 2]
+            costs += [log10(cost_i * self._delta / 2)]
 
         return np.array(costs)
+
+    @_post_convergence
+    def get_agnostic_costs(self,
+                           non_linear: Optional[bool] = False) -> float:
+        """
+        Calculates the agnostic functional value using the formula:
+        J_agnostic = int_{t=0}^T_f J(t) dt =
+                     int_{t=0}^T_f [ x_tilde(t)^T x_tilde(t) + sum_{j=1}^N  v_j_tilde(t)^T v_j_tilde(t) ) ] dt
+
+        and the corresponding Trapezoidal rule approximation:
+        J ~ sum_{l=1}^{L} [ J(l) + J(l - 1) ] * delta / 2
+
+        applied with log10 at the end for scaling
+
+        Parameters
+        ----------
+
+        non_linear: bool, optional
+            Indicates whether to calculate the cost with respect to the nonlinear state
+        """
+
+        cost = 0
+        x = self._x if not non_linear else self._x_non_linear.T
+
+        for l in range(1, self._L):
+            x_l_tilde, x_l_1_tilde = self.get_x_l_1_tilde(x=x,
+                                                          l=l)
+
+            cost += x_l_tilde.T @ x_l_tilde + x_l_1_tilde.T @ x_l_1_tilde
+
+            for i in range(self._N):
+                k_i_T = self._get_K_i(i) if self.__continuous else self._get_K_i(i, self._L - 1)
+                v_i_T = - k_i_T @ self.x_T
+
+                v_i_l_tilde, v_i_l_1_tilde = self.get_v_l_1_tilde(x=x,
+                                                                  i=i,
+                                                                  l=l,
+                                                                  v_i_T=v_i_T)
+
+                cost += v_i_l_tilde.T @ v_i_l_tilde + v_i_l_1_tilde.T @ v_i_l_1_tilde
+
+        return log10(cost * self._delta / 2)
 
     def __call__(self,
                  print_characteristic_polynomials: Optional[bool] = False,
@@ -797,6 +874,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         """
         Runs the game simulation
         """
+
         if print_characteristic_polynomials:
             self.print_characteristic_polynomials()
         if print_eigenvalues:

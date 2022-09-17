@@ -1,7 +1,7 @@
+import numpy as np
+from termcolor import colored
 from typing import Sequence, Any, Optional, Callable
 from abc import ABC
-
-import numpy as np
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
@@ -16,6 +16,7 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
 
     Parameters
     ----------
+
     args: sequence of 2-d np.arrays of len(N), each array B_i of shape(n, m_i)
         System input matrices for each control objective
     games_objectives: Sequence of Sequences of GameObjective objects
@@ -42,6 +43,7 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
 
         Raises
         ------
+
         Case-specific errors
         """
 
@@ -53,19 +55,26 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
                 raise ValueError(f'The {mat_name} matrix {mat} must be a numpy array')
 
     def are_fully_controllable(self):
+        """
+        Tests each game's full controllability as an LTI system
+        """
+
         return all(game.is_fully_controllable() for game in self._games.values())
 
     def plot_two_state_spaces(self,
                               i: Optional[int] = 0,
                               j: Optional[int] = 1,
                               non_linear: bool = False):
-        game_i = self._games[i]
-        game_j = self._games[j]
-        game_i.plot_two_state_spaces(other=game_j,
-                                     non_linear=non_linear)
+        """
+        Plot the state spaces of two games
+        """
+
+        self._games[i].plot_two_state_spaces(other=self._games[j],
+                                             non_linear=non_linear)
 
     def _simulate_non_linear_system(self,
-                                    *args) -> np.array:
+                                    i: int,
+                                    plot: bool = False) -> np.array:
         """
         Simulates the corresponding non-linear system's progression through time
         """
@@ -85,31 +94,62 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
                  print_eigenvalues: Optional[bool] = False,
                  plot_state_spaces: Optional[bool] = True,
                  run_animations: Optional[bool] = True,
-                 calculate_costs: Optional[bool] = False,
+                 print_costs: Optional[bool] = False,
                  non_linear_costs: Optional[bool] = False,
-                 x_only_costs: Optional[bool] = False):
+                 agnostic_costs: Optional[bool] = False,
+                 x_only_costs: Optional[bool] = False) -> bool:
         """
         Runs the comparison
         """
 
-        for i, game_i in self._games.items():
-            if print_characteristic_polynomials:
-                game_i.print_characteristic_polynomials()
-            if print_eigenvalues:
-                game_i.print_eigenvalues()
+        costs = []
+        res = False
 
-            game_i(plot_state_space=plot_state_spaces)
+        for i, game_i in self._games.items():
+            game_i(plot_state_space=plot_state_spaces,
+                   print_characteristic_polynomials=print_characteristic_polynomials,
+                   print_eigenvalues=print_eigenvalues)
 
             if run_animations:
                 self.run_animation(i=i)
+            elif non_linear_costs:
+                game_i._x_non_linear = self._simulate_non_linear_system(i=i,
+                                                                        plot=False)
 
-            if calculate_costs:
-                game_i_costs = game_i.get_costs(non_linear=non_linear_costs,
-                                                x_only=x_only_costs)
-                print(f"Game {i + 1} {'non-linear ' if non_linear_costs else ''}costs: {game_i_costs}")
+            if print_costs:
+                game_i_costs = game_i.get_agnostic_costs(non_linear=non_linear_costs) \
+                    if agnostic_costs else game_i.get_costs(non_linear=non_linear_costs,
+                                                            x_only=x_only_costs)
 
-    def __getitem__(self, i: int) -> PyDiffGame:
+                costs += [game_i_costs]
+
+        if print_costs:
+            costs = np.array(costs)
+            maximal_cost_game = costs.argmax()
+            is_max_lqr = self._games[maximal_cost_game].is_LQR()
+
+            print('\n' + '#' * 100 + '\n' + colored(f"\nGame {maximal_cost_game + 1} has the most cost "
+                                                    f"{'which is LQR! :)' if is_max_lqr else ' :('}\n",
+                                                    'green' if is_max_lqr else 'red') + '#' * 50
+                  + '\n\n' + '\n'.join([f"Game {i + 1} {'non-linear ' if non_linear_costs else ''}"
+                                        f"{'agnostic ' if agnostic_costs else ''}"
+                                        f"cost: 10^{round(cost_i, 3)}" for i, cost_i in enumerate(costs)]))
+
+            res = is_max_lqr
+
+        return res
+
+    def __getitem__(self,
+                    i: int) -> PyDiffGame:
+        """
+        Returns the i'th game
+        """
+
         return self._games[i]
 
-    def __len__(self):
+    def __len__(self) -> int:
+        """
+        We define the length of a comparison to be its number of games
+        """
+
         return len(self._games)
