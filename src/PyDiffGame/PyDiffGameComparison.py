@@ -81,6 +81,8 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
         pass
 
     def __call__(self,
+                 print_characteristic_polynomials: Optional[bool] = False,
+                 print_eigenvalues: Optional[bool] = False,
                  plot_state_spaces: Optional[bool] = True,
                  run_animations: Optional[bool] = True,
                  calculate_costs: Optional[bool] = False,
@@ -91,6 +93,11 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
         """
 
         for i, game_i in self._games.items():
+            if print_characteristic_polynomials:
+                game_i.print_characteristic_polynomials()
+            if print_eigenvalues:
+                game_i.print_eigenvalues()
+
             game_i(plot_state_space=plot_state_spaces)
 
             if run_animations:

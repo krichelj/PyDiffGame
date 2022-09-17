@@ -4,3 +4,4 @@ quadpy>=0.16.10
 scipy>=1.8.0
 setuptools>=60.9.3
 tqdm>=4.63.0
+sympy~=1.11.1
