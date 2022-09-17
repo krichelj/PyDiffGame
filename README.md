@@ -77,6 +77,8 @@ corresponding call for `run_simulation`:
 from __future__ import annotations
 
 import numpy as np
+import itertools
+from tqdm import tqdm
 from time import time
 from numpy import pi, sin, cos
 from matplotlib.animation import FuncAnimation
@@ -84,7 +86,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.lines import Line2D
 from scipy.integrate import solve_ivp
-from typing import Final, ClassVar, Optional
+from typing import Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.PyDiffGameComparison import PyDiffGameComparison
@@ -92,15 +94,12 @@ from PyDiffGame.Objective import GameObjective, LQRObjective
 
 
 class InvertedPendulumComparison(PyDiffGameComparison):
-    __q_default: Final[ClassVar[float]] = 50
-    __r_default: Final[ClassVar[float]] = 10
-
     def __init__(self,
                  m_c: float,
                  m_p: float,
                  p_L: float,
-                 q: Optional[float] = __q_default,
-                 r: Optional[float] = __r_default,
+                 q: float,
+                 r: Optional[float] = 1,
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
@@ -117,7 +116,6 @@ class InvertedPendulumComparison(PyDiffGameComparison):
         linearized_D = self.__m_c * self.__m_p * self.__l ** 2 + self.__I * (self.__m_c + self.__m_p)
         a32 = self.__m_p * PyDiffGame.g * self.__l ** 2 / linearized_D
         a42 = self.__m_p * PyDiffGame.g * self.__l * (self.__m_c + self.__m_p) / linearized_D
-
         A = np.array([[0, 0, 1, 0],
                       [0, 0, 0, 1],
                       [0, a32, 0, 0],
@@ -127,27 +125,27 @@ class InvertedPendulumComparison(PyDiffGameComparison):
         b31 = m_p * self.__l / linearized_D
         b22 = b31
         b32 = (m_c + m_p) / linearized_D
-
         B = np.array([[0, 0],
                       [0, 0],
                       [b21, b22],
                       [b31, b32]])
+
         M1 = B[2, :].reshape(1, 2)
         M2 = B[3, :].reshape(1, 2)
         Ms = [M1, M2]
-        Q_x = np.array([[q, 0, 2 * q, 0],
-                        [0, 0, 0, 0],
-                        [2 * q, 0, 3 * q, 0],
-                        [0, 0, 0, 0]])
-        Q_theta = np.array([[0, 0, 0, 0],
-                            [0, q, 0, 2 * q],
+
+        Q_x = q * np.array([[1, 0, 2, 0],
                             [0, 0, 0, 0],
-                            [0, 2 * q, 0, 3 * q]])
+                            [2, 0, 4, 0],
+                            [0, 0, 0, 0]])
+        Q_theta = q * np.array([[0, 0, 0, 0],
+                                [0, 1, 0, 2],
+                                [0, 0, 0, 0],
+                                [0, 2, 0, 4]])
         Q_lqr = Q_theta + Q_x
         Qs = [Q_x, Q_theta]
 
         R_lqr = np.diag([r] * 2)
-
         Rs = [np.array([r])] * 2
 
         self.__origin = (0.0, 0.0)
@@ -288,29 +286,48 @@ class InvertedPendulumComparison(PyDiffGameComparison):
         plt.show()
 
 
-x_0 = np.array([0,  # x
-                0,  # theta
-                0,  # x_dot
-                0]  # theta_dot
-               )
+t_start = time()
+
 x_T = np.array([10,  # x
                 pi,  # theta
                 0,  # x_dot
                 0]  # theta_dot
                )
+x_0 = np.zeros_like(x_T)
 
-m_c, m_p, p_L = 10, 5, 3
-epsilon = 10 ** (-3)
+epsilon = 10 ** (-8)
+Z = 4
+one_to_Z = list(range(1, Z))
+wins = []
 
-inverted_pendulum = InvertedPendulumComparison(m_c=m_c,
-                                               m_p=m_p,
-                                               p_L=p_L,
-                                               x_0=x_0,
-                                               x_T=x_T,
-                                               epsilon=epsilon)
-inverted_pendulum.__call__(calculate_costs=True,
-                           x_only_costs=True)
-inverted_pendulum.plot_two_state_spaces(non_linear=True)
+m_cs = [5 * x for x in one_to_Z]
+m_ps = [2 * x for x in one_to_Z]
+p_Ls = one_to_Z
+qs = [10 ** x for x in range(-4, 4)]
+params = [m_cs, m_ps, p_Ls, qs]
+all_combos = list(itertools.product(*params))
+
+for (m_c, m_p, p_L, q) in tqdm(all_combos, total=len(all_combos)):
+    print(f'm_c: {m_c}, m_p: {m_p}, p_L: {p_L}, q: {q}')
+    inverted_pendulum_comparison = InvertedPendulumComparison(m_c=m_c,
+                                                              m_p=m_p,
+                                                              p_L=p_L,
+                                                              q=q,
+                                                              x_0=x_0,
+                                                              x_T=x_T,
+                                                              epsilon=epsilon)
+    is_max_lqr = inverted_pendulum_comparison(plot_state_spaces=False,
+                                              run_animations=False,
+                                              print_costs=True,
+                                              non_linear_costs=True,
+                                              agnostic_costs=True)
+
+    wins += [int(is_max_lqr)]
+
+wins = np.array(wins)
+print(wins.sum() / len(wins) * 100)
+print(f'Total time: {time() - t_start}')
+
 
 
 ```

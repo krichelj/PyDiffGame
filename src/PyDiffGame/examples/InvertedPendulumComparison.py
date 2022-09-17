@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import numpy as np
+import itertools
+from tqdm import tqdm
 from time import time
 from numpy import pi, sin, cos
 from matplotlib.animation import FuncAnimation
@@ -21,7 +23,7 @@ class InvertedPendulumComparison(PyDiffGameComparison):
                  m_p: float,
                  p_L: float,
                  q: float,
-                 r: float,
+                 r: Optional[float] = 1,
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
@@ -208,6 +210,8 @@ class InvertedPendulumComparison(PyDiffGameComparison):
         plt.show()
 
 
+t_start = time()
+
 x_T = np.array([10,  # x
                 pi,  # theta
                 0,  # x_dot
@@ -215,19 +219,36 @@ x_T = np.array([10,  # x
                )
 x_0 = np.zeros_like(x_T)
 
-m_c, m_p, p_L = 50, 2, 3
-q, r = 50, 10
-epsilon = 10 ** (-5)
+epsilon = 10 ** (-8)
+Z = 4
+one_to_Z = list(range(1, Z))
+wins = []
 
-inverted_pendulum = InvertedPendulumComparison(m_c=m_c,
-                                               m_p=m_p,
-                                               p_L=p_L,
-                                               q=q,
-                                               r=r,
-                                               x_0=x_0,
-                                               x_T=x_T,
-                                               epsilon=epsilon)
-inverted_pendulum(calculate_costs=True,
-                  non_linear_costs=True,
-                  x_only_costs=True)
-inverted_pendulum.plot_two_state_spaces(non_linear=True)
+m_cs = [5 * x for x in one_to_Z]
+m_ps = [2 * x for x in one_to_Z]
+p_Ls = one_to_Z
+qs = [10 ** x for x in range(-4, 4)]
+params = [m_cs, m_ps, p_Ls, qs]
+all_combos = list(itertools.product(*params))
+
+for (m_c, m_p, p_L, q) in tqdm(all_combos, total=len(all_combos)):
+    print(f'm_c: {m_c}, m_p: {m_p}, p_L: {p_L}, q: {q}')
+    inverted_pendulum_comparison = InvertedPendulumComparison(m_c=m_c,
+                                                              m_p=m_p,
+                                                              p_L=p_L,
+                                                              q=q,
+                                                              x_0=x_0,
+                                                              x_T=x_T,
+                                                              epsilon=epsilon)
+    is_max_lqr = inverted_pendulum_comparison(plot_state_spaces=False,
+                                              run_animations=False,
+                                              print_costs=True,
+                                              non_linear_costs=True,
+                                              agnostic_costs=True)
+
+    wins += [int(is_max_lqr)]
+    # inverted_pendulum_comparison.plot_two_state_spaces(non_linear=True)
+
+wins = np.array(wins)
+print(wins.sum() / len(wins) * 100)
+print(f'Total time: {time() - t_start}')
