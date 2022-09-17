@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
-import itertools
+from itertools import product
 from tqdm import tqdm
 from time import time
 from numpy import pi, sin, cos
@@ -212,39 +212,41 @@ class InvertedPendulumComparison(PyDiffGameComparison):
 
 t_start = time()
 
-x_T = np.array([10,  # x
-                pi,  # theta
-                0,  # x_dot
-                0]  # theta_dot
-               )
-x_0 = np.zeros_like(x_T)
+epsilon = 10 ** (-3)
+x_Ts = [10 * x for x in [5, 10]]
+theta_Ts = [pi / n for n in [0.5, 1, 2]]
+m_cs = [10 ** p for p in [0, 1, 2, 3]]
+m_ps = [10 ** p for p in [0, 1, 1.5]]
+p_Ls = [10 ** p for p in [-1, 0, 1]]
+qs = [10 ** p for p in [0, 1, 2]]
+params = [x_Ts, theta_Ts, m_cs, m_ps, p_Ls, qs]
+all_combos = list(product(*params))
 
-epsilon = 10 ** (-8)
-Z = 4
-one_to_Z = list(range(1, Z))
 wins = []
 
-m_cs = [5 * x for x in one_to_Z]
-m_ps = [2 * x for x in one_to_Z]
-p_Ls = one_to_Z
-qs = [10 ** x for x in range(-4, 4)]
-params = [m_cs, m_ps, p_Ls, qs]
-all_combos = list(itertools.product(*params))
+for (x_T, theta_0, m_c, m_p, p_L, q) in tqdm(all_combos, total=len(all_combos)):
+    print(f'x_T: {x_T}, theta_0: {theta_0}, m_c: {m_c}, m_p: {m_p}, p_L: {p_L}, q: {q}')
+    x_T = np.array([x_T,  # x
+                    theta_0,  # theta
+                    0,  # x_dot
+                    0]  # theta_dot
+                   )
+    x_0 = np.zeros_like(x_T)
 
-for (m_c, m_p, p_L, q) in tqdm(all_combos, total=len(all_combos)):
-    print(f'm_c: {m_c}, m_p: {m_p}, p_L: {p_L}, q: {q}')
-    inverted_pendulum_comparison = InvertedPendulumComparison(m_c=m_c,
-                                                              m_p=m_p,
-                                                              p_L=p_L,
-                                                              q=q,
-                                                              x_0=x_0,
-                                                              x_T=x_T,
-                                                              epsilon=epsilon)
-    is_max_lqr = inverted_pendulum_comparison(plot_state_spaces=False,
-                                              run_animations=False,
-                                              print_costs=True,
-                                              non_linear_costs=True,
-                                              agnostic_costs=True)
+    inverted_pendulum_comparison = \
+        InvertedPendulumComparison(m_c=m_c,
+                                   m_p=m_p,
+                                   p_L=p_L,
+                                   q=q,
+                                   x_0=x_0,
+                                   x_T=x_T,
+                                   epsilon=epsilon)  # game class
+    is_max_lqr = \
+        inverted_pendulum_comparison(plot_state_spaces=False,
+                                     run_animations=False,
+                                     print_costs=True,
+                                     non_linear_costs=True,
+                                     agnostic_costs=True)
 
     wins += [int(is_max_lqr)]
     # inverted_pendulum_comparison.plot_two_state_spaces(non_linear=True)
