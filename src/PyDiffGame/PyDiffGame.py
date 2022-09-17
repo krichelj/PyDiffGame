@@ -59,7 +59,7 @@ class PyDiffGame(ABC, Callable, Sequence):
     _L_default: Final[ClassVar[int]] = 1000
     _eta_default: Final[ClassVar[int]] = 5
     _g: Final[ClassVar[float]] = 9.81
-    __max_convergence_iterations: Final[ClassVar[int]] = 50
+    __max_convergence_iterations: Final[ClassVar[int]] = 30
 
     @classmethod
     @property
@@ -125,7 +125,6 @@ class PyDiffGame(ABC, Callable, Sequence):
             if self._Ms and len(self._Ms):
                 self._M = np.concatenate(self._Ms, axis=0)
                 self._M_inv = inv(self._M)
-
                 l = 0
                 self._Bs = []
 
@@ -743,9 +742,9 @@ class PyDiffGame(ABC, Callable, Sequence):
         pass
 
     @_post_convergence
-    def get_x_l_1_tilde(self,
-                        x: np.array,
-                        l: int) -> (np.array, np.array):
+    def __get_x_tildes(self,
+                       x: np.array,
+                       l: int) -> (np.array, np.array):
         x_l = x[l]
         x_l_1 = x[l - 1]
 
@@ -755,11 +754,11 @@ class PyDiffGame(ABC, Callable, Sequence):
         return x_l_tilde, x_l_1_tilde
 
     @_post_convergence
-    def get_v_l_1_tilde(self,
-                        x: np.array,
-                        i: int,
-                        l: int,
-                        v_i_T: np.array) -> (np.array, np.array):
+    def __get_v_tildes(self,
+                       x: np.array,
+                       i: int,
+                       l: int,
+                       v_i_T: np.array) -> (np.array, np.array):
         x_l = x[l]
         x_l_1 = x[l - 1]
 
@@ -772,6 +771,40 @@ class PyDiffGame(ABC, Callable, Sequence):
         v_i_l_1_tilde = v_i_T - v_i_l_1
 
         return v_i_l_tilde, v_i_l_1_tilde
+
+    @_post_convergence
+    def __get_u_tildes(self,
+                       x: np.array,
+                       l: int) -> (np.array, np.array):
+        x_l_tilde, x_l_1_tilde = self.__get_x_tildes(x=x,
+                                                     l=l)
+        if self.is_LQR():
+            K = self._K[0]
+            u_l_tilde = K @ x_l_tilde
+            u_l_1_tilde = K @ x_l_1_tilde
+        else:
+            v_l_tilde = []
+            v_l_1_tilde = []
+
+            for i in range(self._N):
+                k_i_T = self._get_K_i(i) if self.__continuous else self._get_K_i(i, self._L - 1)
+                v_i_T = - k_i_T @ self.x_T
+
+                v_i_l_tilde, v_i_l_1_tilde = self.__get_v_tildes(x=x,
+                                                                 i=i,
+                                                                 l=l,
+                                                                 v_i_T=v_i_T)
+
+                v_l_tilde += [v_i_l_tilde]
+                v_l_1_tilde += [v_i_l_1_tilde]
+
+            v_l_tilde = np.array(v_l_tilde)
+            v_l_1_tilde = np.array(v_l_1_tilde)
+
+            u_l_tilde = self._M_inv @ v_l_tilde
+            u_l_1_tilde = self._M_inv @ v_l_1_tilde
+
+        return u_l_tilde, u_l_1_tilde
 
     @_post_convergence
     def get_costs(self,
@@ -809,16 +842,16 @@ class PyDiffGame(ABC, Callable, Sequence):
             v_i_T = - k_i_T @ self.x_T
 
             for l in range(1, self._L):
-                x_l_tilde, x_l_1_tilde = self.get_x_l_1_tilde(x=x,
-                                                              l=l)
+                x_l_tilde, x_l_1_tilde = self.__get_x_tildes(x=x,
+                                                             l=l)
 
                 cost_i += x_l_tilde.T @ Q_i @ x_l_tilde + x_l_1_tilde.T @ Q_i @ x_l_1_tilde
 
                 if not x_only:
-                    v_i_l_tilde, v_i_l_1_tilde = self.get_v_l_1_tilde(x=x,
-                                                                      i=i,
-                                                                      l=l,
-                                                                      v_i_T=v_i_T)
+                    v_i_l_tilde, v_i_l_1_tilde = self.__get_v_tildes(x=x,
+                                                                     i=i,
+                                                                     l=l,
+                                                                     v_i_T=v_i_T)
                     cost_i += v_i_l_tilde.T @ R_ii @ v_i_l_tilde + v_i_l_1_tilde.T @ R_ii @ v_i_l_1_tilde
 
             costs += [log10(cost_i * self._delta / 2)]
@@ -831,7 +864,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         """
         Calculates the agnostic functional value using the formula:
         J_agnostic = int_{t=0}^T_f J(t) dt =
-                     int_{t=0}^T_f [ x_tilde(t)^T x_tilde(t) + sum_{j=1}^N  v_j_tilde(t)^T v_j_tilde(t) ) ] dt
+                     int_{t=0}^T_f [ x_tilde(t)^T x_tilde(t) + u_tilde(t)^T u_tilde(t) ) ] dt
 
         and the corresponding Trapezoidal rule approximation:
         J ~ sum_{l=1}^{L} [ J(l) + J(l - 1) ] * delta / 2
@@ -848,22 +881,12 @@ class PyDiffGame(ABC, Callable, Sequence):
         cost = 0
         x = self._x if not non_linear else self._x_non_linear.T
 
-        for l in range(1, self._L):
-            x_l_tilde, x_l_1_tilde = self.get_x_l_1_tilde(x=x,
-                                                          l=l)
-
+        for l in range(1, len(x) - 1):
+            x_l_tilde, x_l_1_tilde = self.__get_x_tildes(x=x, l=l)
             cost += x_l_tilde.T @ x_l_tilde + x_l_1_tilde.T @ x_l_1_tilde
 
-            for i in range(self._N):
-                k_i_T = self._get_K_i(i) if self.__continuous else self._get_K_i(i, self._L - 1)
-                v_i_T = - k_i_T @ self.x_T
-
-                v_i_l_tilde, v_i_l_1_tilde = self.get_v_l_1_tilde(x=x,
-                                                                  i=i,
-                                                                  l=l,
-                                                                  v_i_T=v_i_T)
-
-                cost += v_i_l_tilde.T @ v_i_l_tilde + v_i_l_1_tilde.T @ v_i_l_1_tilde
+            u_l_tilde, u_l_1_tilde = self.__get_u_tildes(x=x, l=l)
+            cost += u_l_tilde.T @ u_l_tilde + u_l_1_tilde.T @ u_l_1_tilde
 
         return log10(cost * self._delta / 2)
 
