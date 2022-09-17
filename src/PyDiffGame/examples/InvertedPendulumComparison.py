@@ -38,7 +38,6 @@ class InvertedPendulumComparison(PyDiffGameComparison):
         linearized_D = self.__m_c * self.__m_p * self.__l ** 2 + self.__I * (self.__m_c + self.__m_p)
         a32 = self.__m_p * PyDiffGame.g * self.__l ** 2 / linearized_D
         a42 = self.__m_p * PyDiffGame.g * self.__l * (self.__m_c + self.__m_p) / linearized_D
-
         A = np.array([[0, 0, 1, 0],
                       [0, 0, 0, 1],
                       [0, a32, 0, 0],
@@ -48,14 +47,15 @@ class InvertedPendulumComparison(PyDiffGameComparison):
         b31 = m_p * self.__l / linearized_D
         b22 = b31
         b32 = (m_c + m_p) / linearized_D
-
         B = np.array([[0, 0],
                       [0, 0],
                       [b21, b22],
                       [b31, b32]])
+
         M1 = B[2, :].reshape(1, 2)
         M2 = B[3, :].reshape(1, 2)
         Ms = [M1, M2]
+
         Q_x = q * np.array([[1, 0, 2, 0],
                             [0, 0, 0, 0],
                             [2, 0, 4, 0],
@@ -68,7 +68,6 @@ class InvertedPendulumComparison(PyDiffGameComparison):
         Qs = [Q_x, Q_theta]
 
         R_lqr = np.diag([r] * 2)
-
         Rs = [np.array([r])] * 2
 
         self.__origin = (0.0, 0.0)
@@ -216,9 +215,9 @@ x_T = np.array([10,  # x
                )
 x_0 = np.zeros_like(x_T)
 
-m_c, m_p, p_L = 50, 20, 3
-q, r = 100, 10
-epsilon = 10 ** (-3)
+m_c, m_p, p_L = 50, 2, 3
+q, r = 50, 10
+epsilon = 10 ** (-5)
 
 inverted_pendulum = InvertedPendulumComparison(m_c=m_c,
                                                m_p=m_p,

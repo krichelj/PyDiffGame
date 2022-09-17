@@ -4,9 +4,11 @@ import os
 from pathlib import Path
 from scipy import interpolate
 import numpy as np
+from math import gcd
 from numpy.linalg import eigvals, norm, LinAlgError, inv, matrix_power, matrix_rank
 import matplotlib.pyplot as plt
 from scipy.linalg import solve_continuous_are, solve_discrete_are
+from sympy import symbols, factor, Matrix
 import warnings
 from typing import Callable, Final, ClassVar, Optional, Sequence
 from abc import ABC, abstractmethod
@@ -56,7 +58,7 @@ class PyDiffGame(ABC, Callable, Sequence):
     _L_default: Final[ClassVar[int]] = 1000
     _eta_default: Final[ClassVar[int]] = 5
     _g: Final[ClassVar[float]] = 9.81
-    __max_convergence_iterations: Final[ClassVar[int]] = 60
+    __max_convergence_iterations: Final[ClassVar[int]] = 50
 
     @classmethod
     @property
@@ -181,7 +183,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         if self._N == 0:
             raise ValueError('At least one objective must be specified')
         if self._N > 1 and self._Ms and not all([M_i.shape[0] == R_ii.shape[0] == R_ii.shape[1]
-                                                if R_ii.ndim > 1 else  M_i.shape[0] == R_ii.shape[0]
+                                                 if R_ii.ndim > 1 else M_i.shape[0] == R_ii.shape[0]
                                                  for M_i, R_ii in zip(self._Ms, self._Rs)]):
             raise ValueError('R must be a sequence of square 2-d numpy arrays with shape '
                              'corresponding to the second dimensions of the arrays in M')
@@ -224,7 +226,41 @@ class PyDiffGame(ABC, Callable, Sequence):
         return controllability_matrix_rank == self._n
 
     def is_LQR(self):
+        """
+        Indicates whether the game has only one objective and is just a regular LQR
+        """
+
         return len(self) == 1
+
+    def print_eigenvalues(self):
+        """
+        Prints the eigenvalues of the matrices Q_i and R_ii for all 1 <= i <= N
+        with the greatest common divisor of their elements d as a parameter
+        """
+
+        d = symbols('d')
+
+        for matrix in self._Rs + self._Qs:
+            curr_gcd = gcd(*matrix.ravel())
+            sympy_matrix = Matrix((matrix / curr_gcd).astype(int)) * d
+            eigenvalues_multiset = sympy_matrix.eigenvals(multiple=True)
+            print(f"{repr(sympy_matrix)}: {eigenvalues_multiset}\n")
+
+    def print_characteristic_polynomials(self):
+        """
+        Prints the characteristic polynomials of the matrices Q_i and R_ii for all 1 <= i <= N
+        as a function of L and with the greatest common divisor of all their elements d as a parameter
+        """
+
+        d = symbols('d')
+        L = symbols('L')
+
+        for matrix in self._Rs + self._Qs:
+            curr_gcd = gcd(*matrix.ravel())
+            sympy_matrix = Matrix((matrix / curr_gcd).astype(int)) * d
+            characteristic_polynomial = sympy_matrix.charpoly(x=L).as_expr()
+            factored_characteristic_polynomial_expression = factor(f=characteristic_polynomial)
+            print(f"{repr(sympy_matrix)}: {factored_characteristic_polynomial_expression}\n")
 
     def _converge_DREs_to_AREs(self):
         """
@@ -755,10 +791,16 @@ class PyDiffGame(ABC, Callable, Sequence):
         return np.array(costs)
 
     def __call__(self,
+                 print_characteristic_polynomials: Optional[bool] = False,
+                 print_eigenvalues: Optional[bool] = False,
                  plot_state_space: Optional[bool] = True):
         """
         Runs the game simulation
         """
+        if print_characteristic_polynomials:
+            self.print_characteristic_polynomials()
+        if print_eigenvalues:
+            self.print_eigenvalues()
 
         if plot_state_space:
             self.__solve_game_simulate_state_space_and_plot()
