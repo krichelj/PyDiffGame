@@ -59,7 +59,7 @@ class PyDiffGame(ABC, Callable, Sequence):
     _L_default: Final[ClassVar[int]] = 1000
     _eta_default: Final[ClassVar[int]] = 5
     _g: Final[ClassVar[float]] = 9.81
-    __max_convergence_iterations: Final[ClassVar[int]] = 30
+    __max_convergence_iterations: Final[ClassVar[int]] = 5
 
     @classmethod
     @property
@@ -883,10 +883,8 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         for l in range(1, len(x) - 1):
             x_l_tilde, x_l_1_tilde = self.__get_x_tildes(x=x, l=l)
-            cost += x_l_tilde.T @ x_l_tilde + x_l_1_tilde.T @ x_l_1_tilde
-
             u_l_tilde, u_l_1_tilde = self.__get_u_tildes(x=x, l=l)
-            cost += u_l_tilde.T @ u_l_tilde + u_l_1_tilde.T @ u_l_1_tilde
+            cost += sum(norm(y_l) ** 2 for y_l in [x_l_tilde, x_l_1_tilde, u_l_tilde, u_l_1_tilde])
 
         return log10(cost * self._delta / 2)
 

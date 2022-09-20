@@ -128,9 +128,9 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
             maximal_cost_game = costs.argmax()
             is_max_lqr = self._games[maximal_cost_game].is_LQR()
 
-            print('\n' + '#' * 100 + '\n' + colored(f"\nGame {maximal_cost_game + 1} has the most cost "
-                                                    f"{'which is LQR! :)' if is_max_lqr else ' :('}\n",
-                                                    'green' if is_max_lqr else 'red') + '#' * 50
+            print('\n' + colored(f"\nGame {maximal_cost_game + 1} has the most cost "
+                                 f"{'which is LQR! :)' if is_max_lqr else ' :('}\n",
+                                 'green' if is_max_lqr else 'red') + '#' * 50
                   + '\n\n' + '\n'.join([f"Game {i + 1} {'non-linear ' if non_linear_costs else ''}"
                                         f"{'agnostic ' if agnostic_costs else ''}"
                                         f"cost: 10^{round(cost_i, 3)}" for i, cost_i in enumerate(costs)]))
