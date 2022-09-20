@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.lines import Line2D
 from scipy.integrate import solve_ivp
+from concurrent.futures import ProcessPoolExecutor
 from typing import Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
@@ -213,18 +214,19 @@ class InvertedPendulumComparison(PyDiffGameComparison):
 t_start = time()
 
 epsilon = 10 ** (-3)
-x_Ts = [10 * x for x in [5, 10]]
-theta_Ts = [pi / n for n in [0.5, 1, 2]]
-m_cs = [10 ** p for p in [0, 1, 2, 3]]
-m_ps = [10 ** p for p in [0, 1, 1.5]]
-p_Ls = [10 ** p for p in [-1, 0, 1]]
-qs = [10 ** p for p in [0, 1, 2]]
+x_Ts = [10 ** p for p in [0, 1, 2]]
+theta_Ts = [pi / 2 + pi / n for n in [2, 4, 10]]
+m_cs = [10 ** p for p in [0, 1, 2]]
+m_ps = [10 ** p for p in [0, 1, 2]]
+p_Ls = [10 ** p for p in [0, 1, 1.5]]
+qs = [10 ** p for p in [-4, -3, -2, -1, 0, 1]]
 params = [x_Ts, theta_Ts, m_cs, m_ps, p_Ls, qs]
 all_combos = list(product(*params))
 
-wins = []
+results = []
 
-for (x_T, theta_0, m_c, m_p, p_L, q) in tqdm(all_combos, total=len(all_combos)):
+
+def f(x_T, theta_0, m_c, m_p, p_L, q):
     print(f'x_T: {x_T}, theta_0: {theta_0}, m_c: {m_c}, m_p: {m_p}, p_L: {p_L}, q: {q}')
     x_T = np.array([x_T,  # x
                     theta_0,  # theta
@@ -247,10 +249,19 @@ for (x_T, theta_0, m_c, m_p, p_L, q) in tqdm(all_combos, total=len(all_combos)):
                                      print_costs=True,
                                      non_linear_costs=True,
                                      agnostic_costs=True)
-
-    wins += [int(is_max_lqr)]
+    return int(is_max_lqr)
     # inverted_pendulum_comparison.plot_two_state_spaces(non_linear=True)
 
-wins = np.array(wins)
-print(wins.sum() / len(wins) * 100)
-print(f'Total time: {time() - t_start}')
+
+if __name__ == '__main__':
+    with ProcessPoolExecutor(max_workers=20) as executor:
+        submittals = [executor.submit(f, x_T, theta_0, m_c, m_p, p_L, q)
+                      for (x_T, theta_0, m_c, m_p, p_L, q) in all_combos]
+
+        results = [s.result() for s in tqdm(submittals, total=len(submittals))]
+
+    results = np.array(results)
+    wins = results.sum()
+    games_played = len(results)
+    print(f'{wins}/{games_played} which is {round(wins / games_played * 100, 3)}%')
+    print(f'Total time: {time() - t_start}')
