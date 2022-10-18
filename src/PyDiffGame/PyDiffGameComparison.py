@@ -1,5 +1,9 @@
 import numpy as np
+from tqdm import tqdm
+from time import time
 from termcolor import colored
+from itertools import product
+from concurrent.futures import ProcessPoolExecutor
 from typing import Sequence, Any, Optional, Callable
 from abc import ABC
 
@@ -32,12 +36,12 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
         GameClass = ContinuousPyDiffGame if continuous else DiscretePyDiffGame
 
         self.__args = args
-        self._verify_input()
+        self.__verify_input()
 
         self._games = {i: GameClass(**self.__args | {'objectives': [o for o in game_i_objectives]})
                        for i, game_i_objectives in enumerate(games_objectives)}
 
-    def _verify_input(self):
+    def __verify_input(self):
         """
         Input checking method
 
@@ -72,17 +76,17 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
         self._games[i].plot_two_state_spaces(other=self._games[j],
                                              non_linear=non_linear)
 
-    def _simulate_non_linear_system(self,
-                                    i: int,
-                                    plot: bool = False) -> np.array:
+    def __simulate_non_linear_system(self,
+                                     i: int,
+                                     plot: bool = False) -> np.array:
         """
         Simulates the corresponding non-linear system's progression through time
         """
 
         pass
 
-    def run_animation(self,
-                      i: int):
+    def __run_animation(self,
+                        i: int):
         """
         Animates the state progression of the system
         """
@@ -111,10 +115,10 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
                    print_eigenvalues=print_eigenvalues)
 
             if run_animations:
-                self.run_animation(i=i)
+                self.__run_animation(i=i)
             elif non_linear_costs:
-                game_i._x_non_linear = self._simulate_non_linear_system(i=i,
-                                                                        plot=False)
+                game_i._x_non_linear = self.__simulate_non_linear_system(i=i,
+                                                                         plot=False)
 
             if print_costs:
                 game_i_costs = game_i.get_agnostic_costs(non_linear=non_linear_costs) \
@@ -138,6 +142,24 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
             res = is_max_lqr
 
         return res
+
+    @staticmethod
+    def run_multiprocess(multiprocess_worker_function: Callable,
+                         params: Sequence[Sequence]):
+        t_start = time()
+        all_combos = list(product(*params))
+
+        with ProcessPoolExecutor() as executor:
+            submittals = [executor.submit(multiprocess_worker_function, *combo) for combo in all_combos]
+
+            results = [s.result() for s in tqdm(submittals, total=len(submittals))]
+
+        results = np.array(results)
+        wins = results.sum()
+        games_played = len(results)
+
+        print(f'{wins}/{games_played} which is {round(wins / games_played * 100, 3)}%')
+        print(f'Total time: {time() - t_start}')
 
     def __getitem__(self,
                     i: int) -> PyDiffGame:

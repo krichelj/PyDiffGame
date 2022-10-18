@@ -13,7 +13,7 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
                  k: float,
                  q: float,
                  r: float,
-                 Ms: Sequence[np.array],
+                 Ms: Optional[Sequence[np.array]] = None,
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
@@ -23,6 +23,10 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
         M = m * np.eye(N)
         K = k * (- 2 * np.eye(N) + np.array([[int(abs(i - j) == 1) for j in range(N)] for i in range(N)]))
         M_inv = np.linalg.inv(M)
+
+        if Ms is None:
+            Ms = [row.reshape(1, N) for row in np.linalg.eig(M_inv @ K)[1]]
+
         N_z = np.zeros((N, N))
         N_e = np.eye(N)
         M_inv_K = M_inv @ K
@@ -52,39 +56,47 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
                 'eta': eta,
                 'force_finite_horizon': T_f is not None}
 
-        lqr_objective = [LQRObjective(Q=Q_lqr, R_ii=R_lqr)]
-        game_objectives = [GameObjective(Q=Q, R_ii=R, M_i=M_i) for Q, R, M_i in zip(Qs, Rs, Ms)]
-        games_objectives = [lqr_objective, game_objectives]
+        lqr_objective = [LQRObjective(Q=Q_lqr,
+                                      R_ii=R_lqr)]
+        game_objectives = [GameObjective(Q=Q,
+                                         R_ii=R,
+                                         M_i=M_i) for Q, R, M_i in zip(Qs, Rs, Ms)]
+        games_objectives = [lqr_objective,
+                            game_objectives]
 
         super().__init__(args=args,
                          games_objectives=games_objectives,
                          continuous=True)
 
 
-N = 4
-m = 10
-k = m * 5
+def multiprocess_worker_function(N: int) -> int:
+    k = 1
+    m = k * 10
 
-q = 1
-r = 5 * q
+    q = 1
+    r = 5 * q
 
-# M1 = 1 / (2 * m) * np.array([[1, -1]])
-# M2 = 1 / (2 * m) * np.array([[1, 1]])
-# Ms = [M1, M2]
+    x_0 = np.array([i for i in range(1, N + 1)] + [0] * N)
+    x_T = 10 * x_0
+    epsilon = 10 ** (-5)
 
-Ms = [1 / (2 * m) * np.random.random(size=(1, N)) for _ in range(N)]
+    masses_with_springs = MassesWithSpringsComparison(N=N,
+                                                      m=m,
+                                                      k=k,
+                                                      q=q,
+                                                      r=r,
+                                                      x_0=x_0,
+                                                      x_T=x_T,
+                                                      epsilon=epsilon)
+    is_max_lqr = masses_with_springs(plot_state_spaces=False,
+                                     print_costs=True,
+                                     agnostic_costs=True)
 
-x_0 = np.array([i for i in range(1, N + 1)] + [0] * N)
-x_T = 10 * x_0
-epsilon = 10 ** (-3)
+    return int(is_max_lqr)
 
-masses_with_springs = MassesWithSpringsComparison(N=N,
-                                                  m=m,
-                                                  k=k,
-                                                  q=q,
-                                                  r=r,
-                                                  Ms=Ms,
-                                                  x_0=x_0,
-                                                  x_T=x_T,
-                                                  epsilon=epsilon)
-masses_with_springs()
+
+if __name__ == '__main__':
+    Ns = list(range(4, 8))
+    params = [Ns]
+    PyDiffGameComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
+                                          params=params)
