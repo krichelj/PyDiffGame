@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import numpy as np
-from itertools import product
-from tqdm import tqdm
 from time import time
 from numpy import pi, sin, cos
 from matplotlib.animation import FuncAnimation
@@ -10,7 +8,6 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.lines import Line2D
 from scipy.integrate import solve_ivp
-from concurrent.futures import ProcessPoolExecutor
 from typing import Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
@@ -99,9 +96,9 @@ class InvertedPendulumComparison(PyDiffGameComparison):
                          games_objectives=games_objectives,
                          continuous=True)
 
-    def _simulate_non_linear_system(self,
-                                    i: int,
-                                    plot: bool = False) -> np.array:
+    def __simulate_non_linear_system(self,
+                                     i: int,
+                                     plot: bool = False) -> np.array:
         game = self._games[i]
         K = game.K
         x_T = game.x_T
@@ -151,11 +148,11 @@ class InvertedPendulumComparison(PyDiffGameComparison):
 
         return Y
 
-    def run_animation(self,
-                      i: int) -> (Line2D, Rectangle):
+    def __run_animation(self,
+                        i: int) -> (Line2D, Rectangle):
         game = self._games[i]
-        game._x_non_linear = self._simulate_non_linear_system(i=i,
-                                                              plot=True)
+        game._x_non_linear = self.__simulate_non_linear_system(i=i,
+                                                               plot=True)
         x_t, theta_t, x_dot_t, theta_dot_t = game._x_non_linear
 
         pendulumArm = Line2D(xdata=self.__origin,
@@ -211,22 +208,7 @@ class InvertedPendulumComparison(PyDiffGameComparison):
         plt.show()
 
 
-t_start = time()
-
-epsilon = 10 ** (-3)
-x_Ts = [10 ** p for p in [0, 1, 2]]
-theta_Ts = [pi / 2 + pi / n for n in [2, 4, 10]]
-m_cs = [10 ** p for p in [0, 1, 2]]
-m_ps = [10 ** p for p in [0, 1, 2]]
-p_Ls = [10 ** p for p in [0, 1, 1.5]]
-qs = [10 ** p for p in [-4, -3, -2, -1, 0, 1]]
-params = [x_Ts, theta_Ts, m_cs, m_ps, p_Ls, qs]
-all_combos = list(product(*params))
-
-results = []
-
-
-def f(x_T, theta_0, m_c, m_p, p_L, q):
+def multiprocess_worker_function(x_T, theta_0, m_c, m_p, p_L, q, epsilon):
     print(f'x_T: {x_T}, theta_0: {theta_0}, m_c: {m_c}, m_p: {m_p}, p_L: {p_L}, q: {q}')
     x_T = np.array([x_T,  # x
                     theta_0,  # theta
@@ -254,14 +236,14 @@ def f(x_T, theta_0, m_c, m_p, p_L, q):
 
 
 if __name__ == '__main__':
-    with ProcessPoolExecutor(max_workers=20) as executor:
-        submittals = [executor.submit(f, x_T, theta_0, m_c, m_p, p_L, q)
-                      for (x_T, theta_0, m_c, m_p, p_L, q) in all_combos]
+    x_Ts = [10 ** p for p in [2]]
+    theta_Ts = [pi / 2 + pi / n for n in [10]]
+    m_cs = [10 ** p for p in [1, 2]]
+    m_ps = [10 ** p for p in [0, 1, 2]]
+    p_Ls = [10 ** p for p in [0, 1]]
+    qs = [10 ** p for p in [-2, -1, 0, 1]]
+    epsilons = [10 ** (-3)]
+    params = [x_Ts, theta_Ts, m_cs, m_ps, p_Ls, qs, epsilons]
 
-        results = [s.result() for s in tqdm(submittals, total=len(submittals))]
-
-    results = np.array(results)
-    wins = results.sum()
-    games_played = len(results)
-    print(f'{wins}/{games_played} which is {round(wins / games_played * 100, 3)}%')
-    print(f'Total time: {time() - t_start}')
+    PyDiffGameComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
+                                          params=params)

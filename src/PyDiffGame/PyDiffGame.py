@@ -59,7 +59,7 @@ class PyDiffGame(ABC, Callable, Sequence):
     _L_default: Final[ClassVar[int]] = 1000
     _eta_default: Final[ClassVar[int]] = 5
     _g: Final[ClassVar[float]] = 9.81
-    __max_convergence_iterations: Final[ClassVar[int]] = 5
+    __max_convergence_iterations: Final[ClassVar[int]] = 50
 
     @classmethod
     @property
@@ -332,7 +332,9 @@ class PyDiffGame(ABC, Callable, Sequence):
                         **kwargs):
             if not self._converged:
                 raise RuntimeError('Must first simulate the differential game')
-            return f(self, *args, **kwargs)
+            return f(self,
+                     *args,
+                     **kwargs)
 
         return decorated_f
 
@@ -574,7 +576,8 @@ class PyDiffGame(ABC, Callable, Sequence):
 
     @abstractmethod
     def _update_K_from_last_state(self,
-                                  *args):
+                                  *args,
+                                  **kwargs):
         """
         Updates the controllers K after forward propagation of the state through time
         """
@@ -583,7 +586,8 @@ class PyDiffGame(ABC, Callable, Sequence):
 
     @abstractmethod
     def _get_K_i(self,
-                 *args) -> np.array:
+                 *args,
+                 **kwargs) -> np.array:
         """
         Returns the i'th element of the currently calculated controllers
 
@@ -635,7 +639,8 @@ class PyDiffGame(ABC, Callable, Sequence):
 
     @abstractmethod
     def _update_Ps_from_last_state(self,
-                                   *args):
+                                   *args,
+                                   **kwargs):
         """
         Updates the matrices {P_i}_{i=1}^N after forward propagation of the state through time
         """
@@ -644,7 +649,8 @@ class PyDiffGame(ABC, Callable, Sequence):
 
     @abstractmethod
     def is_A_cl_stable(self,
-                       *args) -> bool:
+                       *args,
+                       **kwargs) -> bool:
         """
         Tests Lyapunov stability of the closed loop
 
