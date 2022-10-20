@@ -25,7 +25,7 @@ class InvertedPendulumComparison(PyDiffGameComparison):
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
-                 epsilon: Optional[float] = PyDiffGame.epsilon_default,
+                 epsilon: Optional[float] = PyDiffGame.epsilon_x_default,
                  L: Optional[int] = PyDiffGame.L_default,
                  eta: Optional[int] = PyDiffGame.eta_default):
         self.__m_c = m_c

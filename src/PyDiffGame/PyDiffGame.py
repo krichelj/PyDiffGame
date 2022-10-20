@@ -43,7 +43,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         Indicates whether to display a legend in the plots
     state_variables_names: sequence of strings of len(n), optional
         The state variables' names to display
-    epsilon: float in the interval (0,1), optional
+    epsilon_x: float in the interval (0,1), optional
         Numerical convergence threshold
     L: positive int, optional
         Number of data points
@@ -55,16 +55,18 @@ class PyDiffGame(ABC, Callable, Sequence):
 
     # class fields
     __T_f_default: Final[ClassVar[int]] = 10
-    _epsilon_default: Final[ClassVar[float]] = 10 ** (-7)
+    _epsilon_x_default: Final[ClassVar[float]] = 10e-7
+    _epsilon_P_default: Final[ClassVar[float]] = 10e-7
     _L_default: Final[ClassVar[int]] = 1000
     _eta_default: Final[ClassVar[int]] = 3
     _g: Final[ClassVar[float]] = 9.81
-    __max_convergence_iterations: Final[ClassVar[int]] = 50
+    __x_max_convergence_iterations: Final[ClassVar[int]] = 50
+    __p_max_convergence_iterations: Final[ClassVar[int]] = 20
 
     @classmethod
     @property
-    def epsilon_default(cls) -> float:
-        return cls._epsilon_default
+    def epsilon_x_default(cls) -> float:
+        return cls._epsilon_x_default
 
     @classmethod
     @property
@@ -95,7 +97,8 @@ class PyDiffGame(ABC, Callable, Sequence):
                  P_f: Optional[Sequence[np.array] | np.array] = None,
                  show_legend: Optional[bool] = True,
                  state_variables_names: Optional[Sequence[str]] = None,
-                 epsilon: Optional[float] = _epsilon_default,
+                 epsilon_x: Optional[float] = _epsilon_x_default,
+                 epsilon_P: Optional[float] = _epsilon_P_default,
                  L: Optional[int] = _L_default,
                  eta: Optional[int] = _eta_default,
                  force_finite_horizon: Optional[bool] = False,
@@ -150,7 +153,8 @@ class PyDiffGame(ABC, Callable, Sequence):
         self._A_cl = np.empty_like(self._A)
         self._P = []
         self._K = []
-        self.__epsilon = epsilon
+        self.__epsilon_x = epsilon_x
+        self.__epsilon_P = epsilon_P
         self._x = self._x_0
         self._x_non_linear = None
         self.__eta = eta
@@ -209,8 +213,6 @@ class PyDiffGame(ABC, Callable, Sequence):
             warnings.warn("Warning: there is a matrix in P_f that has negative eigenvalues. Convergence may not occur")
         if self.__state_variables_names and len(self.__state_variables_names) != self._n:
             raise ValueError(f'The parameter state_variables_names must be of length n = {self._n}')
-        if not 1 > self.__epsilon > 0:
-            raise ValueError('The convergence tolerance epsilon must be in the open interval (0,1)')
         if self._L <= 0:
             raise ValueError('The number of data points must be a positive integer')
         if self.__eta <= 0:
@@ -226,7 +228,9 @@ class PyDiffGame(ABC, Callable, Sequence):
                                                 [np.linalg.matrix_power(self._A, i) @ self._B
                                                  for i in range(1, self._n)],
                                                 axis=1)
-        controllability_matrix_rank = np.linalg.matrix_rank(controllability_matrix)
+        controllability_matrix_rank = np.linalg.matrix_rank(A=controllability_matrix,
+                                                            tol=10e-5
+                                                            )
 
         return controllability_matrix_rank == self._n
 
@@ -278,14 +282,14 @@ class PyDiffGame(ABC, Callable, Sequence):
         last_norms = []
         curr_iteration_T_f = self._T_f
         x_T = self._x_T if self._x_T is not None else np.zeros_like(self._x_0)
-        convergence_iterations = 0
+        x_convergence_iterations = 0
 
-        with tqdm(total=PyDiffGame.__max_convergence_iterations) as pbar:
-            while not x_converged and convergence_iterations < PyDiffGame.__max_convergence_iterations:
-                convergence_iterations += 1
+        with tqdm(total=PyDiffGame.__x_max_convergence_iterations) as x_progress_bar:
+            while (not x_converged) and x_convergence_iterations < PyDiffGame.__x_max_convergence_iterations:
+                x_convergence_iterations += 1
                 P_convergence_iterations = 0
 
-                while not P_converged and P_convergence_iterations < PyDiffGame.__max_convergence_iterations:
+                while (not P_converged) and P_convergence_iterations < PyDiffGame.__p_max_convergence_iterations:
                     P_convergence_iterations += 1
                     self._backward_time = np.linspace(start=self._T_f,
                                                       stop=self._T_f - self._delta,
@@ -298,7 +302,7 @@ class PyDiffGame(ABC, Callable, Sequence):
                         last_norms.pop(0)
 
                     if len(last_norms) == self.__eta:
-                        P_converged = all([abs(norm_i - norm_i1) < self.__epsilon for norm_i, norm_i1
+                        P_converged = all([abs(norm_i - norm_i1) < self.__epsilon_x for norm_i, norm_i1
                                            in zip(last_norms, last_norms[1:])])
                     self._T_f -= self._delta
 
@@ -306,7 +310,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
                 if self._x_0 is not None:
                     curr_x_T_f_norm = self.simulate_x_T_f()
-                    x_converged = np.linalg.norm(x_T - curr_x_T_f_norm) < self.__epsilon
+                    x_converged = np.linalg.norm(x_T - curr_x_T_f_norm) < self.__epsilon_x
                     curr_iteration_T_f += 1
                     self._T_f = curr_iteration_T_f
                     self._forward_time = np.linspace(start=0,
@@ -315,7 +319,7 @@ class PyDiffGame(ABC, Callable, Sequence):
                 else:
                     x_converged = True
 
-                pbar.update(1)
+                x_progress_bar.update(1)
 
     def _post_convergence(f: Callable) -> Callable:
         """
@@ -976,6 +980,6 @@ class PyDiffGame(ABC, Callable, Sequence):
 
     @property
     def epsilon(self) -> float:
-        return self.__epsilon
+        return self.__epsilon_x
 
     _post_convergence = staticmethod(_post_convergence)
