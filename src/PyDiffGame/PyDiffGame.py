@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from scipy import interpolate
+from tqdm import tqdm
 import numpy as np
-from math import gcd, log10
-from numpy.linalg import eigvals, norm, LinAlgError, inv, matrix_power, matrix_rank
+import math
 import matplotlib.pyplot as plt
-from scipy.linalg import solve_continuous_are, solve_discrete_are
-from sympy import symbols, factor, Matrix
+import scipy as sp
+import sympy
+
 import warnings
 from typing import Callable, Final, ClassVar, Optional, Sequence
 from abc import ABC, abstractmethod
@@ -54,10 +54,10 @@ class PyDiffGame(ABC, Callable, Sequence):
     """
 
     # class fields
-    __T_f_default: Final[ClassVar[int]] = 5
+    __T_f_default: Final[ClassVar[int]] = 10
     _epsilon_default: Final[ClassVar[float]] = 10 ** (-7)
     _L_default: Final[ClassVar[int]] = 1000
-    _eta_default: Final[ClassVar[int]] = 5
+    _eta_default: Final[ClassVar[int]] = 3
     _g: Final[ClassVar[float]] = 9.81
     __max_convergence_iterations: Final[ClassVar[int]] = 50
 
@@ -124,7 +124,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         if self._Bs is None:
             if self._Ms and len(self._Ms):
                 self._M = np.concatenate(self._Ms, axis=0)
-                self._M_inv = inv(self._M)
+                self._M_inv = np.linalg.inv(self._M)
                 l = 0
                 self._Bs = []
 
@@ -138,6 +138,7 @@ class PyDiffGame(ABC, Callable, Sequence):
                 self._Bs = [B]
 
         self._P_f = self.__get_are_P_f() if P_f is None else P_f
+        # self._P_f = [np.eye(self._n)] * self._N if P_f is None else P_f
         self._L = L
         self._delta = self._T_f / self._L
         self.__show_legend = show_legend
@@ -170,10 +171,10 @@ class PyDiffGame(ABC, Callable, Sequence):
         """
 
         if self._A.shape != (self._n, self._n):
-            raise ValueError('A must be a square 2-d numpy array with shape nxn')
+            raise ValueError(f'A must be a square 2-d numpy array with shape nxn = {self._n}x{self._n}')
         if self._B is not None:
             if self._B.shape[0] != self._n:
-                raise ValueError('B must be a 2-d numpy array with n rows')
+                raise ValueError(f'B must be a 2-d numpy array with n = {self._n} rows')
             if not self.is_fully_controllable():
                 warnings.warn("Warning: The given system is not fully controllable")
         else:
@@ -188,25 +189,27 @@ class PyDiffGame(ABC, Callable, Sequence):
                                                  for M_i, R_ii in zip(self._Ms, self._Rs)]):
             raise ValueError('R must be a sequence of square 2-d numpy arrays with shape '
                              'corresponding to the second dimensions of the arrays in M')
-        if not all([np.all(eigvals(R_ii) > 0) if R_ii.ndim > 1 else R_ii > 0 for R_ii in self._Rs]):
+        if not all([np.all(np.linalg.eigvals(R_ii) > 0) if R_ii.ndim > 1 else R_ii > 0 for R_ii in self._Rs]):
             raise ValueError('R must be a sequence of square 2-d positive definite numpy arrays')
         if not all([Q_i.shape == (self._n, self._n) for Q_i in self._Qs]):
-            raise ValueError('Q must be a sequence of square 2-d positive semi-definite numpy arrays with shape nxn')
-        if not all([np.all(eigvals(Q_i) >= 0) for Q_i in self._Qs]):
+            raise ValueError(f'Q must be a sequence of square 2-d positive semi-definite numpy arrays with shape nxn '
+                             f'= {self._n}x{self._n}')
+        if not all([np.all(np.linalg.eigvals(Q_i) >= 0) for Q_i in self._Qs]):
             raise ValueError('Q must contain positive semi-definite numpy arrays')
         if self._x_0 is not None and self._x_0.shape != (self._n,):
-            raise ValueError('x_0 must be a 1-d numpy array with length n')
+            raise ValueError(f'x_0 must be a 1-d numpy array with length n = {self._n}')
         if self._x_T is not None and self._x_T.shape != (self._n,):
-            raise ValueError('x_T must be a 1-d numpy array with length n')
+            raise ValueError(f'x_T must be a 1-d numpy array with length n= {self._n}')
         if self._T_f and self._T_f <= 0:
             raise ValueError('T_f must be a positive real number')
         if not all([P_f_i.shape[0] == P_f_i.shape[1] == self._n for P_f_i in self._P_f]):
-            raise ValueError('P_f must be a sequence of 2-d positive semi-definite numpy arrays with shape nxn')
-        if not all([eig >= 0 for eig_set in [eigvals(P_f_i) for P_f_i in self._P_f] for eig in eig_set]):
+            raise ValueError(f'P_f must be a sequence of 2-d positive semi-definite numpy arrays with shape nxn = '
+                             f'{self._n}x{self._n}')
+        if not all([eig >= 0 for eig_set in [np.linalg.eigvals(P_f_i) for P_f_i in self._P_f] for eig in eig_set]):
             warnings.warn("Warning: there is a matrix in P_f that has negative eigenvalues. Convergence may not occur")
         if self.__state_variables_names and len(self.__state_variables_names) != self._n:
-            raise ValueError('The parameter state_variables_names must be of length n')
-        if not 0 < self.__epsilon < 1:
+            raise ValueError(f'The parameter state_variables_names must be of length n = {self._n}')
+        if not 1 > self.__epsilon > 0:
             raise ValueError('The convergence tolerance epsilon must be in the open interval (0,1)')
         if self._L <= 0:
             raise ValueError('The number of data points must be a positive integer')
@@ -220,9 +223,10 @@ class PyDiffGame(ABC, Callable, Sequence):
         """
 
         controllability_matrix = np.concatenate([self._B] +
-                                                [matrix_power(self._A, i) @ self._B for i in range(1, self._n)],
+                                                [np.linalg.matrix_power(self._A, i) @ self._B
+                                                 for i in range(1, self._n)],
                                                 axis=1)
-        controllability_matrix_rank = matrix_rank(controllability_matrix)
+        controllability_matrix_rank = np.linalg.matrix_rank(controllability_matrix)
 
         return controllability_matrix_rank == self._n
 
@@ -239,11 +243,11 @@ class PyDiffGame(ABC, Callable, Sequence):
         with the greatest common divisor of their elements d as a parameter
         """
 
-        d = symbols('d')
+        d = sympy.symbols('d')
 
         for matrix in self._Rs + self._Qs:
-            curr_gcd = gcd(*matrix.ravel())
-            sympy_matrix = Matrix((matrix / curr_gcd).astype(int)) * d
+            curr_gcd = math.gcd(*matrix.ravel())
+            sympy_matrix = sympy.Matrix((matrix / curr_gcd).astype(int)) * d
             eigenvalues_multiset = sympy_matrix.eigenvals(multiple=True)
             print(f"{repr(sympy_matrix)}: {eigenvalues_multiset}\n")
 
@@ -253,14 +257,14 @@ class PyDiffGame(ABC, Callable, Sequence):
         as a function of L and with the greatest common divisor of all their elements d as a parameter
         """
 
-        d = symbols('d')
-        L = symbols('L')
+        d = sympy.symbols('d')
+        L = sympy.symbols('L')
 
         for matrix in self._Rs + self._Qs:
-            curr_gcd = gcd(*matrix.ravel())
-            sympy_matrix = Matrix((matrix / curr_gcd).astype(int)) * d
+            curr_gcd = math.gcd(*matrix.ravel())
+            sympy_matrix = sympy.Matrix((matrix / curr_gcd).astype(int)) * d
             characteristic_polynomial = sympy_matrix.charpoly(x=L).as_expr()
-            factored_characteristic_polynomial_expression = factor(f=characteristic_polynomial)
+            factored_characteristic_polynomial_expression = sympy.factor(f=characteristic_polynomial)
             print(f"{repr(sympy_matrix)}: {factored_characteristic_polynomial_expression}\n")
 
     def _converge_DREs_to_AREs(self):
@@ -276,39 +280,42 @@ class PyDiffGame(ABC, Callable, Sequence):
         x_T = self._x_T if self._x_T is not None else np.zeros_like(self._x_0)
         convergence_iterations = 0
 
-        while not x_converged and convergence_iterations < PyDiffGame.__max_convergence_iterations:
-            convergence_iterations += 1
-            P_convergence_iterations = 0
+        with tqdm(total=PyDiffGame.__max_convergence_iterations) as pbar:
+            while not x_converged and convergence_iterations < PyDiffGame.__max_convergence_iterations:
+                convergence_iterations += 1
+                P_convergence_iterations = 0
 
-            while not P_converged and P_convergence_iterations < PyDiffGame.__max_convergence_iterations:
-                P_convergence_iterations += 1
-                self._backward_time = np.linspace(start=self._T_f,
-                                                  stop=self._T_f - self._delta,
-                                                  num=self._L)
-                self._update_Ps_from_last_state()
-                self._P_f = self._P[-1]
-                last_norms += [norm(self._P_f)]
+                while not P_converged and P_convergence_iterations < PyDiffGame.__max_convergence_iterations:
+                    P_convergence_iterations += 1
+                    self._backward_time = np.linspace(start=self._T_f,
+                                                      stop=self._T_f - self._delta,
+                                                      num=self._L)
+                    self._update_Ps_from_last_state()
+                    self._P_f = self._P[-1]
+                    last_norms += [np.linalg.norm(self._P_f)]
 
-                if len(last_norms) > self.__eta:
-                    last_norms.pop(0)
+                    if len(last_norms) > self.__eta:
+                        last_norms.pop(0)
 
-                if len(last_norms) == self.__eta:
-                    P_converged = all([abs(norm_i - norm_i1) < self.__epsilon for norm_i, norm_i1
-                                       in zip(last_norms, last_norms[1:])])
-                self._T_f -= self._delta
+                    if len(last_norms) == self.__eta:
+                        P_converged = all([abs(norm_i - norm_i1) < self.__epsilon for norm_i, norm_i1
+                                           in zip(last_norms, last_norms[1:])])
+                    self._T_f -= self._delta
 
-            self._T_f = curr_iteration_T_f
-
-            if self._x_0 is not None:
-                curr_x_T_f_norm = self.simulate_x_T_f()
-                x_converged = norm(x_T - curr_x_T_f_norm) < self.__epsilon
-                curr_iteration_T_f += 1
                 self._T_f = curr_iteration_T_f
-                self._forward_time = np.linspace(start=0,
-                                                 stop=self._T_f,
-                                                 num=self._L)
-            else:
-                x_converged = True
+
+                if self._x_0 is not None:
+                    curr_x_T_f_norm = self.simulate_x_T_f()
+                    x_converged = np.linalg.norm(x_T - curr_x_T_f_norm) < self.__epsilon
+                    curr_iteration_T_f += 1
+                    self._T_f = curr_iteration_T_f
+                    self._forward_time = np.linspace(start=0,
+                                                     stop=self._T_f,
+                                                     num=self._L)
+                else:
+                    x_converged = True
+
+                pbar.update(1)
 
     def _post_convergence(f: Callable) -> Callable:
         """
@@ -499,15 +506,15 @@ class PyDiffGame(ABC, Callable, Sequence):
             Augmented state space with interpolated and extrapolated values for both games
         """
 
-        f_self = interpolate.interp1d(x=self._forward_time,
-                                      y=self._x if not non_linear else self._x_non_linear.T,
-                                      axis=0,
-                                      fill_value="extrapolate")
+        f_self = sp.interpolate.interp1d(x=self._forward_time,
+                                         y=self._x if not non_linear else self._x_non_linear.T,
+                                         axis=0,
+                                         fill_value="extrapolate")
 
-        f_other = interpolate.interp1d(x=other.forward_time,
-                                       y=other.x if not non_linear else other._x_non_linear.T,
-                                       axis=0,
-                                       fill_value="extrapolate")
+        f_other = sp.interpolate.interp1d(x=other.forward_time,
+                                          y=other.x if not non_linear else other._x_non_linear.T,
+                                          axis=0,
+                                          fill_value="extrapolate")
 
         longer_period = self._forward_time if max(self._forward_time) > max(other.forward_time) \
             else other.forward_time
@@ -559,13 +566,13 @@ class PyDiffGame(ABC, Callable, Sequence):
             Final condition for the Riccati equation matrix
         """
 
-        are_solver = solve_continuous_are if self.__continuous else solve_discrete_are
+        are_solver = sp.linalg.solve_continuous_are if self.__continuous else sp.linalg.solve_discrete_are
         P_f = []
 
         for B_i, Q_i, R_ii in zip(self._Bs, self._Qs, self._Rs):
             try:
                 P_f_i = are_solver(self._A, B_i, Q_i, R_ii)
-            except LinAlgError:
+            except np.linalg.LinAlgError:
                 # rand = np.random.rand(*self._A.shape)
                 # P_f_i = rand @ rand.T
                 P_f_i = Q_i
@@ -860,7 +867,7 @@ class PyDiffGame(ABC, Callable, Sequence):
                                                                      v_i_T=v_i_T)
                     cost_i += v_i_l_tilde.T @ R_ii @ v_i_l_tilde + v_i_l_1_tilde.T @ R_ii @ v_i_l_1_tilde
 
-            costs += [log10(cost_i * self._delta / 2)]
+            costs += [math.log10(cost_i * self._delta / 2)]
 
         return np.array(costs)
 
@@ -890,9 +897,9 @@ class PyDiffGame(ABC, Callable, Sequence):
         for l in range(1, len(x) - 1):
             x_l_tilde, x_l_1_tilde = self.__get_x_tildes(x=x, l=l)
             u_l_tilde, u_l_1_tilde = self.__get_u_tildes(x=x, l=l)
-            cost += sum(norm(y_l) ** 2 for y_l in [x_l_tilde, x_l_1_tilde, u_l_tilde, u_l_1_tilde])
+            cost += sum(np.linalg.norm(y_l) ** 2 for y_l in [x_l_tilde, x_l_1_tilde, u_l_tilde, u_l_1_tilde])
 
-        return log10(cost * self._delta / 2)
+        return math.log10(cost * self._delta / 2)
 
     def __call__(self,
                  print_characteristic_polynomials: Optional[bool] = False,

@@ -1,7 +1,6 @@
 import numpy as np
-from scipy.optimize import fsolve
+import scipy as sp
 import quadpy
-from numpy.linalg import eigvals, inv
 from typing import Sequence, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
@@ -113,7 +112,7 @@ class DiscretePyDiffGame(PyDiffGame):
                         K_k_previous_j = K_k_previous[j_indices]
                         A_cl_k_i = A_cl_k_i - B_j @ K_k_previous_j
 
-                K_k_i = K_k_previous_i - inv(R_ii + B_i_T @ P_k_1_i @ B_i) @ B_i_T @ P_k_1_i @ A_cl_k_i
+                K_k_i = K_k_previous_i - np.linalg.inv(R_ii + B_i_T @ P_k_1_i @ B_i) @ B_i_T @ P_k_1_i @ A_cl_k_i
                 K_k[i_indices] = K_k_i
 
             return K_k.ravel()
@@ -227,9 +226,9 @@ class DiscretePyDiffGame(PyDiffGame):
 
         K_k_1 = self._K[k_1]
         K_k_0 = np.random.rand(*K_k_1.shape)
-        K_k = fsolve(func=self.f_solve_func,
-                     x0=K_k_0,
-                     args=tuple([k_1]))
+        K_k = sp.optimize.fsolve(func=self.f_solve_func,
+                                 x0=K_k_0,
+                                 args=tuple([k_1]))
         K_k_reshaped = np.array(K_k).reshape((self._N,
                                               self.__K_rows_num,
                                               self._n))
@@ -293,7 +292,7 @@ class DiscretePyDiffGame(PyDiffGame):
         """
 
         A_cl_k = self._A_cl[k]
-        A_cl_k_eigenvalues = eigvals(A_cl_k)
+        A_cl_k_eigenvalues = np.linalg.eigvals(A_cl_k)
         A_cl_k_eigenvalues_absolute_values = [abs(eig) for eig in A_cl_k_eigenvalues]
 
         if self._debug:

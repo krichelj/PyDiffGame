@@ -25,7 +25,8 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
         M_inv = np.linalg.inv(M)
 
         if Ms is None:
-            Ms = [row.reshape(1, N) for row in np.linalg.eig(M_inv @ K)[1]]
+            eigenvectors = np.linalg.eig(M_inv @ K)[1]
+            Ms = [eigenvector.reshape(1, N) / eigenvector[0] for eigenvector in eigenvectors]
 
         N_z = np.zeros((N, N))
         N_e = np.eye(N)
@@ -41,7 +42,7 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
         Qs = [np.diag([0.0] * i + [q] + [0.0] * (N - 1) + [q] + [0.0] * (N - i - 1)) for i in range(N)]
         Rs = [np.array([r])] * N
         R_lqr = r * N_e
-        Q_lqr = sum(Qs) / N
+        Q_lqr = q * np.eye(2 * N)
 
         state_variables_names = ['x_{' + str(i) + '}' for i in range(1, N + 1)] + \
                                 ['\\dot{x}_{' + str(i) + '}' for i in range(1, N + 1)]
@@ -69,15 +70,16 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
                          continuous=True)
 
 
-def multiprocess_worker_function(N: int) -> int:
-    k = 1
-    m = k * 10
+def multiprocess_worker_function(N: int,
+                                 m: float) -> int:
+    # m = 10
+    k = m * 3
 
-    q = 1
-    r = 5 * q
+    q = 100
+    r = q / 10
 
-    x_0 = np.array([i for i in range(1, N + 1)] + [0] * N)
-    x_T = 10 * x_0
+    x_0 = np.array([10 * i for i in range(1, N + 1)] + [0] * N)
+    x_T = np.square(x_0)
     epsilon = 10 ** (-5)
 
     masses_with_springs = MassesWithSpringsComparison(N=N,
@@ -96,7 +98,8 @@ def multiprocess_worker_function(N: int) -> int:
 
 
 if __name__ == '__main__':
-    Ns = list(range(4, 8))
-    params = [Ns]
+    Ns = [14]
+    ms = [1]
+    params = [Ns, ms]
     PyDiffGameComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
-                                          params=params)
+                                          values=params)
