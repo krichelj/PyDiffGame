@@ -77,8 +77,6 @@ corresponding call for `run_simulation`:
 from __future__ import annotations
 
 import numpy as np
-import itertools
-from tqdm import tqdm
 from time import time
 from numpy import pi, sin, cos
 from matplotlib.animation import FuncAnimation
@@ -103,7 +101,7 @@ class InvertedPendulumComparison(PyDiffGameComparison):
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
-                 epsilon: Optional[float] = PyDiffGame.epsilon_default,
+                 epsilon: Optional[float] = PyDiffGame.epsilon_x_default,
                  L: Optional[int] = PyDiffGame.L_default,
                  eta: Optional[int] = PyDiffGame.eta_default):
         self.__m_c = m_c
@@ -174,9 +172,9 @@ class InvertedPendulumComparison(PyDiffGameComparison):
                          games_objectives=games_objectives,
                          continuous=True)
 
-    def _simulate_non_linear_system(self,
-                                    i: int,
-                                    plot: bool = False) -> np.array:
+    def __simulate_non_linear_system(self,
+                                     i: int,
+                                     plot: bool = False) -> np.array:
         game = self._games[i]
         K = game.K
         x_T = game.x_T
@@ -226,11 +224,11 @@ class InvertedPendulumComparison(PyDiffGameComparison):
 
         return Y
 
-    def run_animation(self,
-                      i: int) -> (Line2D, Rectangle):
+    def __run_animation(self,
+                        i: int) -> (Line2D, Rectangle):
         game = self._games[i]
-        game._x_non_linear = self._simulate_non_linear_system(i=i,
-                                                              plot=True)
+        game._x_non_linear = self.__simulate_non_linear_system(i=i,
+                                                               plot=True)
         x_t, theta_t, x_dot_t, theta_dot_t = game._x_non_linear
 
         pendulumArm = Line2D(xdata=self.__origin,
@@ -286,49 +284,50 @@ class InvertedPendulumComparison(PyDiffGameComparison):
         plt.show()
 
 
-t_start = time()
+def multiprocess_worker_function(x_T: float,
+                                 theta_0: float,
+                                 m_c: float,
+                                 m_p: float,
+                                 p_L: float,
+                                 q: float,
+                                 epsilon: float) -> int:
+    x_T = np.array([x_T,  # x
+                    theta_0,  # theta
+                    0,  # x_dot
+                    0]  # theta_dot
+                   )
+    x_0 = np.zeros_like(x_T)
 
-x_T = np.array([10,  # x
-                pi,  # theta
-                0,  # x_dot
-                0]  # theta_dot
-               )
-x_0 = np.zeros_like(x_T)
-
-epsilon = 10 ** (-8)
-Z = 4
-one_to_Z = list(range(1, Z))
-wins = []
-
-m_cs = [5 * x for x in one_to_Z]
-m_ps = [2 * x for x in one_to_Z]
-p_Ls = one_to_Z
-qs = [10 ** x for x in range(-4, 4)]
-params = [m_cs, m_ps, p_Ls, qs]
-all_combos = list(itertools.product(*params))
-
-for (m_c, m_p, p_L, q) in tqdm(all_combos, total=len(all_combos)):
-    print(f'm_c: {m_c}, m_p: {m_p}, p_L: {p_L}, q: {q}')
-    inverted_pendulum_comparison = InvertedPendulumComparison(m_c=m_c,
-                                                              m_p=m_p,
-                                                              p_L=p_L,
-                                                              q=q,
-                                                              x_0=x_0,
-                                                              x_T=x_T,
-                                                              epsilon=epsilon)
-    is_max_lqr = inverted_pendulum_comparison(plot_state_spaces=False,
-                                              run_animations=False,
-                                              print_costs=True,
-                                              non_linear_costs=True,
-                                              agnostic_costs=True)
-
-    wins += [int(is_max_lqr)]
-
-wins = np.array(wins)
-print(wins.sum() / len(wins) * 100)
-print(f'Total time: {time() - t_start}')
+    inverted_pendulum_comparison = \
+        InvertedPendulumComparison(m_c=m_c,
+                                   m_p=m_p,
+                                   p_L=p_L,
+                                   q=q,
+                                   x_0=x_0,
+                                   x_T=x_T,
+                                   epsilon=epsilon)  # game class
+    is_max_lqr = \
+        inverted_pendulum_comparison(plot_state_spaces=False,
+                                     run_animations=False,
+                                     print_costs=True,
+                                     non_linear_costs=True,
+                                     agnostic_costs=True)
+    return int(is_max_lqr)
+    # inverted_pendulum_comparison.plot_two_state_spaces(non_linear=True)
 
 
+if __name__ == '__main__':
+    x_Ts = [10 ** p for p in [2]]
+    theta_Ts = [pi / 2 + pi / n for n in [10]]
+    m_cs = [10 ** p for p in [1, 2]]
+    m_ps = [10 ** p for p in [0, 1, 2]]
+    p_Ls = [10 ** p for p in [0, 1]]
+    qs = [10 ** p for p in [-2, -1, 0, 1]]
+    epsilons = [10 ** (-3)]
+    params = [x_Ts, theta_Ts, m_cs, m_ps, p_Ls, qs, epsilons]
+
+    PyDiffGameComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
+                                          values=params)
 
 ```
 

@@ -17,7 +17,7 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
-                 epsilon: Optional[float] = PyDiffGame.epsilon_default,
+                 epsilon_x: Optional[float] = PyDiffGame.epsilon_x_default,
                  L: Optional[int] = PyDiffGame.L_default,
                  eta: Optional[int] = PyDiffGame.eta_default):
         M = m * np.eye(N)
@@ -52,7 +52,7 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
                 'x_T': x_T,
                 'T_f': T_f,
                 'state_variables_names': state_variables_names,
-                'epsilon': epsilon,
+                'epsilon_x': epsilon_x,
                 'L': L,
                 'eta': eta,
                 'force_finite_horizon': T_f is not None}
@@ -71,16 +71,14 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
 
 
 def multiprocess_worker_function(N: int,
+                                 k: float,
                                  m: float) -> int:
-    # m = 10
-    k = m * 3
-
-    q = 100
-    r = q / 10
+    q = 1
+    r = q / 1000
 
     x_0 = np.array([10 * i for i in range(1, N + 1)] + [0] * N)
-    x_T = np.square(x_0)
-    epsilon = 10 ** (-5)
+    x_T = x_0 * 10
+    epsilon_x = 10e-5
 
     masses_with_springs = MassesWithSpringsComparison(N=N,
                                                       m=m,
@@ -89,8 +87,8 @@ def multiprocess_worker_function(N: int,
                                                       r=r,
                                                       x_0=x_0,
                                                       x_T=x_T,
-                                                      epsilon=epsilon)
-    is_max_lqr = masses_with_springs(plot_state_spaces=False,
+                                                      epsilon_x=epsilon_x)
+    is_max_lqr = masses_with_springs(plot_state_spaces=True,
                                      print_costs=True,
                                      agnostic_costs=True)
 
@@ -98,8 +96,9 @@ def multiprocess_worker_function(N: int,
 
 
 if __name__ == '__main__':
-    Ns = [14]
-    ms = [1]
-    params = [Ns, ms]
+    Ns = [13]
+    ms = [100]
+    ks = [1]
+    params = [Ns, ks, ms]
     PyDiffGameComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
                                           values=params)
