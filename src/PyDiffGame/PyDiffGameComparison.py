@@ -2,8 +2,10 @@ import numpy as np
 from tqdm import tqdm
 from time import time
 from termcolor import colored
-from itertools import product
+import itertools
 from concurrent.futures import ProcessPoolExecutor
+
+import inspect
 from typing import Sequence, Any, Optional, Callable
 from abc import ABC
 
@@ -144,15 +146,23 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
         return res
 
     @staticmethod
-    def run_multiprocess(multiprocess_worker_function: Callable,
-                         params: Sequence[Sequence]):
+    def run_multiprocess(multiprocess_worker_function: Callable[[Any], int],
+                         values: Sequence[Sequence]):
         t_start = time()
-        all_combos = list(product(*params))
+        combos = list(itertools.product(*values))
 
         with ProcessPoolExecutor() as executor:
-            submittals = [executor.submit(multiprocess_worker_function, *combo) for combo in all_combos]
+            submittals = {str(combo): executor.submit(multiprocess_worker_function, *combo) for combo in combos}
+            results = []
+            delimiter = ', '
+            names = inspect.signature(multiprocess_worker_function).parameters.keys()
 
-            results = [s.result() for s in tqdm(submittals, total=len(submittals))]
+            for combo, submittal in tqdm(submittals.items(), total=len(submittals)):
+                values = combo[1:-1].split(delimiter)
+                print(f""""\n{colored(f"{delimiter.join([f'{n}: {v}' for n, v in zip(names, values)])}", 'blue')}""")
+
+                result = submittal.result()
+                results += [result]
 
         results = np.array(results)
         wins = results.sum()

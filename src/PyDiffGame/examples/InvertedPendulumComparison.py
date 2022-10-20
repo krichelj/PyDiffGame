@@ -208,8 +208,13 @@ class InvertedPendulumComparison(PyDiffGameComparison):
         plt.show()
 
 
-def multiprocess_worker_function(x_T, theta_0, m_c, m_p, p_L, q, epsilon):
-    print(f'x_T: {x_T}, theta_0: {theta_0}, m_c: {m_c}, m_p: {m_p}, p_L: {p_L}, q: {q}')
+def multiprocess_worker_function(x_T: float,
+                                 theta_0: float,
+                                 m_c: float,
+                                 m_p: float,
+                                 p_L: float,
+                                 q: float,
+                                 epsilon: float) -> int:
     x_T = np.array([x_T,  # x
                     theta_0,  # theta
                     0,  # x_dot
@@ -246,4 +251,4 @@ if __name__ == '__main__':
     params = [x_Ts, theta_Ts, m_cs, m_ps, p_Ls, qs, epsilons]
 
     PyDiffGameComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
-                                          params=params)
+                                          values=params)
