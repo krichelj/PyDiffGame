@@ -25,7 +25,8 @@ class InvertedPendulumComparison(PyDiffGameComparison):
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
-                 epsilon: Optional[float] = PyDiffGame.epsilon_x_default,
+                 epsilon_x: Optional[float] = PyDiffGame.epsilon_x_default,
+                 epsilon_P: Optional[float] = PyDiffGame.epsilon_P_default,
                  L: Optional[int] = PyDiffGame.L_default,
                  eta: Optional[int] = PyDiffGame.eta_default):
         self.__m_c = m_c
@@ -83,7 +84,8 @@ class InvertedPendulumComparison(PyDiffGameComparison):
                 'x_T': x_T,
                 'T_f': T_f,
                 'state_variables_names': state_variables_names,
-                'epsilon': epsilon,
+                'epsilon_x': epsilon_x,
+                'epsilon_P': epsilon_P,
                 'L': L,
                 'eta': eta,
                 'force_finite_horizon': T_f is not None}
@@ -96,9 +98,9 @@ class InvertedPendulumComparison(PyDiffGameComparison):
                          games_objectives=games_objectives,
                          continuous=True)
 
-    def __simulate_non_linear_system(self,
-                                     i: int,
-                                     plot: bool = False) -> np.array:
+    def _simulate_non_linear_system(self,
+                                    i: int,
+                                    plot: bool = False) -> np.array:
         game = self._games[i]
         K = game.K
         x_T = game.x_T
@@ -151,8 +153,8 @@ class InvertedPendulumComparison(PyDiffGameComparison):
     def __run_animation(self,
                         i: int) -> (Line2D, Rectangle):
         game = self._games[i]
-        game._x_non_linear = self.__simulate_non_linear_system(i=i,
-                                                               plot=True)
+        game._x_non_linear = self._simulate_non_linear_system(i=i,
+                                                              plot=True)
         x_t, theta_t, x_dot_t, theta_dot_t = game._x_non_linear
 
         pendulumArm = Line2D(xdata=self.__origin,
@@ -214,7 +216,8 @@ def multiprocess_worker_function(x_T: float,
                                  m_p: float,
                                  p_L: float,
                                  q: float,
-                                 epsilon: float) -> int:
+                                 epsilon_x: float,
+                                 epsilon_P: float) -> int:
     x_T = np.array([x_T,  # x
                     theta_0,  # theta
                     0,  # x_dot
@@ -229,15 +232,17 @@ def multiprocess_worker_function(x_T: float,
                                    q=q,
                                    x_0=x_0,
                                    x_T=x_T,
-                                   epsilon=epsilon)  # game class
+                                   epsilon_x=epsilon_x,
+                                   epsilon_P=epsilon_P)  # game class
     is_max_lqr = \
         inverted_pendulum_comparison(plot_state_spaces=False,
                                      run_animations=False,
                                      print_costs=True,
                                      non_linear_costs=True,
                                      agnostic_costs=True)
-    return int(is_max_lqr)
+
     # inverted_pendulum_comparison.plot_two_state_spaces(non_linear=True)
+    return int(is_max_lqr)
 
 
 if __name__ == '__main__':
@@ -247,8 +252,9 @@ if __name__ == '__main__':
     m_ps = [10 ** p for p in [0, 1, 2]]
     p_Ls = [10 ** p for p in [0, 1]]
     qs = [10 ** p for p in [-2, -1, 0, 1]]
-    epsilons = [10 ** (-3)]
-    params = [x_Ts, theta_Ts, m_cs, m_ps, p_Ls, qs, epsilons]
+    epsilon_xs = [10 ** (-7)]
+    epsilon_Ps = [10 ** (-3)]
+    params = [x_Ts, theta_Ts, m_cs, m_ps, p_Ls, qs, epsilon_xs, epsilon_Ps]
 
     PyDiffGameComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
                                           values=params)

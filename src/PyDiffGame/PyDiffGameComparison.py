@@ -78,9 +78,9 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
         self._games[i].plot_two_state_spaces(other=self._games[j],
                                              non_linear=non_linear)
 
-    def __simulate_non_linear_system(self,
-                                     i: int,
-                                     plot: bool = False) -> np.array:
+    def _simulate_non_linear_system(self,
+                                    i: int,
+                                    plot: bool = False) -> np.array:
         """
         Simulates the corresponding non-linear system's progression through time
         """
@@ -118,9 +118,9 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
 
             if run_animations:
                 self.__run_animation(i=i)
-            elif non_linear_costs:
-                game_i._x_non_linear = self.__simulate_non_linear_system(i=i,
-                                                                         plot=False)
+            if non_linear_costs:
+                game_i._x_non_linear = self._simulate_non_linear_system(i=i,
+                                                                        plot=False)
 
             if print_costs:
                 game_i_costs = game_i.get_agnostic_costs(non_linear=non_linear_costs) \

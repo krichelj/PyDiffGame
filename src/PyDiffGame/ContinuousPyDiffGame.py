@@ -222,9 +222,8 @@ class ContinuousPyDiffGame(PyDiffGame):
                              y0=self._x_0,
                              t=self._forward_time)
 
-    def simulate_x_T_f(self) -> np.array:
+    def simulate_curr_x_T(self) -> np.array:
 
-        # @jit(nopython=True)
         def state_diff_eqn(x_t: np.array, _: float) -> np.array:
             self._update_K_from_last_state(t=-1)
             self._update_A_cl_from_last_state()
@@ -249,7 +248,8 @@ def fileno(file_or_fd):
 
 
 @contextlib.contextmanager
-def stdout_redirected(to=os.devnull, stdout=None):
+def stdout_redirected(to=os.devnull,
+                      stdout=None):
     """
     https://stackoverflow.com/a/22434262/190597 (J.F. Sebastian)
     """
