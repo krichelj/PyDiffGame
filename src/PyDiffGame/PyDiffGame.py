@@ -60,13 +60,18 @@ class PyDiffGame(ABC, Callable, Sequence):
     _L_default: Final[ClassVar[int]] = 1000
     _eta_default: Final[ClassVar[int]] = 3
     _g: Final[ClassVar[float]] = 9.81
-    __x_max_convergence_iterations: Final[ClassVar[int]] = 50
-    __p_max_convergence_iterations: Final[ClassVar[int]] = 20
+    __x_max_convergence_iterations: Final[ClassVar[int]] = 100
+    __p_max_convergence_iterations: Final[ClassVar[int]] = 50
 
     @classmethod
     @property
     def epsilon_x_default(cls) -> float:
         return cls._epsilon_x_default
+
+    @classmethod
+    @property
+    def epsilon_P_default(cls) -> float:
+        return cls._epsilon_P_default
 
     @classmethod
     @property
@@ -213,6 +218,10 @@ class PyDiffGame(ABC, Callable, Sequence):
             warnings.warn("Warning: there is a matrix in P_f that has negative eigenvalues. Convergence may not occur")
         if self.__state_variables_names and len(self.__state_variables_names) != self._n:
             raise ValueError(f'The parameter state_variables_names must be of length n = {self._n}')
+        if not 1 > self.__epsilon_x > 0:
+            raise ValueError('The state convergence tolerance must be in the open interval (0,1)')
+        if not 1 > self.__epsilon_P > 0:
+            raise ValueError('The convergence tolerance of the matrix P must be in the open interval (0,1)')
         if self._L <= 0:
             raise ValueError('The number of data points must be a positive integer')
         if self.__eta <= 0:
@@ -302,15 +311,15 @@ class PyDiffGame(ABC, Callable, Sequence):
                         last_norms.pop(0)
 
                     if len(last_norms) == self.__eta:
-                        P_converged = all([abs(norm_i - norm_i1) < self.__epsilon_x for norm_i, norm_i1
+                        P_converged = all([abs(norm_i - norm_i1) < self.__epsilon_P for norm_i, norm_i1
                                            in zip(last_norms, last_norms[1:])])
                     self._T_f -= self._delta
 
                 self._T_f = curr_iteration_T_f
 
                 if self._x_0 is not None:
-                    curr_x_T_f_norm = self.simulate_x_T_f()
-                    x_converged = np.linalg.norm(x_T - curr_x_T_f_norm) < self.__epsilon_x
+                    curr_x_T = self.simulate_curr_x_T()
+                    x_converged = np.linalg.norm(x_T - curr_x_T) / np.linalg.norm(curr_x_T) < self.__epsilon_x
                     curr_iteration_T_f += 1
                     self._T_f = curr_iteration_T_f
                     self._forward_time = np.linspace(start=0,
@@ -745,7 +754,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         if self._x_0 is not None:
             self.__plot_x()
 
-    def simulate_x_T_f(self) -> np.array:
+    def simulate_curr_x_T(self) -> np.array:
         """
         Evaluates the space vector at the terminal time T_f
 
@@ -881,10 +890,11 @@ class PyDiffGame(ABC, Callable, Sequence):
         """
         Calculates the agnostic functional value using the formula:
         J_agnostic = int_{t=0}^T_f J(t) dt =
-                     int_{t=0}^T_f [ x_tilde(t)^T x_tilde(t) + u_tilde(t)^T u_tilde(t) ) ] dt
+                     int_{t=0}^T_f [ ||x_tilde(t)||^2 + ||u_tilde(t)||^2 ] dt =
+                     int_{t=0}^T_f [ x_tilde(t)^T x_tilde(t) + u_tilde(t)^T u_tilde(t) ] dt
 
         and the corresponding Trapezoidal rule approximation:
-        J ~ sum_{l=1}^{L} [ J(l) + J(l - 1) ] * delta / 2
+        J ~ sum_{l=1}^L [ J(l) + J(l - 1) ] * delta / 2
 
         applied with log10 at the end for scaling
 
@@ -896,14 +906,17 @@ class PyDiffGame(ABC, Callable, Sequence):
         """
 
         cost = 0
-        x = self._x if not non_linear else self._x_non_linear.T
+        x = self._x_non_linear.T if non_linear else self._x
 
-        for l in range(1, len(x) - 1):
+        for l in range(1, self._L):
             x_l_tilde, x_l_1_tilde = self.__get_x_tildes(x=x, l=l)
             u_l_tilde, u_l_1_tilde = self.__get_u_tildes(x=x, l=l)
             cost += sum(np.linalg.norm(y_l) ** 2 for y_l in [x_l_tilde, x_l_1_tilde, u_l_tilde, u_l_1_tilde])
 
-        return math.log10(cost * self._delta / 2)
+        cost *= self._delta / 2
+        log_cost = math.log10(cost)
+
+        return log_cost
 
     def __call__(self,
                  print_characteristic_polynomials: Optional[bool] = False,
