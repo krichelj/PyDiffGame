@@ -2,11 +2,11 @@ import numpy as np
 from typing import Sequence, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
-from PyDiffGame.PyDiffGameComparison import PyDiffGameComparison
+from PyDiffGame.PyDiffGameLQRComparison import PyDiffGameLQRComparison
 from PyDiffGame.Objective import GameObjective, LQRObjective
 
 
-class MassesWithSpringsComparison(PyDiffGameComparison):
+class MassesWithSpringsComparison(PyDiffGameLQRComparison):
     def __init__(self,
                  N: int,
                  m: float,
@@ -76,11 +76,11 @@ class MassesWithSpringsComparison(PyDiffGameComparison):
 def multiprocess_worker_function(N: int,
                                  k: float,
                                  m: float,
+                                 q: float,
+                                 r: float,
                                  epsilon_x: float,
                                  epsilon_P: float
                                  ) -> int:
-    q = 1
-    r = q * 5
 
     x_0 = np.array([10 * i for i in range(1, N + 1)] + [0] * N)
     x_T = x_0 * 10
@@ -95,18 +95,21 @@ def multiprocess_worker_function(N: int,
                                                       epsilon_x=epsilon_x,
                                                       epsilon_P=epsilon_P)
     is_max_lqr = masses_with_springs(plot_state_spaces=True,
-                                     print_costs=True,
-                                     agnostic_costs=True)
+                                     agnostic_costs=False,
+                                     x_only_costs=True)
 
     return int(is_max_lqr)
 
 
 if __name__ == '__main__':
     Ns = [2]
+    ks = [1]
     ms = [10]
-    ks = [10]
+    qs = [1]
+    rs = [100]
+
     epsilon_xs = [10e-5]
     epsilon_Ps = [10e-7]
-    params = [Ns, ks, ms, epsilon_xs, epsilon_Ps]
-    PyDiffGameComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
-                                          values=params)
+    params = [Ns, ks, ms, qs, rs, epsilon_xs, epsilon_Ps]
+    PyDiffGameLQRComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
+                                             values=params)
