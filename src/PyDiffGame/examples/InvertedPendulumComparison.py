@@ -11,11 +11,11 @@ from scipy.integrate import solve_ivp
 from typing import Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
-from PyDiffGame.PyDiffGameComparison import PyDiffGameComparison
+from PyDiffGame.PyDiffGameLQRComparison import PyDiffGameLQRComparison
 from PyDiffGame.Objective import GameObjective, LQRObjective
 
 
-class InvertedPendulumComparison(PyDiffGameComparison):
+class InvertedPendulumComparison(PyDiffGameLQRComparison):
     def __init__(self,
                  m_c: float,
                  m_p: float,
@@ -237,7 +237,6 @@ def multiprocess_worker_function(x_T: float,
     is_max_lqr = \
         inverted_pendulum_comparison(plot_state_spaces=False,
                                      run_animations=False,
-                                     print_costs=True,
                                      non_linear_costs=True,
                                      agnostic_costs=True)
 
@@ -256,5 +255,5 @@ if __name__ == '__main__':
     epsilon_Ps = [10 ** (-3)]
     params = [x_Ts, theta_Ts, m_cs, m_ps, p_Ls, qs, epsilon_xs, epsilon_Ps]
 
-    PyDiffGameComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
-                                          values=params)
+    PyDiffGameLQRComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
+                                             values=params)

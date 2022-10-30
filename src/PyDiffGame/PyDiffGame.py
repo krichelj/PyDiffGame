@@ -13,7 +13,7 @@ import warnings
 from typing import Callable, Final, ClassVar, Optional, Sequence
 from abc import ABC, abstractmethod
 
-from PyDiffGame.Objective import Objective, GameObjective
+from PyDiffGame.Objective import Objective, GameObjective, LQRObjective
 
 
 class PyDiffGame(ABC, Callable, Sequence):
@@ -44,7 +44,9 @@ class PyDiffGame(ABC, Callable, Sequence):
     state_variables_names: sequence of strings of len(n), optional
         The state variables' names to display
     epsilon_x: float in the interval (0,1), optional
-        Numerical convergence threshold
+        Numerical convergence threshold for the state vector of the system
+    epsilon_P: float in the interval (0,1), optional
+        Numerical convergence threshold for the matrices P_i
     L: positive int, optional
         Number of data points
     eta: positive int, optional
@@ -113,7 +115,9 @@ class PyDiffGame(ABC, Callable, Sequence):
                                                        set(type(self).__bases__).union({self.__class__})]
         self._A = A
         self._B = B
+        self._Bs = Bs
         self._n = self._A.shape[0]
+        self._m = self._B.shape[1] if self._B is not None else self._Bs[0].shape[1]
         self.__objectives = objectives
         self._N = len(objectives) if objectives else len(Qs)
         self._P_size = self._n ** 2
@@ -123,7 +127,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         self._x_T = x_T
         self.__infinite_horizon = (not force_finite_horizon) and (T_f is None or P_f is None)
         self._T_f = PyDiffGame.__T_f_default if T_f is None else T_f
-        self._Bs = Bs
+
         self._Ms = Ms
 
         if not self._Ms and self.__objectives:
@@ -238,8 +242,7 @@ class PyDiffGame(ABC, Callable, Sequence):
                                                  for i in range(1, self._n)],
                                                 axis=1)
         controllability_matrix_rank = np.linalg.matrix_rank(A=controllability_matrix,
-                                                            tol=10e-5
-                                                            )
+                                                            tol=10e-5)
 
         return controllability_matrix_rank == self._n
 
@@ -288,7 +291,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         x_converged = False
         P_converged = False
-        last_norms = []
+        last_eta_norms = []
         curr_iteration_T_f = self._T_f
         x_T = self._x_T if self._x_T is not None else np.zeros_like(self._x_0)
         x_convergence_iterations = 0
@@ -305,21 +308,25 @@ class PyDiffGame(ABC, Callable, Sequence):
                                                       num=self._L)
                     self._update_Ps_from_last_state()
                     self._P_f = self._P[-1]
-                    last_norms += [np.linalg.norm(self._P_f)]
+                    last_eta_norms += [np.linalg.norm(self._P_f)]
 
-                    if len(last_norms) > self.__eta:
-                        last_norms.pop(0)
+                    if len(last_eta_norms) > self.__eta:
+                        last_eta_norms.pop(0)
 
-                    if len(last_norms) == self.__eta:
+                    if len(last_eta_norms) == self.__eta:
                         P_converged = all([abs(norm_i - norm_i1) < self.__epsilon_P for norm_i, norm_i1
-                                           in zip(last_norms, last_norms[1:])])
+                                           in zip(last_eta_norms, last_eta_norms[1:])])
                     self._T_f -= self._delta
 
                 self._T_f = curr_iteration_T_f
 
                 if self._x_0 is not None:
                     curr_x_T = self.simulate_curr_x_T()
-                    x_converged = np.linalg.norm(x_T - curr_x_T) / np.linalg.norm(curr_x_T) < self.__epsilon_x
+                    difference = x_T - curr_x_T
+                    difference_norm = difference.T @ difference
+                    curr_x_T_norm = curr_x_T.T @ curr_x_T
+                    convergence_ratio = difference_norm / curr_x_T_norm
+                    x_converged = convergence_ratio < self.__epsilon_x
                     curr_iteration_T_f += 1
                     self._T_f = curr_iteration_T_f
                     self._forward_time = np.linspace(start=0,
@@ -768,133 +775,133 @@ class PyDiffGame(ABC, Callable, Sequence):
         pass
 
     @_post_convergence
-    def __get_x_tildes(self,
-                       x: np.array,
-                       l: int) -> (np.array, np.array):
+    def __get_x_l_tilde(self,
+                        x: np.array,
+                        l: int) -> np.array:
         x_l = x[l]
-        x_l_1 = x[l - 1]
-
         x_l_tilde = self.x_T - x_l
-        x_l_1_tilde = self.x_T - x_l_1
 
-        return x_l_tilde, x_l_1_tilde
+        return x_l_tilde
 
     @_post_convergence
-    def __get_v_tildes(self,
-                       x: np.array,
-                       i: int,
-                       l: int,
-                       v_i_T: np.array) -> (np.array, np.array):
+    def __get_v_i_l_tilde(self,
+                          x: np.array,
+                          i: int,
+                          l: int,
+                          v_i_T: np.array) -> np.array:
         x_l = x[l]
-        x_l_1 = x[l - 1]
 
         K_i_l = self._get_K_i(i) if self.__continuous else self._get_K_i(i, l)
         v_i_l = - K_i_l @ x_l
         v_i_l_tilde = v_i_T - v_i_l
 
-        K_i_l_1 = self._get_K_i(i) if self.__continuous else self._get_K_i(i, l - 1)
-        v_i_l_1 = - K_i_l_1 @ x_l_1
-        v_i_l_1_tilde = v_i_T - v_i_l_1
-
-        return v_i_l_tilde, v_i_l_1_tilde
+        return v_i_l_tilde
 
     @_post_convergence
-    def __get_u_tildes(self,
-                       x: np.array,
-                       l: int) -> (np.array, np.array):
-        x_l_tilde, x_l_1_tilde = self.__get_x_tildes(x=x,
-                                                     l=l)
+    def __get_u_l_tilde(self,
+                        x: np.array,
+                        l: int,
+                        x_l_tilde: np.array) -> np.array:
         if self.is_LQR():
-            K = self._K[0]
-            u_l_tilde = K @ x_l_tilde
-            u_l_1_tilde = K @ x_l_1_tilde
+            k_T = self._get_K_i(0) if self.__continuous else self._get_K_i(0, self._L - 1)
+            u_l_tilde = - k_T @ x_l_tilde
         else:
             v_l_tilde = []
-            v_l_1_tilde = []
 
             for i in range(self._N):
                 k_i_T = self._get_K_i(i) if self.__continuous else self._get_K_i(i, self._L - 1)
                 v_i_T = - k_i_T @ self.x_T
 
-                v_i_l_tilde, v_i_l_1_tilde = self.__get_v_tildes(x=x,
-                                                                 i=i,
-                                                                 l=l,
-                                                                 v_i_T=v_i_T)
+                v_i_l_tilde = self.__get_v_i_l_tilde(x=x,
+                                                     i=i,
+                                                     l=l,
+                                                     v_i_T=v_i_T)
 
                 v_l_tilde += [v_i_l_tilde]
-                v_l_1_tilde += [v_i_l_1_tilde]
 
             v_l_tilde = np.array(v_l_tilde)
-            v_l_1_tilde = np.array(v_l_1_tilde)
-
             u_l_tilde = self._M_inv @ v_l_tilde
-            u_l_1_tilde = self._M_inv @ v_l_1_tilde
 
-        return u_l_tilde, u_l_1_tilde
+        return u_l_tilde
 
     @_post_convergence
-    def get_costs(self,
-                  non_linear: Optional[bool] = False,
-                  x_only: Optional[bool] = False) -> np.array:
+    def __get_x_and_u_l_tilde(self,
+                              x: np.array,
+                              l: int) -> (np.array, np.array):
+        x_l_tilde = self.__get_x_l_tilde(x=x,
+                                         l=l)
+        u_l_tilde = self.__get_u_l_tilde(x=x,
+                                         l=l,
+                                         x_l_tilde=x_l_tilde)
+
+        return x_l_tilde, u_l_tilde
+
+    @_post_convergence
+    def get_cost(self,
+                 lqr_objective: LQRObjective,
+                 non_linear: Optional[bool] = False,
+                 x_only: Optional[bool] = False) -> float:
         """
         Calculates the cost functionals values using the formula:
-        J_i = int_{t=0}^T_f J_i(t) dt =
-              int_{t=0}^T_f [ x_tilde(t)^T Q_i x_tilde(t) + sum_{j=1}^N  v_j_tilde(t)^T R_{ij} v_j_tilde(t) ) ] dt
+        J = int_{t=0}^T_f J(t) dt =
+            int_{t=0}^T_f [ x_tilde(t)^T Q x_tilde(t) + u_tilde^T(t) R u_tilde(t) ) ] dt
 
         and the corresponding Trapezoidal rule approximation:
-        J_i ~ sum_{l=1}^{L} [ J_i(l) + J_i(l - 1) ] * delta / 2
+        J ~ delta / 2 sum_{l=1}^{L} [ J(l) + J(l - 1) ]
+          = delta * [ sum_{l=1}^{L-1} J(l) + 1/2 ( J(0) + J(L) ) ]
 
         applied with log10 at the end for scaling
 
         Parameters
         ----------
 
+        lqr_objective: LQRObjective
+            LQR objective to get Q and R from
         non_linear: bool, optional
             Indicates whether to calculate the cost with respect to the nonlinear state
         x_only: bool, optional
             Indicates whether to calculate the cost only with respect to x(t)
         """
 
-        costs = []
         x = self._x if not non_linear else self._x_non_linear.T
+        assert len(x) == self._L
 
-        for i in range(self._N):
-            Q_i = self._Qs[i]
-            R_ii = self._Rs[i]
+        cost = 0
+        Q = lqr_objective.Q
+        R = lqr_objective.R
 
-            cost_i = 0
+        for l in range(0, self._L):
+            x_l_tilde = self.__get_x_l_tilde(x=x,
+                                             l=l)
+            cost_l = float(x_l_tilde.T @ Q @ x_l_tilde)
 
-            k_i_T = self._get_K_i(i) if self.__continuous else self._get_K_i(i, self._L - 1)
-            v_i_T = - k_i_T @ self.x_T
+            if not x_only:
+                u_l_tilde = self.__get_u_l_tilde(x=x,
+                                                 l=l,
+                                                 x_l_tilde=x_l_tilde)
+                cost_l += float(u_l_tilde.T @ R @ u_l_tilde)
 
-            for l in range(1, self._L):
-                x_l_tilde, x_l_1_tilde = self.__get_x_tildes(x=x,
-                                                             l=l)
+            if l in [0, self._L - 1]:
+                cost_l *= 0.5
 
-                cost_i += x_l_tilde.T @ Q_i @ x_l_tilde + x_l_1_tilde.T @ Q_i @ x_l_1_tilde
+            cost += cost_l
 
-                if not x_only:
-                    v_i_l_tilde, v_i_l_1_tilde = self.__get_v_tildes(x=x,
-                                                                     i=i,
-                                                                     l=l,
-                                                                     v_i_T=v_i_T)
-                    cost_i += v_i_l_tilde.T @ R_ii @ v_i_l_tilde + v_i_l_1_tilde.T @ R_ii @ v_i_l_1_tilde
+        log_cost = math.log10(cost)
 
-            costs += [math.log10(cost_i * self._delta / 2)]
-
-        return np.array(costs)
+        return log_cost
 
     @_post_convergence
     def get_agnostic_costs(self,
                            non_linear: Optional[bool] = False) -> float:
         """
         Calculates the agnostic functional value using the formula:
-        J_agnostic = int_{t=0}^T_f J(t) dt =
+        J_agnostic = int_{t=0}^T_f J_agnostic(t) dt =
                      int_{t=0}^T_f [ ||x_tilde(t)||^2 + ||u_tilde(t)||^2 ] dt =
                      int_{t=0}^T_f [ x_tilde(t)^T x_tilde(t) + u_tilde(t)^T u_tilde(t) ] dt
 
         and the corresponding Trapezoidal rule approximation:
-        J ~ sum_{l=1}^L [ J(l) + J(l - 1) ] * delta / 2
+        J ~ delta / 2 sum_{l=1}^L [ J(l) + J(l - 1) ] =
+            delta * [ sum_{l=1}^{L-1} J(l) + 1/2 ( J(0) + J(L) ) ]
 
         applied with log10 at the end for scaling
 
@@ -905,15 +912,13 @@ class PyDiffGame(ABC, Callable, Sequence):
             Indicates whether to calculate the cost with respect to the nonlinear state
         """
 
-        cost = 0
         x = self._x_non_linear.T if non_linear else self._x
+        assert len(x) == self._L
 
-        for l in range(1, self._L):
-            x_l_tilde, x_l_1_tilde = self.__get_x_tildes(x=x, l=l)
-            u_l_tilde, u_l_1_tilde = self.__get_u_tildes(x=x, l=l)
-            cost += sum(np.linalg.norm(y_l) ** 2 for y_l in [x_l_tilde, x_l_1_tilde, u_l_tilde, u_l_1_tilde])
+        cost = sum((0.5 if l in [0, self._L - 1] else 1) * sum(y_l.T @ y_l for y_l in self.__get_x_and_u_l_tilde(x=x,
+                                                                                                                 l=l))
+                   for l in range(0, self._L)) * self._delta
 
-        cost *= self._delta / 2
         log_cost = math.log10(cost)
 
         return log_cost

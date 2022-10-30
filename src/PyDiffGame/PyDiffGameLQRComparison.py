@@ -15,7 +15,7 @@ from PyDiffGame.DiscretePyDiffGame import DiscretePyDiffGame
 from PyDiffGame.Objective import GameObjective
 
 
-class PyDiffGameComparison(ABC, Callable, Sequence):
+class PyDiffGameLQRComparison(ABC, Callable, Sequence):
     """
     Differential games comparison abstract base class
 
@@ -40,8 +40,15 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
         self.__args = args
         self.__verify_input()
 
-        self._games = {i: GameClass(**self.__args | {'objectives': [o for o in game_i_objectives]})
-                       for i, game_i_objectives in enumerate(games_objectives)}
+        self._games = {}
+        self._lqr_objective = None
+
+        for i, game_i_objectives in enumerate(games_objectives):
+            game_i = GameClass(**self.__args | {'objectives': [o for o in game_i_objectives]})
+            self._games[i] = game_i
+
+            if game_i.is_LQR():
+                self._lqr_objective = game_i_objectives[0]
 
     def __verify_input(self):
         """
@@ -96,20 +103,18 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
         pass
 
     def __call__(self,
-                 print_characteristic_polynomials: Optional[bool] = False,
-                 print_eigenvalues: Optional[bool] = False,
                  plot_state_spaces: Optional[bool] = True,
                  run_animations: Optional[bool] = True,
-                 print_costs: Optional[bool] = False,
                  non_linear_costs: Optional[bool] = False,
                  agnostic_costs: Optional[bool] = False,
-                 x_only_costs: Optional[bool] = False) -> bool:
+                 x_only_costs: Optional[bool] = False,
+                 print_characteristic_polynomials: Optional[bool] = False,
+                 print_eigenvalues: Optional[bool] = False) -> bool:
         """
         Runs the comparison
         """
 
         costs = []
-        res = False
 
         for i, game_i in self._games.items():
             game_i(plot_state_space=plot_state_spaces,
@@ -122,28 +127,25 @@ class PyDiffGameComparison(ABC, Callable, Sequence):
                 game_i._x_non_linear = self._simulate_non_linear_system(i=i,
                                                                         plot=False)
 
-            if print_costs:
-                game_i_costs = game_i.get_agnostic_costs(non_linear=non_linear_costs) \
-                    if agnostic_costs else game_i.get_costs(non_linear=non_linear_costs,
-                                                            x_only=x_only_costs)
+            game_i_cost = game_i.get_agnostic_costs(non_linear=non_linear_costs) \
+                if agnostic_costs else game_i.get_cost(lqr_objective=self._lqr_objective,
+                                                       non_linear=non_linear_costs,
+                                                       x_only=x_only_costs)
 
-                costs += [game_i_costs]
+            costs += [game_i_cost]
 
-        if print_costs:
-            costs = np.array(costs)
-            maximal_cost_game = costs.argmax()
-            is_max_lqr = self._games[maximal_cost_game].is_LQR()
+        costs = np.array(costs)
+        maximal_cost_game = costs.argmax()
+        is_max_lqr = self._games[maximal_cost_game].is_LQR()
 
-            print('\n' + colored(f"\nGame {maximal_cost_game + 1} has the most cost "
-                                 f"{'which is LQR! :)' if is_max_lqr else ' :('}\n",
-                                 'green' if is_max_lqr else 'red') + '#' * 50
-                  + '\n\n' + '\n'.join([f"Game {i + 1} {'non-linear ' if non_linear_costs else ''}"
-                                        f"{'agnostic ' if agnostic_costs else ''}"
-                                        f"cost: 10^{round(cost_i, 3)}" for i, cost_i in enumerate(costs)]))
+        print('\n' + colored(f"\nGame {maximal_cost_game + 1} has the most cost "
+                             f"{'which is LQR! :)' if is_max_lqr else ' :('}\n",
+                             'green' if is_max_lqr else 'red') + '#' * 50
+              + '\n\n' + '\n'.join([f"Game {i + 1} {'non-linear ' if non_linear_costs else ''}"
+                                    f"{'agnostic ' if agnostic_costs else ''}"
+                                    f"cost: 10^{round(cost_i, 3)}" for i, cost_i in enumerate(costs)]))
 
-            res = is_max_lqr
-
-        return res
+        return is_max_lqr
 
     @staticmethod
     def run_multiprocess(multiprocess_worker_function: Callable[[Any], int],
