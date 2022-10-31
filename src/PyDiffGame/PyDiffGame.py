@@ -64,6 +64,7 @@ class PyDiffGame(ABC, Callable, Sequence):
     _g: Final[ClassVar[float]] = 9.81
     __x_max_convergence_iterations: Final[ClassVar[int]] = 200
     __p_max_convergence_iterations: Final[ClassVar[int]] = 50
+    __default_figures_folder = 'figures'
 
     @classmethod
     @property
@@ -487,7 +488,7 @@ class PyDiffGame(ABC, Callable, Sequence):
     @_post_convergence
     def __save_figure(self,
                       figure_path: Optional[str | Path] = Path(fr'{os.getcwd()}/figures'),
-                      filename: Optional[str] = 'last_image'):
+                      filename: Optional[str] = 'image0'):
         """
         Saves the current figure
 
@@ -506,7 +507,15 @@ class PyDiffGame(ABC, Callable, Sequence):
         if not figure_path.is_dir():
             os.mkdir(figure_path)
 
-        self._fig.savefig(Path(fr'{figure_path}/{filename}'))
+        figure_full_filename = Path(fr'{figure_path}/{filename}.png')
+
+        while figure_full_filename.is_file():
+            curr_name = figure_full_filename.name
+            curr_num = int(curr_name.split('.png')[-2].split('image')[-1])
+            next_num = curr_num + 1
+            figure_full_filename.rename(fr'{figure_path}/image{next_num}.png')
+
+        self._fig.savefig(figure_full_filename)
 
     def __augment_two_state_space_vectors(self,
                                           other: PyDiffGame,
@@ -576,7 +585,7 @@ class PyDiffGame(ABC, Callable, Sequence):
                                        temporal_variables=augmented_state_space,
                                        is_P=False,
                                        title=f"{self_title} " + "$(T_{f_1} = " +
-                                            f"{self._T_f})$ \nvs\n {other_title} " + "$(T_{f_2} = " + f"{other.T_f})$",
+                                             f"{self._T_f})$ \nvs\n {other_title} " + "$(T_{f_2} = " + f"{other.T_f})$",
                                        two_state_spaces=True
                                        )
 
@@ -929,9 +938,10 @@ class PyDiffGame(ABC, Callable, Sequence):
         return log_cost
 
     def __call__(self,
+                 plot_state_space: Optional[bool] = True,
+                 save_figure: Optional[bool] = False,
                  print_characteristic_polynomials: Optional[bool] = False,
-                 print_eigenvalues: Optional[bool] = False,
-                 plot_state_space: Optional[bool] = True):
+                 print_eigenvalues: Optional[bool] = False):
         """
         Runs the game simulation
         """
@@ -943,10 +953,11 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         if plot_state_space:
             self.__solve_game_simulate_state_space_and_plot()
+
+            if save_figure:
+                self.__save_figure()
         else:
             self.__solve_game_and_simulate_state_space()
-
-
 
     def __getitem__(self,
                     i: int) -> Objective:

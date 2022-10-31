@@ -99,6 +99,7 @@ def multiprocess_worker_function(N: int,
                                                       epsilon_x=epsilon_x,
                                                       epsilon_P=epsilon_P)
     is_max_lqr = masses_with_springs(plot_state_spaces=True,
+                                     save_figure=True,
                                      agnostic_costs=False,
                                      x_only_costs=True)
 
