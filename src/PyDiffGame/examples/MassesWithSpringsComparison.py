@@ -21,27 +21,32 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
                  epsilon_P: Optional[float] = PyDiffGame.epsilon_P_default,
                  L: Optional[int] = PyDiffGame.L_default,
                  eta: Optional[int] = PyDiffGame.eta_default):
-        M = m * np.eye(N)
-        K = k * (- 2 * np.eye(N) + np.array([[int(abs(i - j) == 1) for j in range(N)] for i in range(N)]))
-        M_inv = np.linalg.inv(M)
+        N_e = np.eye(N)
+        N_z = np.zeros((N, N))
+
+        M_masses = m * N_e
+        K = k * (- 2 * N_e + np.array([[int(abs(i - j) == 1) for j in range(N)] for i in range(N)]))
+        M_masses_inv = np.linalg.inv(M_masses)
+        M_inv_K = M_masses_inv @ K
 
         if Ms is None:
-            eigenvectors = np.linalg.eig(-M_inv @ K)[1]
+            eigenvectors = np.linalg.eig(-M_inv_K)[1]
 
             Ms = [eigenvector.reshape(1, N) / eigenvector[0] for eigenvector in eigenvectors]
 
-        N_z = np.zeros((N, N))
-        N_e = np.eye(N)
-        M_inv_K = M_inv @ K
-        A = np.concatenate([np.concatenate([N_z, N_e],
-                                           axis=1),
-                            np.concatenate([M_inv_K, N_z],
-                                           axis=1)],
-                           axis=0)
-        B = np.concatenate([N_z,
-                            M_inv],
-                           axis=0)
+        A = np.block([[N_z, N_e],
+                      [M_inv_K, N_z]])
+        B = np.block([[N_z],
+                      [M_masses_inv]])
+
         Qs = [np.diag([0.0] * i + [q] + [0.0] * (N - 1) + [q] + [0.0] * (N - i - 1)) for i in range(N)]
+        M = np.concatenate(Ms,
+                           axis=0)
+        Q_mat = np.kron(a=N_e,
+                        b=M)
+
+        Qs = [Q_mat.T @ Q @ Q_mat for Q in Qs]
+
         Rs = [np.array([r])] * N
         R_lqr = r * N_e
         Q_lqr = q * np.eye(2 * N)
@@ -79,8 +84,7 @@ def multiprocess_worker_function(N: int,
                                  q: float,
                                  r: float,
                                  epsilon_x: float,
-                                 epsilon_P: float
-                                 ) -> int:
+                                 epsilon_P: float) -> int:
 
     x_0 = np.array([10 * i for i in range(1, N + 1)] + [0] * N)
     x_T = x_0 * 10
@@ -103,10 +107,10 @@ def multiprocess_worker_function(N: int,
 
 if __name__ == '__main__':
     Ns = [2]
-    ks = [1]
-    ms = [10]
-    qs = [1]
-    rs = [100]
+    ks = [50]
+    ms = [100]
+    qs = [100]
+    rs = [1]
 
     epsilon_xs = [10e-5]
     epsilon_Ps = [10e-7]
