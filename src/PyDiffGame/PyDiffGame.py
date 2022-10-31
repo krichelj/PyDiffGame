@@ -62,7 +62,7 @@ class PyDiffGame(ABC, Callable, Sequence):
     _L_default: Final[ClassVar[int]] = 1000
     _eta_default: Final[ClassVar[int]] = 3
     _g: Final[ClassVar[float]] = 9.81
-    __x_max_convergence_iterations: Final[ClassVar[int]] = 100
+    __x_max_convergence_iterations: Final[ClassVar[int]] = 200
     __p_max_convergence_iterations: Final[ClassVar[int]] = 50
 
     @classmethod
@@ -182,6 +182,18 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         Case-specific errors
         """
+        if self._N == 0:
+            raise ValueError('At least one objective must be specified')
+        if self._N > 1 and self._Ms and not all([M_i.shape[0] == R_ii.shape[0] == R_ii.shape[1]
+                                                 if R_ii.ndim > 1 else M_i.shape[0] == R_ii.shape[0]
+                                                 for M_i, R_ii in zip(self._Ms, self._Rs)]):
+            raise ValueError('R must be a sequence of square 2-d numpy arrays with shape '
+                             'corresponding to the second dimensions of the arrays in M')
+
+        if not 1 > self.__epsilon_x > 0:
+            raise ValueError('The state convergence tolerance must be in the open interval (0,1)')
+        if not 1 > self.__epsilon_P > 0:
+            raise ValueError('The convergence tolerance of the matrix P must be in the open interval (0,1)')
 
         if self._A.shape != (self._n, self._n):
             raise ValueError(f'A must be a square 2-d numpy array with shape nxn = {self._n}x{self._n}')
@@ -195,20 +207,16 @@ class PyDiffGame(ABC, Callable, Sequence):
                         if R_ii.ndim > 1 else B_i.shape[1] == R_ii.shape[0] for B_i, R_ii in zip(self._Bs, self._Rs)]):
                 raise ValueError('R must be a sequence of square 2-d numpy arrays with shape '
                                  'corresponding to the second dimensions of the arrays in Bs')
-        if self._N == 0:
-            raise ValueError('At least one objective must be specified')
-        if self._N > 1 and self._Ms and not all([M_i.shape[0] == R_ii.shape[0] == R_ii.shape[1]
-                                                 if R_ii.ndim > 1 else M_i.shape[0] == R_ii.shape[0]
-                                                 for M_i, R_ii in zip(self._Ms, self._Rs)]):
-            raise ValueError('R must be a sequence of square 2-d numpy arrays with shape '
-                             'corresponding to the second dimensions of the arrays in M')
-        if not all([np.all(np.linalg.eigvals(R_ii) > 0) if R_ii.ndim > 1 else R_ii > 0 for R_ii in self._Rs]):
+        if not all([np.all(np.linalg.eigvals(R_ii) > 0) if R_ii.ndim > 1 else R_ii > 0
+                    for R_ii in self._Rs]):
             raise ValueError('R must be a sequence of square 2-d positive definite numpy arrays')
         if not all([Q_i.shape == (self._n, self._n) for Q_i in self._Qs]):
             raise ValueError(f'Q must be a sequence of square 2-d positive semi-definite numpy arrays with shape nxn '
                              f'= {self._n}x{self._n}')
-        if not all([np.all(np.linalg.eigvals(Q_i) >= 0) for Q_i in self._Qs]):
+        if not all([all([e_i >= 0 or self.__epsilon_x > abs(e_i) >= 0 for e_i in np.linalg.eigvals(Q_i)])
+                    for Q_i in self._Qs]):
             raise ValueError('Q must contain positive semi-definite numpy arrays')
+
         if self._x_0 is not None and self._x_0.shape != (self._n,):
             raise ValueError(f'x_0 must be a 1-d numpy array with length n = {self._n}')
         if self._x_T is not None and self._x_T.shape != (self._n,):
@@ -222,10 +230,7 @@ class PyDiffGame(ABC, Callable, Sequence):
             warnings.warn("Warning: there is a matrix in P_f that has negative eigenvalues. Convergence may not occur")
         if self.__state_variables_names and len(self.__state_variables_names) != self._n:
             raise ValueError(f'The parameter state_variables_names must be of length n = {self._n}')
-        if not 1 > self.__epsilon_x > 0:
-            raise ValueError('The state convergence tolerance must be in the open interval (0,1)')
-        if not 1 > self.__epsilon_P > 0:
-            raise ValueError('The convergence tolerance of the matrix P must be in the open interval (0,1)')
+
         if self._L <= 0:
             raise ValueError('The number of data points must be a positive integer')
         if self.__eta <= 0:
