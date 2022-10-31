@@ -104,6 +104,7 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
 
     def __call__(self,
                  plot_state_spaces: Optional[bool] = True,
+                 save_figure: Optional[bool] = False,
                  run_animations: Optional[bool] = True,
                  non_linear_costs: Optional[bool] = False,
                  agnostic_costs: Optional[bool] = False,
@@ -118,6 +119,7 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
 
         for i, game_i in self._games.items():
             game_i(plot_state_space=plot_state_spaces,
+                   save_figure=save_figure,
                    print_characteristic_polynomials=print_characteristic_polynomials,
                    print_eigenvalues=print_eigenvalues)
 
