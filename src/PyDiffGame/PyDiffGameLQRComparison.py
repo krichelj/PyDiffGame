@@ -85,9 +85,9 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
         self._games[i].plot_two_state_spaces(other=self._games[j],
                                              non_linear=non_linear)
 
-    def _simulate_non_linear_system(self,
-                                    i: int,
-                                    plot: bool = False) -> np.array:
+    def __simulate_non_linear_system(self,
+                                     i: int,
+                                     plot: bool = False) -> np.array:
         """
         Simulates the corresponding non-linear system's progression through time
         """
@@ -124,8 +124,8 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
             if run_animations:
                 self.__run_animation(i=i)
             if non_linear_costs:
-                game_i._x_non_linear = self._simulate_non_linear_system(i=i,
-                                                                        plot=False)
+                game_i._x_non_linear = self.__simulate_non_linear_system(i=i,
+                                                                         plot=False)
 
             game_i_cost = game_i.get_agnostic_costs(non_linear=non_linear_costs) \
                 if agnostic_costs else game_i.get_cost(lqr_objective=self._lqr_objective,

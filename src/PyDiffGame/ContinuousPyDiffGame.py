@@ -222,7 +222,7 @@ class ContinuousPyDiffGame(PyDiffGame):
                              y0=self._x_0,
                              t=self._forward_time)
 
-    def simulate_curr_x_T(self) -> np.array:
+    def _simulate_curr_x_T(self) -> np.array:
 
         def state_diff_eqn(x_t: np.array, _: float) -> np.array:
             self._update_K_from_last_state(t=-1)

@@ -258,7 +258,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         return len(self) == 1
 
-    def print_eigenvalues(self):
+    def __print_eigenvalues(self):
         """
         Prints the eigenvalues of the matrices Q_i and R_ii for all 1 <= i <= N
         with the greatest common divisor of their elements d as a parameter
@@ -272,7 +272,7 @@ class PyDiffGame(ABC, Callable, Sequence):
             eigenvalues_multiset = sympy_matrix.eigenvals(multiple=True)
             print(f"{repr(sympy_matrix)}: {eigenvalues_multiset}\n")
 
-    def print_characteristic_polynomials(self):
+    def __print_characteristic_polynomials(self):
         """
         Prints the characteristic polynomials of the matrices Q_i and R_ii for all 1 <= i <= N
         as a function of L and with the greatest common divisor of all their elements d as a parameter
@@ -326,7 +326,7 @@ class PyDiffGame(ABC, Callable, Sequence):
                 self._T_f = curr_iteration_T_f
 
                 if self._x_0 is not None:
-                    curr_x_T = self.simulate_curr_x_T()
+                    curr_x_T = self._simulate_curr_x_T()
                     difference = x_T - curr_x_T
                     difference_norm = difference.T @ difference
                     curr_x_T_norm = curr_x_T.T @ curr_x_T
@@ -371,12 +371,12 @@ class PyDiffGame(ABC, Callable, Sequence):
         return decorated_f
 
     @_post_convergence
-    def _plot_temporal_variables(self,
-                                 t: np.array,
-                                 temporal_variables: np.array,
-                                 is_P: bool,
-                                 title: Optional[str] = None,
-                                 two_state_spaces: Optional[bool] = False):
+    def __plot_temporal_variables(self,
+                                  t: np.array,
+                                  temporal_variables: np.array,
+                                  is_P: bool,
+                                  title: Optional[str] = None,
+                                  two_state_spaces: Optional[bool] = False):
         """
         Displays plots for the state variables with respect to time and the convergence of the values of P
 
@@ -457,10 +457,10 @@ class PyDiffGame(ABC, Callable, Sequence):
             Indicates whether the system is linear or not
         """
 
-        self._plot_temporal_variables(t=self._forward_time,
-                                      temporal_variables=state_variables,
-                                      is_P=False,
-                                      title=self.__get_temporal_state_variables_title(linear_system=linear_system))
+        self.__plot_temporal_variables(t=self._forward_time,
+                                       temporal_variables=state_variables,
+                                       is_P=False,
+                                       title=self.__get_temporal_state_variables_title(linear_system=linear_system))
 
     def __plot_x(self):
         """
@@ -485,9 +485,9 @@ class PyDiffGame(ABC, Callable, Sequence):
         self.plot_state_variables(state_variables=y.T)
 
     @_post_convergence
-    def save_figure(self,
-                    figure_path: Optional[str | Path] = Path(fr'{os.getcwd()}/figures'),
-                    filename: Optional[str] = 'last_image'):
+    def __save_figure(self,
+                      figure_path: Optional[str | Path] = Path(fr'{os.getcwd()}/figures'),
+                      filename: Optional[str] = 'last_image'):
         """
         Saves the current figure
 
@@ -572,13 +572,13 @@ class PyDiffGame(ABC, Callable, Sequence):
         self_title = self.__get_temporal_state_variables_title(two_state_spaces=True)
         other_title = other.__get_temporal_state_variables_title(two_state_spaces=True)
 
-        self._plot_temporal_variables(t=longer_period,
-                                      temporal_variables=augmented_state_space,
-                                      is_P=False,
-                                      title=f"{self_title} " + "$(T_{f_1} = " +
+        self.__plot_temporal_variables(t=longer_period,
+                                       temporal_variables=augmented_state_space,
+                                       is_P=False,
+                                       title=f"{self_title} " + "$(T_{f_1} = " +
                                             f"{self._T_f})$ \nvs\n {other_title} " + "$(T_{f_2} = " + f"{other.T_f})$",
-                                      two_state_spaces=True
-                                      )
+                                       two_state_spaces=True
+                                       )
 
     def __get_are_P_f(self) -> list[np.array]:
         """
@@ -709,9 +709,9 @@ class PyDiffGame(ABC, Callable, Sequence):
         Plots the convergence of the values for the matrices P_i
         """
 
-        self._plot_temporal_variables(t=self._backward_time,
-                                      temporal_variables=self._P,
-                                      is_P=True)
+        self.__plot_temporal_variables(t=self._backward_time,
+                                       temporal_variables=self._P,
+                                       is_P=True)
 
     def __solve_and_plot_finite_horizon(self):
         """
@@ -766,7 +766,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         if self._x_0 is not None:
             self.__plot_x()
 
-    def simulate_curr_x_T(self) -> np.array:
+    def _simulate_curr_x_T(self) -> np.array:
         """
         Evaluates the space vector at the terminal time T_f
 
@@ -937,14 +937,16 @@ class PyDiffGame(ABC, Callable, Sequence):
         """
 
         if print_characteristic_polynomials:
-            self.print_characteristic_polynomials()
+            self.__print_characteristic_polynomials()
         if print_eigenvalues:
-            self.print_eigenvalues()
+            self.__print_eigenvalues()
 
         if plot_state_space:
             self.__solve_game_simulate_state_space_and_plot()
         else:
             self.__solve_game_and_simulate_state_space()
+
+
 
     def __getitem__(self,
                     i: int) -> Objective:

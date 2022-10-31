@@ -98,9 +98,9 @@ class InvertedPendulumComparison(PyDiffGameLQRComparison):
                          games_objectives=games_objectives,
                          continuous=True)
 
-    def _simulate_non_linear_system(self,
-                                    i: int,
-                                    plot: bool = False) -> np.array:
+    def __simulate_non_linear_system(self,
+                                     i: int,
+                                     plot: bool = False) -> np.array:
         game = self._games[i]
         K = game.K
         x_T = game.x_T
@@ -153,8 +153,8 @@ class InvertedPendulumComparison(PyDiffGameLQRComparison):
     def __run_animation(self,
                         i: int) -> (Line2D, Rectangle):
         game = self._games[i]
-        game._x_non_linear = self._simulate_non_linear_system(i=i,
-                                                              plot=True)
+        game._x_non_linear = self.__simulate_non_linear_system(i=i,
+                                                               plot=True)
         x_t, theta_t, x_dot_t, theta_dot_t = game._x_non_linear
 
         pendulumArm = Line2D(xdata=self.__origin,
