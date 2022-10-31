@@ -108,7 +108,7 @@ def multiprocess_worker_function(N: int,
 
 if __name__ == '__main__':
     Ns = [2]
-    ks = [50]
+    ks = [10]
     ms = [100]
     qs = [100]
     rs = [1]
