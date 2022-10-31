@@ -39,7 +39,7 @@ class PyDiffGame(ABC, Callable, Sequence):
     P_f: sequence of 2-d np.arrays of len(N), each array P_f_i of shape(n, n), optional
         default = uncoupled solution of scipy's solve_are
         Final condition for the Riccati equation array. Should be given in the case of finite horizon
-    show_legend: boolean, optional
+    show_legend: bool, optional
         Indicates whether to display a legend in the plots
     state_variables_names: sequence of strings of len(n), optional
         The state variables' names to display
@@ -51,7 +51,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         Number of data points
     eta: positive int, optional
         The number of last matrix norms to consider for convergence
-    debug: boolean, optional
+    debug: bool, optional
         Indicates whether to display debug information
     """
 
@@ -64,7 +64,9 @@ class PyDiffGame(ABC, Callable, Sequence):
     _g: Final[ClassVar[float]] = 9.81
     __x_max_convergence_iterations: Final[ClassVar[int]] = 200
     __p_max_convergence_iterations: Final[ClassVar[int]] = 50
+
     __default_figures_folder = 'figures'
+    __default_figures_filename = 'image'
 
     @classmethod
     @property
@@ -127,7 +129,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         self._x_0 = x_0
         self._x_T = x_T
         self.__infinite_horizon = (not force_finite_horizon) and (T_f is None or P_f is None)
-        self._T_f = PyDiffGame.__T_f_default if T_f is None else T_f
+        self._T_f = self.__T_f_default if T_f is None else T_f
 
         self._Ms = Ms
 
@@ -181,8 +183,10 @@ class PyDiffGame(ABC, Callable, Sequence):
         Raises
         ------
 
-        Case-specific errors
+        ValueError
+            If any of the class parameters don't meet the specified requirements
         """
+
         if self._N == 0:
             raise ValueError('At least one objective must be specified')
         if self._N > 1 and self._Ms and not all([M_i.shape[0] == R_ii.shape[0] == R_ii.shape[1]
@@ -241,6 +245,12 @@ class PyDiffGame(ABC, Callable, Sequence):
         """
         Tests full controllability of an LTI system by the equivalent condition of full rank
         of the controllability Gramian
+
+        Returns
+        -------
+
+        fully_controllable : bool
+            Whether the system is fully controllable
         """
 
         controllability_matrix = np.concatenate([self._B] +
@@ -249,12 +259,19 @@ class PyDiffGame(ABC, Callable, Sequence):
                                                 axis=1)
         controllability_matrix_rank = np.linalg.matrix_rank(A=controllability_matrix,
                                                             tol=10e-5)
+        fully_controllable = controllability_matrix_rank == self._n
 
-        return controllability_matrix_rank == self._n
+        return fully_controllable
 
-    def is_LQR(self):
+    def is_LQR(self) -> bool:
         """
         Indicates whether the game has only one objective and is just a regular LQR
+
+        Returns
+        -------
+
+        is_lqr : bool
+            Whether the system is LQR
         """
 
         return len(self) == 1
@@ -302,12 +319,12 @@ class PyDiffGame(ABC, Callable, Sequence):
         x_T = self._x_T if self._x_T is not None else np.zeros_like(self._x_0)
         x_convergence_iterations = 0
 
-        with tqdm(total=PyDiffGame.__x_max_convergence_iterations) as x_progress_bar:
-            while (not x_converged) and x_convergence_iterations < PyDiffGame.__x_max_convergence_iterations:
+        with tqdm(total=self.__x_max_convergence_iterations) as x_progress_bar:
+            while (not x_converged) and x_convergence_iterations < self.__x_max_convergence_iterations:
                 x_convergence_iterations += 1
                 P_convergence_iterations = 0
 
-                while (not P_converged) and P_convergence_iterations < PyDiffGame.__p_max_convergence_iterations:
+                while (not P_converged) and P_convergence_iterations < self.__p_max_convergence_iterations:
                     P_convergence_iterations += 1
                     self._backward_time = np.linspace(start=self._T_f,
                                                       stop=self._T_f - self._delta,
@@ -356,7 +373,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         Returns
         ----------
 
-        decorated_f: callable
+        decorated_f: Callable
             A decorated version of the method requiring convergence
         """
 
@@ -388,7 +405,7 @@ class PyDiffGame(ABC, Callable, Sequence):
             The time axis information to plot
         temporal_variables: 2-d np.arrays of shape(L, n)
             The y-axis information to plot
-        is_P: boolean
+        is_P: bool
             Indicates whether to accommodate plotting for all the values in P_i or just for x
         title: str, optional
             The plot title to display
@@ -426,12 +443,29 @@ class PyDiffGame(ABC, Callable, Sequence):
                        prop={'size': int(120 / num_of_variables)})
 
         plt.grid()
-
         plt.show()
 
     def __get_temporal_state_variables_title(self,
                                              linear_system: Optional[bool] = True,
-                                             two_state_spaces: Optional[bool] = False):
+                                             two_state_spaces: Optional[bool] = False) -> str:
+        """
+        Returns the title of a temporal figure to plot
+
+        Parameters
+        ----------
+
+        linear_system: bool, optional
+            Whether the system is linear
+        two_state_spaces: bool, optional
+            Whether the plot is of two state spaces
+
+        Returns
+        -------
+
+        title : str
+            The title of the figure
+        """
+
         if two_state_spaces:
             title = f"{self._N}-Player Game"
         else:
@@ -487,8 +521,8 @@ class PyDiffGame(ABC, Callable, Sequence):
 
     @_post_convergence
     def __save_figure(self,
-                      figure_path: Optional[str | Path] = Path(fr'{os.getcwd()}/figures'),
-                      filename: Optional[str] = 'image0'):
+                      figure_path: Optional[str | Path] = Path(fr'{os.getcwd()}/{__default_figures_folder}'),
+                      filename: Optional[str] = f'{__default_figures_filename}0'):
         """
         Saves the current figure
 
@@ -511,9 +545,9 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         while figure_full_filename.is_file():
             curr_name = figure_full_filename.name
-            curr_num = int(curr_name.split('.png')[-2].split('image')[-1])
+            curr_num = int(curr_name.split('.png')[-2].split(self.__default_figures_filename)[-1])
             next_num = curr_num + 1
-            figure_full_filename.rename(fr'{figure_path}/image{next_num}.png')
+            figure_full_filename = Path(fr'{figure_path}/image{next_num}.png')
 
         self._fig.savefig(figure_full_filename)
 
@@ -528,7 +562,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         other: PyDiffGame
             Other converged differential game to augment the current one with
-        non_linear: boolean, optional
+        non_linear: bool, optional
             Indicates whether to augment the non-linear states or not
 
         Returns
@@ -571,7 +605,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         other: PyDiffGame
             Other converged differential game to plot along with the current one
-        non_linear: boolean, optional
+        non_linear: bool, optional
             Indicates whether to plot the non-linear states or not
         """
 
@@ -596,7 +630,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         Returns
         ----------
 
-        P_f: list of 2-d np.arrays, of len(N), of shape(n, n), solution of scipy's solve_are
+        P_f: list of 2-d numpy arrays, of len(N), of shape(n, n), solution of scipy's solve_are
             Final condition for the Riccati equation matrix
         """
 
@@ -652,6 +686,12 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         i: int
             The required index
+
+        Returns
+        ----------
+
+        P_f_i: 2-d numpy array of shape(n, n)
+            i'th element of the final condition matrices P_f
         """
 
         pass
@@ -698,7 +738,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         Returns
         ----------
 
-        is_stable: boolean
+        is_stable: bool
             Indicates whether the system has Lyapunov stability or not
         """
 
@@ -782,7 +822,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         Returns
         ----------
 
-        x_T_f: numpy 1-d array of shape(n)
+        x_T_f: 1-d numpy array of shape(n)
             Evaluated terminal state vector x(T_f)
         """
 
@@ -792,6 +832,24 @@ class PyDiffGame(ABC, Callable, Sequence):
     def __get_x_l_tilde(self,
                         x: np.array,
                         l: int) -> np.array:
+        """
+        Returns the state difference at the lth segment
+
+        Parameters
+        ----------
+
+        x: 1-d numpy array of shape(n)
+            The solved state vector to consider
+        l: int
+            The desired segment
+
+        Returns
+        ----------
+
+        x_l_tilde: 1-d numpy array of shape(n)
+            State difference at the lth segment
+        """
+
         x_l = x[l]
         x_l_tilde = self.x_T - x_l
 
@@ -803,6 +861,28 @@ class PyDiffGame(ABC, Callable, Sequence):
                           i: int,
                           l: int,
                           v_i_T: np.array) -> np.array:
+        """
+        Returns the ith virtual input difference at the lth segment
+
+        Parameters
+        ----------
+
+        x: 1-d numpy array of shape(n)
+            The solved state vector to consider
+        i: int
+            The desired input index
+        l: int
+            The desired segment
+        v_i_T: 1-d numpy array of shape(m_i)
+            The terminal value of the ith input
+
+        Returns
+        ----------
+
+        v_i_l_tilde: 1-d numpy array of shape(m_i)
+            ith virtual input difference at the lth segment
+        """
+
         x_l = x[l]
 
         K_i_l = self._get_K_i(i) if self.__continuous else self._get_K_i(i, l)
@@ -816,6 +896,26 @@ class PyDiffGame(ABC, Callable, Sequence):
                         x: np.array,
                         l: int,
                         x_l_tilde: np.array) -> np.array:
+        """
+        Returns the actual input difference at the lth segment
+
+        Parameters
+        ----------
+
+        x: 1-d numpy array of shape(n)
+            The solved state vector to consider
+        l: int
+            The desired segment
+        x_l_tilde: 1-d numpy array of shape(n)
+            The state difference at the lth segment
+
+        Returns
+        ----------
+
+        u_l_tilde: 1-d numpy array of shape(m)
+            Actual input difference at the lth segment
+        """
+
         if self.is_LQR():
             k_T = self._get_K_i(0) if self.__continuous else self._get_K_i(0, self._L - 1)
             u_l_tilde = - k_T @ x_l_tilde
@@ -842,6 +942,26 @@ class PyDiffGame(ABC, Callable, Sequence):
     def __get_x_and_u_l_tilde(self,
                               x: np.array,
                               l: int) -> (np.array, np.array):
+        """
+        Returns the state and actual input difference at the lth segment
+
+        Parameters
+        ----------
+
+        x: 1-d numpy array of shape(n)
+            The solved state vector to consider
+        l: int
+            The desired segment
+
+        Returns
+        ----------
+
+        x_l_tilde: 1-d numpy array of shape(n)
+            State difference at the lth segment
+        u_l_tilde: 1-d numpy array of shape(m)
+            Actual input difference at the lth segment
+        """
+
         x_l_tilde = self.__get_x_l_tilde(x=x,
                                          l=l)
         u_l_tilde = self.__get_u_l_tilde(x=x,
@@ -849,6 +969,29 @@ class PyDiffGame(ABC, Callable, Sequence):
                                          x_l_tilde=x_l_tilde)
 
         return x_l_tilde, u_l_tilde
+
+    def __get_x(self,
+                non_linear: bool) -> np.array:
+        """
+        Returns the desired state vector to consider
+
+        Parameters
+        ----------
+
+        non_linear: bool
+            Whether to return the non-linear state
+
+        Returns
+        ----------
+
+        x: 1-d numpy array of shape(n)
+            Desired state vector
+        """
+
+        x = self._x if not non_linear else self._x_non_linear.T
+        assert len(x) == self._L
+
+        return x
 
     @_post_convergence
     def get_cost(self,
@@ -875,10 +1018,15 @@ class PyDiffGame(ABC, Callable, Sequence):
             Indicates whether to calculate the cost with respect to the nonlinear state
         x_only: bool, optional
             Indicates whether to calculate the cost only with respect to x(t)
+
+        Returns
+        ----------
+
+        log_cost: float
+            log10 of the game cost
         """
 
-        x = self._x if not non_linear else self._x_non_linear.T
-        assert len(x) == self._L
+        x = self.__get_x(non_linear=non_linear)
 
         cost = 0
         Q = lqr_objective.Q
@@ -924,10 +1072,15 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         non_linear: bool, optional
             Indicates whether to calculate the cost with respect to the nonlinear state
+
+        Returns
+        ----------
+
+        log_cost: float
+            log10 of the agnostic game cost
         """
 
-        x = self._x_non_linear.T if non_linear else self._x
-        assert len(x) == self._L
+        x = self.__get_x(non_linear=non_linear)
 
         cost = sum((0.5 if l in [0, self._L - 1] else 1) * sum(y_l.T @ y_l for y_l in self.__get_x_and_u_l_tilde(x=x,
                                                                                                                  l=l))
@@ -944,6 +1097,19 @@ class PyDiffGame(ABC, Callable, Sequence):
                  print_eigenvalues: Optional[bool] = False):
         """
         Runs the game simulation
+
+        Parameters
+        ----------
+
+        plot_state_space: bool, optional
+            Whether to plot the solved game state space
+        save_figure: bool, optional
+            Whether to save the state space plot figure
+        print_characteristic_polynomials: bool, optional
+            Whether to print the characteristic polynomials of the matrices Q_i and R_ii for all 1 <= i <= N
+        print_eigenvalues: bool, optional
+            Whether to print the eigenvalues of the matrices Q_i and R_ii for all 1 <= i <= N
+
         """
 
         if print_characteristic_polynomials:
@@ -963,6 +1129,18 @@ class PyDiffGame(ABC, Callable, Sequence):
                     i: int) -> Objective:
         """
         Returns the i'th objective of the game
+
+        Parameters
+        ----------
+
+        i: int
+            The objective index to consider
+
+        Returns
+        ----------
+
+        o_i: Objective
+            i'th objective of the game
         """
 
         return self.__objectives[i]
@@ -970,6 +1148,12 @@ class PyDiffGame(ABC, Callable, Sequence):
     def __len__(self) -> int:
         """
         We define the length of a differential game to be its number of objectives (N)
+
+        Returns
+        ----------
+
+        len: int
+            The length of the game
         """
 
         return self._N
