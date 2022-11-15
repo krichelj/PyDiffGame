@@ -62,7 +62,7 @@ class PyDiffGame(ABC, Callable, Sequence):
     _L_default: Final[ClassVar[int]] = 1000
     _eta_default: Final[ClassVar[int]] = 3
     _g: Final[ClassVar[float]] = 9.81
-    __x_max_convergence_iterations: Final[ClassVar[int]] = 200
+    __x_max_convergence_iterations: Final[ClassVar[int]] = 100
     __p_max_convergence_iterations: Final[ClassVar[int]] = 50
 
     __default_figures_folder = 'figures'
@@ -805,7 +805,8 @@ class PyDiffGame(ABC, Callable, Sequence):
         if self._x_0 is not None:
             self._solve_state_space()
 
-    def __solve_game_simulate_state_space_and_plot(self):
+    def __solve_game_simulate_state_space_and_plot(self,
+                                                   plot_Mx: Optional[bool] = False):
         """
         Propagates the game through time, solves for it and plots the state with respect to time
         """
@@ -813,7 +814,11 @@ class PyDiffGame(ABC, Callable, Sequence):
         self.__solve_game_and_simulate_state_space()
 
         if self._x_0 is not None:
-            self.__plot_x()
+            self.plot_state_variables(state_variables=self._x)
+            # if plot_Mx:
+            #     self.plot_state_variables(state_variables=self._M self._x)
+            # else:
+            #     self.plot_state_variables(state_variables=self._x)
 
     def _simulate_curr_x_T(self) -> np.array:
         """

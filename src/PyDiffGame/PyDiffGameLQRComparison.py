@@ -133,14 +133,13 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
                 if agnostic_costs else game_i.get_cost(lqr_objective=self._lqr_objective,
                                                        non_linear=non_linear_costs,
                                                        x_only=x_only_costs)
-
             costs += [game_i_cost]
 
         costs = np.array(costs)
         maximal_cost_game = costs.argmax()
         is_max_lqr = self._games[maximal_cost_game].is_LQR()
 
-        print('\n' + colored(f"\nGame {maximal_cost_game + 1} has the most cost "
+        print('\n' + colored(f"\nGame {maximal_cost_game + 1} has the larger cost "
                              f"{'which is LQR! :)' if is_max_lqr else ' :('}\n",
                              'green' if is_max_lqr else 'red') + '#' * 50
               + '\n\n' + '\n'.join([f"Game {i + 1} {'non-linear ' if non_linear_costs else ''}"
@@ -163,7 +162,10 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
 
             for combo, submittal in tqdm(submittals.items(), total=len(submittals)):
                 values = combo[1:-1].split(delimiter)
-                print(f""""\n{colored(f"{delimiter.join([f'{n}: {v}' for n, v in zip(names, values)])}", 'blue')}""")
+                print_string = f""""\n{colored(f""
+                                               f"{delimiter.join([f'{n}: {v}' for n, v in zip(names, values)])}", 
+                                               'blue')}"""
+                print(print_string)
 
                 result = submittal.result()
                 results += [result]

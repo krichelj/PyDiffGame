@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import numpy as np
+import scipy as sp
 from time import time
-from numpy import pi, sin, cos
-from matplotlib.animation import FuncAnimation
+import matplotlib
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
-from matplotlib.lines import Line2D
-from scipy.integrate import solve_ivp
+
 from typing import Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
@@ -120,13 +118,14 @@ class InvertedPendulumComparison(PyDiffGameLQRComparison):
 
             x, theta, x_dot, theta_dot = x_t
 
-            theta_ddot = 1 / (self.__m_p * self.__l ** 2 + self.__I - (self.__m_p * self.__l) ** 2 * cos(theta) ** 2 /
-                              (self.__m_p + self.__m_c)) * (M_t - self.__m_p * self.__l *
-                                                            (cos(theta) / (self.__m_p + self.__m_c) *
-                                                             (F_t + self.__m_p * self.__l * sin(theta)
-                                                              * theta_dot ** 2) + PyDiffGame.g * sin(theta)))
-            x_ddot = 1 / (self.__m_p + self.__m_c) * (F_t + self.__m_p * self.__l * (sin(theta) * theta_dot ** 2 -
-                                                                                     cos(theta) * theta_ddot))
+            theta_ddot = 1 / (
+                    self.__m_p * self.__l ** 2 + self.__I - (self.__m_p * self.__l) ** 2 * np.cos(theta) ** 2 /
+                    (self.__m_p + self.__m_c)) * (M_t - self.__m_p * self.__l *
+                                                  (np.cos(theta) / (self.__m_p + self.__m_c) *
+                                                   (F_t + self.__m_p * self.__l * np.sin(theta)
+                                                    * theta_dot ** 2) + PyDiffGame.g * np.sin(theta)))
+            x_ddot = 1 / (self.__m_p + self.__m_c) * (F_t + self.__m_p * self.__l * (np.sin(theta) * theta_dot ** 2 -
+                                                                                     np.cos(theta) * theta_ddot))
             if isinstance(theta_ddot, np.ndarray):
                 theta_ddot = theta_ddot[0]
                 x_ddot = x_ddot[0]
@@ -136,11 +135,11 @@ class InvertedPendulumComparison(PyDiffGameLQRComparison):
 
             return non_linear_x
 
-        pendulum_state = solve_ivp(fun=nonlinear_state_space,
-                                   t_span=[0.0, game.T_f],
-                                   y0=game.x_0,
-                                   t_eval=game.forward_time,
-                                   rtol=game.epsilon)
+        pendulum_state = sp.integrate.solve_ivp(fun=nonlinear_state_space,
+                                                t_span=[0.0, game.T_f],
+                                                y0=game.x_0,
+                                                t_eval=game.forward_time,
+                                                rtol=game.epsilon)
 
         Y = pendulum_state.y
 
@@ -151,19 +150,19 @@ class InvertedPendulumComparison(PyDiffGameLQRComparison):
         return Y
 
     def __run_animation(self,
-                        i: int) -> (Line2D, Rectangle):
+                        i: int) -> (matplotlib.lines.Line2D, matplotlib.patches.Rectangle):
         game = self._games[i]
         game._x_non_linear = self.__simulate_non_linear_system(i=i,
                                                                plot=True)
         x_t, theta_t, x_dot_t, theta_dot_t = game._x_non_linear
 
-        pendulumArm = Line2D(xdata=self.__origin,
-                             ydata=self.__origin,
-                             color='r')
-        cart = Rectangle(xy=self.__origin,
-                         width=0.5,
-                         height=0.15,
-                         color='b')
+        pendulumArm = matplotlib.lines.Line2D(xdata=self.__origin,
+                                              ydata=self.__origin,
+                                              color='r')
+        cart = matplotlib.patches.Rectangle(xy=self.__origin,
+                                            width=0.5,
+                                            height=0.15,
+                                            color='b')
 
         fig = plt.figure()
         x_max = max(abs(max(x_t)), abs(min(x_t)))
@@ -175,16 +174,16 @@ class InvertedPendulumComparison(PyDiffGameLQRComparison):
                              ylim=(-square_side, square_side),
                              title=f"Inverted Pendulum {'LQR' if game.is_LQR() else 'Game'} Simulation")
 
-        def init() -> (Line2D, Rectangle):
+        def init() -> (matplotlib.lines.Line2D, matplotlib.patches.Rectangle):
             ax.add_patch(cart)
             ax.add_line(pendulumArm)
 
             return pendulumArm, cart
 
-        def animate(i: int) -> (Line2D, Rectangle):
+        def animate(i: int) -> (matplotlib.lines.Line2D, matplotlib.patches.Rectangle):
             x_i, theta_i = x_t[i], theta_t[i]
-            pendulum_x_coordinates = [x_i, x_i + self.__p_L * sin(theta_i)]
-            pendulum_y_coordinates = [0, - self.__p_L * cos(theta_i)]
+            pendulum_x_coordinates = [x_i, x_i + self.__p_L * np.sin(theta_i)]
+            pendulum_y_coordinates = [0, - self.__p_L * np.cos(theta_i)]
             pendulumArm.set_xdata(x=pendulum_x_coordinates)
             pendulumArm.set_ydata(y=pendulum_y_coordinates)
 
@@ -201,12 +200,12 @@ class InvertedPendulumComparison(PyDiffGameLQRComparison):
         frames = game.L
         interval = game.T_f - (t1 - t0)
 
-        anim = FuncAnimation(fig=fig,
-                             func=animate,
-                             init_func=init,
-                             frames=frames,
-                             interval=interval,
-                             blit=True)
+        anim = matplotlib.animationFuncAnimation(fig=fig,
+                                                 func=animate,
+                                                 init_func=init,
+                                                 frames=frames,
+                                                 interval=interval,
+                                                 blit=True)
         plt.show()
 
 
@@ -246,7 +245,7 @@ def multiprocess_worker_function(x_T: float,
 
 if __name__ == '__main__':
     x_Ts = [10 ** p for p in [2]]
-    theta_Ts = [pi / 2 + pi / n for n in [10]]
+    theta_Ts = [np.pi / 2 + np.pi / n for n in [10]]
     m_cs = [10 ** p for p in [1, 2]]
     m_ps = [10 ** p for p in [0, 1, 2]]
     p_Ls = [10 ** p for p in [0, 1]]
