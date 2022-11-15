@@ -31,7 +31,6 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
 
         if Ms is None:
             eigenvectors = np.linalg.eig(-M_inv_K)[1]
-
             Ms = [eigenvector.reshape(1, N) / eigenvector[0] for eigenvector in eigenvectors]
 
         A = np.block([[N_z, N_e],
@@ -101,7 +100,7 @@ def multiprocess_worker_function(N: int,
     is_max_lqr = masses_with_springs(plot_state_spaces=True,
                                      save_figure=True,
                                      agnostic_costs=False,
-                                     x_only_costs=True)
+                                     x_only_costs=False)
 
     return int(is_max_lqr)
 
@@ -109,9 +108,9 @@ def multiprocess_worker_function(N: int,
 if __name__ == '__main__':
     Ns = [2]
     ks = [10]
-    ms = [100]
-    qs = [100]
-    rs = [1]
+    ms = [5]
+    qs = [1]
+    rs = [10]
 
     epsilon_xs = [10e-5]
     epsilon_Ps = [10e-7]
