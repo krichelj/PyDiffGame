@@ -83,8 +83,7 @@ def multiprocess_worker_function(N: int,
                                  q: float,
                                  r: float,
                                  epsilon_x: float,
-                                 epsilon_P: float) -> int:
-
+                                 epsilon_P: float) -> (bool, float):
     x_0 = np.array([10 * i for i in range(1, N + 1)] + [0] * N)
     x_T = x_0 * 10
 
@@ -97,23 +96,23 @@ def multiprocess_worker_function(N: int,
                                                       x_T=x_T,
                                                       epsilon_x=epsilon_x,
                                                       epsilon_P=epsilon_P)
-    is_max_lqr = masses_with_springs(plot_state_spaces=True,
-                                     save_figure=True,
-                                     agnostic_costs=False,
-                                     x_only_costs=False)
+    is_max_lqr, cost_difference = masses_with_springs(plot_state_spaces=True,
+                                                      save_figure=True,
+                                                      agnostic_costs=False,
+                                                      x_only_costs=False)
 
-    return int(is_max_lqr)
+    return is_max_lqr, cost_difference
 
 
 if __name__ == '__main__':
     Ns = [2]
     ks = [10]
-    ms = [5]
-    qs = [1]
-    rs = [10]
+    ms = [7]
+    qs = [200]
+    rs = [1]
 
-    epsilon_xs = [10e-5]
-    epsilon_Ps = [10e-7]
+    epsilon_xs = [1e-20]
+    epsilon_Ps = epsilon_xs
     params = [Ns, ks, ms, qs, rs, epsilon_xs, epsilon_Ps]
     PyDiffGameLQRComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
                                              values=params)
