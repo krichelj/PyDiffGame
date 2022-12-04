@@ -231,8 +231,8 @@ class PyDiffGame(ABC, Callable, Sequence):
         if not all([P_f_i.shape[0] == P_f_i.shape[1] == self._n for P_f_i in self._P_f]):
             raise ValueError(f'P_f must be a sequence of 2-d positive semi-definite numpy arrays with shape nxn = '
                              f'{self._n}x{self._n}')
-        if not all([eig >= 0 for eig_set in [np.linalg.eigvals(P_f_i) for P_f_i in self._P_f] for eig in eig_set]):
-            warnings.warn("Warning: there is a matrix in P_f that has negative eigenvalues. Convergence may not occur")
+        # if not all([eig >= 0 for eig_set in [np.linalg.eigvals(P_f_i) for P_f_i in self._P_f] for eig in eig_set]):
+        #     warnings.warn("Warning: there is a matrix in P_f that has negative eigenvalues. Convergence may not occur")
         if self.__state_variables_names and len(self.__state_variables_names) != self._n:
             raise ValueError(f'The parameter state_variables_names must be of length n = {self._n}')
 
@@ -806,7 +806,8 @@ class PyDiffGame(ABC, Callable, Sequence):
             self._solve_state_space()
 
     def __solve_game_simulate_state_space_and_plot(self,
-                                                   plot_Mx: Optional[bool] = False):
+                                                   # plot_Mx: Optional[bool] = False
+                                                   ):
         """
         Propagates the game through time, solves for it and plots the state with respect to time
         """
@@ -1000,7 +1001,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
     @_post_convergence
     def get_cost(self,
-                 lqr_objective: LQRObjective,
+                 lqr_objective: Objective,
                  non_linear: Optional[bool] = False,
                  x_only: Optional[bool] = False) -> float:
         """
@@ -1011,8 +1012,6 @@ class PyDiffGame(ABC, Callable, Sequence):
         and the corresponding Trapezoidal rule approximation:
         J ~ delta / 2 sum_{l=1}^{L} [ J(l) + J(l - 1) ]
           = delta * [ sum_{l=1}^{L-1} J(l) + 1/2 ( J(0) + J(L) ) ]
-
-        applied with log10 at the end for scaling
 
         Parameters
         ----------
@@ -1028,7 +1027,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         ----------
 
         log_cost: float
-            log10 of the game cost
+            game cost
         """
 
         x = self.__get_x(non_linear=non_linear)
@@ -1053,9 +1052,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
             cost += cost_l
 
-        log_cost = math.log10(cost)
-
-        return log_cost
+        return cost
 
     @_post_convergence
     def get_agnostic_costs(self,
@@ -1070,8 +1067,6 @@ class PyDiffGame(ABC, Callable, Sequence):
         J ~ delta / 2 sum_{l=1}^L [ J(l) + J(l - 1) ] =
             delta * [ sum_{l=1}^{L-1} J(l) + 1/2 ( J(0) + J(L) ) ]
 
-        applied with log10 at the end for scaling
-
         Parameters
         ----------
 
@@ -1082,18 +1077,17 @@ class PyDiffGame(ABC, Callable, Sequence):
         ----------
 
         log_cost: float
-            log10 of the agnostic game cost
+            agnostic game cost
         """
 
         x = self.__get_x(non_linear=non_linear)
 
-        cost = sum((0.5 if l in [0, self._L - 1] else 1) * sum(y_l.T @ y_l for y_l in self.__get_x_and_u_l_tilde(x=x,
-                                                                                                                 l=l))
+        cost = sum((0.5 if l in [0, self._L - 1] else 1) * sum(y_l.T @ y_l
+                                                               for y_l in self.__get_x_and_u_l_tilde(x=x,
+                                                                                                     l=l))
                    for l in range(0, self._L)) * self._delta
 
-        log_cost = math.log10(cost)
-
-        return log_cost
+        return cost
 
     def __call__(self,
                  plot_state_space: Optional[bool] = True,

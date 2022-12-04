@@ -1,6 +1,7 @@
 import numpy as np
 from tqdm import tqdm
 from time import time
+import math
 from termcolor import colored
 import itertools
 from concurrent.futures import ProcessPoolExecutor
@@ -110,7 +111,7 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
                  agnostic_costs: Optional[bool] = False,
                  x_only_costs: Optional[bool] = False,
                  print_characteristic_polynomials: Optional[bool] = False,
-                 print_eigenvalues: Optional[bool] = False) -> bool:
+                 print_eigenvalues: Optional[bool] = False) -> (bool, float):
         """
         Runs the comparison
         """
@@ -137,44 +138,54 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
 
         costs = np.array(costs)
         maximal_cost_game = costs.argmax()
-        is_max_lqr = self._games[maximal_cost_game].is_LQR()
 
-        print('\n' + colored(f"\nGame {maximal_cost_game + 1} has the larger cost "
+        is_max_lqr = self._games[maximal_cost_game].is_LQR()
+        cost_difference = np.max(costs) - np.min(costs) if is_max_lqr else 0
+
+        print('\n' + colored(text=f"\nGame {maximal_cost_game + 1} has the larger cost "
                              f"{'which is LQR! :)' if is_max_lqr else ' :('}\n",
-                             'green' if is_max_lqr else 'red') + '#' * 50
+                             color='green' if is_max_lqr else 'red') + '#' * 50
               + '\n\n' + '\n'.join([f"Game {i + 1} {'non-linear ' if non_linear_costs else ''}"
                                     f"{'agnostic ' if agnostic_costs else ''}"
-                                    f"cost: 10^{round(cost_i, 3)}" for i, cost_i in enumerate(costs)]))
+                                    f"cost: 10^{round(math.log10(cost_i), 3)}" for i, cost_i in enumerate(costs)]))
 
-        return is_max_lqr
+        return is_max_lqr, cost_difference
 
     @staticmethod
-    def run_multiprocess(multiprocess_worker_function: Callable[[Any], int],
+    def run_multiprocess(multiprocess_worker_function: Callable[[Any], tuple[bool, float]],
                          values: Sequence[Sequence]):
         t_start = time()
         combos = list(itertools.product(*values))
 
         with ProcessPoolExecutor() as executor:
             submittals = {str(combo): executor.submit(multiprocess_worker_function, *combo) for combo in combos}
+
             results = []
+            cost_differences = {}
             delimiter = ', '
             names = inspect.signature(multiprocess_worker_function).parameters.keys()
 
             for combo, submittal in tqdm(submittals.items(), total=len(submittals)):
                 values = combo[1:-1].split(delimiter)
-                print_string = f""""\n{colored(f""
-                                               f"{delimiter.join([f'{n}: {v}' for n, v in zip(names, values)])}", 
-                                               'blue')}"""
-                print(print_string)
+                print_string = f"""{colored(text=f"{delimiter.join([f'{n}: {v}' for n, v in zip(names, values)])}", 
+                                            color='blue')}"""
+                # print(print_string)
 
-                result = submittal.result()
-                results += [result]
+                is_max_lqr, cost_difference = submittal.result()
+                results += [int(is_max_lqr)]
+
+                if cost_difference > 0:
+                    cost_differences[print_string] = cost_difference
 
         results = np.array(results)
         wins = results.sum()
         games_played = len(results)
+        best_combo_index = np.array(list(cost_differences.values())).argmax()
+        best_combo_print_string, best_combo_score_difference = list(cost_differences.items())[best_combo_index]
 
         print(f'{wins}/{games_played} which is {round(wins / games_played * 100, 3)}%')
+        print(f'Best combo is\n{best_combo_print_string}'
+              f'\nwith a difference of 10^{round(math.log10(best_combo_score_difference), 3)}')
         print(f'Total time: {time() - t_start}')
 
     def __getitem__(self,
