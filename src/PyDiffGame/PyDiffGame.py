@@ -8,7 +8,6 @@ import math
 import matplotlib.pyplot as plt
 import scipy as sp
 import sympy
-
 import warnings
 from typing import Callable, Final, ClassVar, Optional, Sequence
 from abc import ABC, abstractmethod
@@ -59,6 +58,7 @@ class PyDiffGame(ABC, Callable, Sequence):
     __T_f_default: Final[ClassVar[int]] = 10
     _epsilon_x_default: Final[ClassVar[float]] = 10e-7
     _epsilon_P_default: Final[ClassVar[float]] = 10e-7
+    _eigvals_tol: Final[ClassVar[float]] = 10e-17
     _L_default: Final[ClassVar[int]] = 1000
     _eta_default: Final[ClassVar[int]] = 3
     _g: Final[ClassVar[float]] = 9.81
@@ -133,11 +133,13 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         self._Ms = Ms
 
-        if not self._Ms and self.__objectives:
+        if self._Ms is None and self.__objectives is not None:
             self._Ms = [o.M_i for o in self.__objectives if isinstance(o, GameObjective)]
 
+        self._M = None
+
         if self._Bs is None:
-            if self._Ms and len(self._Ms):
+            if self._Ms is not None and len(self._Ms):
                 self._M = np.concatenate(self._Ms, axis=0)
                 self._M_inv = np.linalg.inv(self._M)
                 l = 0
@@ -146,7 +148,8 @@ class PyDiffGame(ABC, Callable, Sequence):
                 for M_i in self._Ms:
                     m_i = M_i.shape[0]
                     M_i_tilde = self._M_inv[:, l:l + m_i]
-                    B_i = (self._B @ M_i_tilde).reshape((self._n, m_i))
+                    BM_i_tilde = self._B @ M_i_tilde
+                    B_i = BM_i_tilde.reshape((self._n, m_i))
                     self._Bs += [B_i]
                     l += m_i
             else:
@@ -218,7 +221,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         if not all([Q_i.shape == (self._n, self._n) for Q_i in self._Qs]):
             raise ValueError(f'Q must be a sequence of square 2-d positive semi-definite numpy arrays with shape nxn '
                              f'= {self._n}x{self._n}')
-        if not all([all([e_i >= 0 or self.__epsilon_x > abs(e_i) >= 0 for e_i in np.linalg.eigvals(Q_i)])
+        if not all([all([e_i >= 0 or PyDiffGame._eigvals_tol > abs(e_i) >= 0 for e_i in np.linalg.eigvals(Q_i)])
                     for Q_i in self._Qs]):
             raise ValueError('Q must contain positive semi-definite numpy arrays')
 
@@ -226,13 +229,14 @@ class PyDiffGame(ABC, Callable, Sequence):
             raise ValueError(f'x_0 must be a 1-d numpy array with length n = {self._n}')
         if self._x_T is not None and self._x_T.shape != (self._n,):
             raise ValueError(f'x_T must be a 1-d numpy array with length n= {self._n}')
-        if self._T_f and self._T_f <= 0:
+        if self._T_f is not None and self._T_f <= 0:
             raise ValueError('T_f must be a positive real number')
         if not all([P_f_i.shape[0] == P_f_i.shape[1] == self._n for P_f_i in self._P_f]):
             raise ValueError(f'P_f must be a sequence of 2-d positive semi-definite numpy arrays with shape nxn = '
                              f'{self._n}x{self._n}')
         # if not all([eig >= 0 for eig_set in [np.linalg.eigvals(P_f_i) for P_f_i in self._P_f] for eig in eig_set]):
-        #     warnings.warn("Warning: there is a matrix in P_f that has negative eigenvalues. Convergence may not occur")
+        #     warnings.warn("Warning: there is a matrix in P_f that has negative eigenvalues.
+        #     Convergence may not occur")
         if self.__state_variables_names and len(self.__state_variables_names) != self._n:
             raise ValueError(f'The parameter state_variables_names must be of length n = {self._n}')
 
@@ -348,8 +352,9 @@ class PyDiffGame(ABC, Callable, Sequence):
                     difference = x_T - curr_x_T
                     difference_norm = difference.T @ difference
                     curr_x_T_norm = curr_x_T.T @ curr_x_T
-                    convergence_ratio = difference_norm / curr_x_T_norm
-                    x_converged = convergence_ratio < self.__epsilon_x
+                    if curr_x_T_norm > 0:
+                        convergence_ratio = difference_norm / curr_x_T_norm
+                        x_converged = convergence_ratio < self.__epsilon_x
                     curr_iteration_T_f += 1
                     self._T_f = curr_iteration_T_f
                     self._forward_time = np.linspace(start=0,
@@ -394,6 +399,7 @@ class PyDiffGame(ABC, Callable, Sequence):
                                   temporal_variables: np.array,
                                   is_P: bool,
                                   title: Optional[str] = None,
+                                  output_variables_names: Optional[Sequence[str]] = None,
                                   two_state_spaces: Optional[bool] = False):
         """
         Displays plots for the state variables with respect to time and the convergence of the values of P
@@ -428,6 +434,8 @@ class PyDiffGame(ABC, Callable, Sequence):
             if is_P:
                 labels = ['${P' + str(i) + '}_{' + str(j) + str(k) + '}$' for i in range(1, self._N + 1)
                           for j in variables_range for k in variables_range]
+            elif output_variables_names is not None:
+                labels = output_variables_names
             elif self.__state_variables_names is not None:
                 if two_state_spaces:
                     labels = [f'${name}_{1}$' for name in self.__state_variables_names] + \
@@ -440,7 +448,7 @@ class PyDiffGame(ABC, Callable, Sequence):
             plt.legend(labels=labels,
                        loc='upper left' if is_P else 'best',
                        ncol=int(num_of_variables / 2),
-                       prop={'size': int(120 / num_of_variables)})
+                       prop={'size': int(100 / num_of_variables)})
 
         plt.grid()
         plt.show()
@@ -479,7 +487,8 @@ class PyDiffGame(ABC, Callable, Sequence):
 
     def plot_state_variables(self,
                              state_variables: np.array,
-                             linear_system: Optional[bool] = True):
+                             linear_system: Optional[bool] = True,
+                             output_variables_names: Optional[Sequence[str]] = None,):
         """
         Displays plots for the state variables with respect to time
 
@@ -490,12 +499,15 @@ class PyDiffGame(ABC, Callable, Sequence):
             The temporal state variables y-axis information to plot
         linear_system: bool, optional
             Indicates whether the system is linear or not
+        output_variables_names: optional
+            Names of the output variables
         """
 
         self.__plot_temporal_variables(t=self._forward_time,
                                        temporal_variables=state_variables,
                                        is_P=False,
-                                       title=self.__get_temporal_state_variables_title(linear_system=linear_system))
+                                       title=self.__get_temporal_state_variables_title(linear_system=linear_system),
+                                       output_variables_names=output_variables_names)
 
     def __plot_x(self):
         """
@@ -505,7 +517,8 @@ class PyDiffGame(ABC, Callable, Sequence):
         self.plot_state_variables(state_variables=self._x)
 
     def __plot_y(self,
-                 C: np.array):
+                 C: np.array,
+                 output_variables_names: Optional[Sequence[str]] = None):
         """
         Plots an output vector y = C x^T wth respect to time
 
@@ -517,7 +530,8 @@ class PyDiffGame(ABC, Callable, Sequence):
         """
 
         y = C @ self._x.T
-        self.plot_state_variables(state_variables=y.T)
+        self.plot_state_variables(state_variables=y.T,
+                                  output_variables_names=output_variables_names)
 
     @_post_convergence
     def __save_figure(self,
@@ -806,8 +820,9 @@ class PyDiffGame(ABC, Callable, Sequence):
             self._solve_state_space()
 
     def __solve_game_simulate_state_space_and_plot(self,
-                                                   # plot_Mx: Optional[bool] = False
-                                                   ):
+                                                   plot_Mx: Optional[bool] = False,
+                                                   M: Optional[np.array] = None,
+                                                   output_variables_names: Optional[Sequence[str]] = None):
         """
         Propagates the game through time, solves for it and plots the state with respect to time
         """
@@ -815,11 +830,13 @@ class PyDiffGame(ABC, Callable, Sequence):
         self.__solve_game_and_simulate_state_space()
 
         if self._x_0 is not None:
-            self.plot_state_variables(state_variables=self._x)
-            # if plot_Mx:
-            #     self.plot_state_variables(state_variables=self._M self._x)
-            # else:
-            #     self.plot_state_variables(state_variables=self._x)
+            self.__plot_x()
+
+            if plot_Mx:
+                C = np.kron(a=np.eye(2),
+                            b=self._M if self._M is not None else M)
+                self.__plot_y(C=C,
+                              output_variables_names=output_variables_names)
 
     def _simulate_curr_x_T(self) -> np.array:
         """
@@ -1091,6 +1108,9 @@ class PyDiffGame(ABC, Callable, Sequence):
 
     def __call__(self,
                  plot_state_space: Optional[bool] = True,
+                 plot_Mx: Optional[bool] = False,
+                 M: Optional[np.array] = None,
+                 output_variables_names: Optional[Sequence[str]] = None,
                  save_figure: Optional[bool] = False,
                  print_characteristic_polynomials: Optional[bool] = False,
                  print_eigenvalues: Optional[bool] = False):
@@ -1117,7 +1137,9 @@ class PyDiffGame(ABC, Callable, Sequence):
             self.__print_eigenvalues()
 
         if plot_state_space:
-            self.__solve_game_simulate_state_space_and_plot()
+            self.__solve_game_simulate_state_space_and_plot(plot_Mx=plot_Mx,
+                                                            M=M,
+                                                            output_variables_names=output_variables_names)
 
             if save_figure:
                 self.__save_figure()
