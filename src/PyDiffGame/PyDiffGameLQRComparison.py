@@ -1,7 +1,6 @@
 import numpy as np
 from tqdm import tqdm
 from time import time
-import math
 from termcolor import colored
 import itertools
 from concurrent.futures import ProcessPoolExecutor
@@ -35,6 +34,7 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
     def __init__(self,
                  args: dict[str, Any],
                  games_objectives: Sequence[Sequence[GameObjective]],
+                 M: np.array,
                  continuous: bool = True):
         GameClass = ContinuousPyDiffGame if continuous else DiscretePyDiffGame
 
@@ -43,6 +43,7 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
 
         self._games = {}
         self._lqr_objective = None
+        self.__M = M
 
         for i, game_i_objectives in enumerate(games_objectives):
             game_i = GameClass(**self.__args | {'objectives': [o for o in game_i_objectives]})
@@ -105,54 +106,30 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
 
     def __call__(self,
                  plot_state_spaces: Optional[bool] = True,
+                 plot_Mx: Optional[bool] = False,
+                 output_variables_names: Optional[Sequence[str]] = None,
                  save_figure: Optional[bool] = False,
                  run_animations: Optional[bool] = True,
-                 non_linear_costs: Optional[bool] = False,
-                 agnostic_costs: Optional[bool] = False,
-                 x_only_costs: Optional[bool] = False,
                  print_characteristic_polynomials: Optional[bool] = False,
-                 print_eigenvalues: Optional[bool] = False) -> (bool, float):
+                 print_eigenvalues: Optional[bool] = False):
         """
         Runs the comparison
         """
 
-        costs = []
-
         for i, game_i in self._games.items():
             game_i(plot_state_space=plot_state_spaces,
+                   plot_Mx=plot_Mx,
+                   M=self.__M,
+                   output_variables_names=output_variables_names,
                    save_figure=save_figure,
                    print_characteristic_polynomials=print_characteristic_polynomials,
                    print_eigenvalues=print_eigenvalues)
 
             if run_animations:
                 self.__run_animation(i=i)
-            if non_linear_costs:
-                game_i._x_non_linear = self.__simulate_non_linear_system(i=i,
-                                                                         plot=False)
-
-            game_i_cost = game_i.get_agnostic_costs(non_linear=non_linear_costs) \
-                if agnostic_costs else game_i.get_cost(lqr_objective=self._lqr_objective,
-                                                       non_linear=non_linear_costs,
-                                                       x_only=x_only_costs)
-            costs += [game_i_cost]
-
-        costs = np.array(costs)
-        maximal_cost_game = costs.argmax()
-
-        is_max_lqr = self._games[maximal_cost_game].is_LQR()
-        cost_difference = np.max(costs) - np.min(costs) if is_max_lqr else 0
-
-        print('\n' + colored(text=f"\nGame {maximal_cost_game + 1} has the larger cost "
-                             f"{'which is LQR! :)' if is_max_lqr else ' :('}\n",
-                             color='green' if is_max_lqr else 'red') + '#' * 50
-              + '\n\n' + '\n'.join([f"Game {i + 1} {'non-linear ' if non_linear_costs else ''}"
-                                    f"{'agnostic ' if agnostic_costs else ''}"
-                                    f"cost: 10^{round(math.log10(cost_i), 3)}" for i, cost_i in enumerate(costs)]))
-
-        return is_max_lqr, cost_difference
 
     @staticmethod
-    def run_multiprocess(multiprocess_worker_function: Callable[[Any], tuple[bool, float]],
+    def run_multiprocess(multiprocess_worker_function: Callable[[Any], None],
                          values: Sequence[Sequence]):
         t_start = time()
         combos = list(itertools.product(*values))
@@ -160,32 +137,16 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
         with ProcessPoolExecutor() as executor:
             submittals = {str(combo): executor.submit(multiprocess_worker_function, *combo) for combo in combos}
 
-            results = []
-            cost_differences = {}
             delimiter = ', '
             names = inspect.signature(multiprocess_worker_function).parameters.keys()
 
-            for combo, submittal in tqdm(submittals.items(), total=len(submittals)):
+            for combo, submittal in tqdm(iterable=submittals.items(), total=len(submittals)):
                 values = combo[1:-1].split(delimiter)
-                print_string = f"""{colored(text=f"{delimiter.join([f'{n}: {v}' for n, v in zip(names, values)])}", 
+                print_str = f"""{colored(text=f"{delimiter.join([f'{n}={v}' for n, v in zip(names, values)])}", 
                                             color='blue')}"""
-                # print(print_string)
+                print(print_str)
+                submittal.result()
 
-                is_max_lqr, cost_difference = submittal.result()
-                results += [int(is_max_lqr)]
-
-                if cost_difference > 0:
-                    cost_differences[print_string] = cost_difference
-
-        results = np.array(results)
-        wins = results.sum()
-        games_played = len(results)
-        best_combo_index = np.array(list(cost_differences.values())).argmax()
-        best_combo_print_string, best_combo_score_difference = list(cost_differences.items())[best_combo_index]
-
-        print(f'{wins}/{games_played} which is {round(wins / games_played * 100, 3)}%')
-        print(f'Best combo is\n{best_combo_print_string}'
-              f'\nwith a difference of 10^{round(math.log10(best_combo_score_difference), 3)}')
         print(f'Total time: {time() - t_start}')
 
     def __getitem__(self,
