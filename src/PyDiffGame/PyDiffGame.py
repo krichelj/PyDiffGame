@@ -55,15 +55,15 @@ class PyDiffGame(ABC, Callable, Sequence):
     """
 
     # class fields
-    __T_f_default: Final[ClassVar[int]] = 10
+    __T_f_default: Final[ClassVar[int]] = 5
     _epsilon_x_default: Final[ClassVar[float]] = 10e-7
     _epsilon_P_default: Final[ClassVar[float]] = 10e-7
-    _eigvals_tol: Final[ClassVar[float]] = 10e-17
+    _eigvals_tol: Final[ClassVar[float]] = 10e-10
     _L_default: Final[ClassVar[int]] = 1000
     _eta_default: Final[ClassVar[int]] = 3
     _g: Final[ClassVar[float]] = 9.81
-    __x_max_convergence_iterations: Final[ClassVar[int]] = 100
-    __p_max_convergence_iterations: Final[ClassVar[int]] = 50
+    __x_max_convergence_iterations: Final[ClassVar[int]] = 20
+    __p_max_convergence_iterations: Final[ClassVar[int]] = 20
 
     __default_figures_folder = 'figures'
     __default_figures_filename = 'image'
@@ -349,12 +349,14 @@ class PyDiffGame(ABC, Callable, Sequence):
 
                 if self._x_0 is not None:
                     curr_x_T = self._simulate_curr_x_T()
-                    difference = x_T - curr_x_T
-                    difference_norm = difference.T @ difference
+                    x_T_difference = x_T - curr_x_T
+                    x_T_difference_norm = x_T_difference.T @ x_T_difference
                     curr_x_T_norm = curr_x_T.T @ curr_x_T
+
                     if curr_x_T_norm > 0:
-                        convergence_ratio = difference_norm / curr_x_T_norm
+                        convergence_ratio = x_T_difference_norm / curr_x_T_norm
                         x_converged = convergence_ratio < self.__epsilon_x
+
                     curr_iteration_T_f += 1
                     self._T_f = curr_iteration_T_f
                     self._forward_time = np.linspace(start=0,
@@ -448,7 +450,7 @@ class PyDiffGame(ABC, Callable, Sequence):
             plt.legend(labels=labels,
                        loc='upper left' if is_P else 'best',
                        ncol=int(num_of_variables / 2),
-                       prop={'size': int(100 / num_of_variables)})
+                       prop={'size': int(80 / num_of_variables)})
 
         plt.grid()
         plt.show()
@@ -840,7 +842,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
     def _simulate_curr_x_T(self) -> np.array:
         """
-        Evaluates the space vector at the terminal time T_f
+        Evaluates the current value of the state space vector at the terminal time T_f
 
         Returns
         ----------
