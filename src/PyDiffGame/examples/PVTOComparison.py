@@ -45,18 +45,20 @@ class PVTOLComparison(PyDiffGameLQRComparison):
         M = I
         Ms = [M[0, :].reshape(1, M.shape[1]), M[1, :].reshape(1, M.shape[1])]
 
-        q_x = 10
-        q_y = 10
-        q_theta = 10
+        q_s = 1
+        q_l = q_s * 10000
 
-        r_x = 1
-        r_theta = 1
+        r_y = 10000
+        r_x_theta = 10
 
-        Qs = [np.diag([0, q_y, 0] + [0] * 3), np.diag([q_x, 0, q_theta] + [0] * 3)]
-        Rs = [np.array([r_x]), np.array([r_theta])]
+        Q_y = np.diag([q_s, q_l, q_s]*2)
+        Q_x_theta = np.diag([q_l, q_s, q_l]*2)
 
-        R_lqr = r * I
-        Q_lqr = np.diag([q_x, q_y, q_theta] + [0] * 3)
+        Qs = [Q_y, Q_x_theta]
+        Rs = [np.array([r_y]), np.array([r_x_theta])]
+
+        R_lqr = np.diag([r_y, r_x_theta])
+        Q_lqr = np.diag([q_s, q_l, q_s] * 2)
 
         variables = ['x', 'y', '\\theta']
 
@@ -90,9 +92,10 @@ class PVTOLComparison(PyDiffGameLQRComparison):
 
 
 if __name__ == '__main__':
-    epsilon_x, epsilon_P = 10 ** (-4), 10 ** (-4)
+    epsilon_x, epsilon_P = 10 ** (-6), 10 ** (-6)
 
     x_0 = np.zeros((6,))
+    # x_0 = np.array([-10, 0] + [0] * 4)
     x_d = 10
     y_d = 50
     x_T = np.array([x_d, y_d] + [0] * 4)
@@ -102,4 +105,5 @@ if __name__ == '__main__':
                             epsilon_x=epsilon_x,
                             epsilon_P=epsilon_P)
     pvtol(plot_state_spaces=True,
-          save_figure=True)
+          save_figure=True
+          )
