@@ -94,8 +94,8 @@ def multiprocess_worker_function(N: int,
                                  epsilon_P: float):
     x_0_vals = [10 * i for i in range(1, N + 1)]
     x_0 = np.array(x_0_vals + [0] * N)
-    x_T = np.array(list(reversed([x ** 3 for x in x_0_vals])) + [0] * N)
-    # x_T = 10 * x_0
+    # x_T = np.array(list(reversed([x ** 2 for x in x_0_vals])) + [0] * N)
+    x_T = 10 * x_0
 
     masses_with_springs = MassesWithSpringsComparison(N=N,
                                                       m=m,
@@ -111,15 +111,15 @@ def multiprocess_worker_function(N: int,
     masses_with_springs(plot_state_spaces=True,
                         plot_Mx=True,
                         output_variables_names=output_variables_names,
-                        save_figure=True
+                        # save_figure=True
                         )
 
 
 if __name__ == '__main__':
-    Ns = [8]
+    Ns = [2]
     ks = [10]
     ms = [50]
-    qs = [[10 * (10 ** (N - (i+1))) for i in range(N)] for N in Ns]
+    qs = [[50 * (10 ** (N - (i+1))) for i in range(N)] for N in Ns]
     rs = [1]
     epsilon_xs = [10 ** (-8)]
     epsilon_Ps = [10 ** (-8)]

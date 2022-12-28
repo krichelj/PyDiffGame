@@ -58,7 +58,7 @@ class PyDiffGame(ABC, Callable, Sequence):
     __T_f_default: Final[ClassVar[int]] = 5
     _epsilon_x_default: Final[ClassVar[float]] = 10e-7
     _epsilon_P_default: Final[ClassVar[float]] = 10e-7
-    _eigvals_tol: Final[ClassVar[float]] = 10e-10
+    _eigvals_tol: Final[ClassVar[float]] = 10e-7
     _L_default: Final[ClassVar[int]] = 1000
     _eta_default: Final[ClassVar[int]] = 3
     _g: Final[ClassVar[float]] = 9.81
@@ -834,8 +834,9 @@ class PyDiffGame(ABC, Callable, Sequence):
         if self._x_0 is not None:
             self.__plot_x()
 
-            if plot_Mx:
-                C = np.kron(a=np.eye(2),
+            if plot_Mx and self._n % self._m == 0:
+                a_size = int(self._n / self._m)
+                C = np.kron(a=np.eye(a_size),
                             b=self._M if self._M is not None else M)
                 self.__plot_y(C=C,
                               output_variables_names=output_variables_names)
@@ -1142,7 +1143,6 @@ class PyDiffGame(ABC, Callable, Sequence):
             self.__solve_game_simulate_state_space_and_plot(plot_Mx=plot_Mx,
                                                             M=M,
                                                             output_variables_names=output_variables_names)
-
             if save_figure:
                 self.__save_figure()
         else:
