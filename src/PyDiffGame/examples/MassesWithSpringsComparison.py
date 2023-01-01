@@ -42,7 +42,6 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
               if isinstance(q, (int, float)) else
               np.diag([0.0] * i + [q[i]] + [0.0] * (N - 1) + [q[i]] + [0.0] * (N - i - 1)) for i in range(N)]
 
-
         # Qs = [np.array([[int(i == j)]*2*N for j in range(2 * N)]) for i in range(N)]
         # Qs = [Qs[i].T + Qs[i] - np.diag([0] * i + [1] + [0]*(N - i + 1)) for i in range(N)]
 
@@ -106,8 +105,8 @@ def multiprocess_worker_function(N: int,
                                                       x_T=x_T,
                                                       epsilon_x=epsilon_x,
                                                       epsilon_P=epsilon_P)
-    # output_variables_names = ['$x_1 + x_2$', '$x_1 - x_2$', '$\\dot{x}_1 + \\dot{x}_2$', '$\\dot{x}_1 - \\dot{x}_2$']
-    output_variables_names = [f'$n_{i + 1}$' for i in range(N)] + ['$\\dot{n}_{' + str(i + 1) + '}$' for i in range(N)]
+    output_variables_names = ['$x_1 + x_2$', '$x_1 - x_2$', '$\\dot{x}_1 + \\dot{x}_2$', '$\\dot{x}_1 - \\dot{x}_2$']
+    # output_variables_names = [f'$n_{i + 1}$' for i in range(N)] + ['$\\dot{n}_{' + str(i + 1) + '}$' for i in range(N)]
     masses_with_springs(plot_state_spaces=True,
                         plot_Mx=True,
                         output_variables_names=output_variables_names,
@@ -119,7 +118,7 @@ if __name__ == '__main__':
     Ns = [2]
     ks = [10]
     ms = [50]
-    qs = [[50 * (10 ** (N - (i+1))) for i in range(N)] for N in Ns]
+    qs = [[50 * (10 ** ((i+1))) for i in range(N)] for N in Ns]
     rs = [1]
     epsilon_xs = [10 ** (-8)]
     epsilon_Ps = [10 ** (-8)]
