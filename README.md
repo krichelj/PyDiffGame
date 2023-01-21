@@ -72,7 +72,7 @@ Consider the following system of masses and springs:
 
 
 <p align="center">
-    <img align=top src="src/PyDiffGame/examples/figures/two_masses_tikz.png" width="613" height="100"/>
+    <img align=top src="src/PyDiffGame/examples/figures/two_masses_tikz.png" width="797" height="130"/>
 </p>
 
 
