@@ -2,7 +2,6 @@
     <img alt="Logo" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/logo.png"/>
 </p>
 
-
   * [What is this?](#what-is-this)
   * [Local Installation](#local-installation)
   * [Input Parameters](#input-Parameters)
@@ -37,7 +36,7 @@ Once the object is created, it can be simulated using the `run_simulation` class
 All the constants are defined in the [Mathematical Description](Math.md) section.
 The input parameters to instantiate a `PyDiffGame` object are:
 
-* `A` : 2-d `np.array` of shape($n,n$)
+* `A` : 2-d `np.array` of shape( $n,n$ )
 >The system dynamics matrix
 * `B` : `list` of 2-d `np.array` objects of len(<img src="https://render.githubusercontent.com/render/math?math=\color{yellow}N">), each array <img src="https://render.githubusercontent.com/render/math?math=\color{yellow}B_i"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{yellow}n, m_i">)
 >System input matrices for each control objective
