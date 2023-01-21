@@ -75,10 +75,7 @@ Consider the following system of masses and springs:
     <img align=top src="src/PyDiffGame/examples/figures/two_masses_tikz.png" width="797" height="130"/>
 </p>
 
-
-This example is based on a 'Hello-World' example explained in the M.Sc. thesis showcasing this work, which can be found [here](https://www.researchgate.net/publication/359819808_Differential_Games_for_Compositional_Handling_of_Competing_Control_Tasks).
-The code can be found [here](src/PyDiffGame/examples/MassesWithSpringsComparison.py).
-Let us consider the following input parameters for the instantiation of an `MassesWithSpringsComparison` object and 
+Let us consider the following input parameters for the instantiation of an [`MassesWithSpringsComparison`](src/PyDiffGame/examples/MassesWithSpringsComparison.py) object and 
 corresponding call for `run_multiprocess`:
 
 ```python
