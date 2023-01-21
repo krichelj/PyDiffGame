@@ -70,6 +70,12 @@ The input parameters to instantiate a `PyDiffGame` object are:
 
 Consider the following system of masses and springs:
 
+```{r,engine='tikz',fig.ext='pdf',fig.width=3}
+\begin{tikzpicture}
+ \draw (0,0) circle (2cm);
+\end{tikzpicture}
+```
+
 This example is based on a 'Hello-World' example explained in the M.Sc. thesis showcasing this work, which can be found [here](https://www.researchgate.net/publication/359819808_Differential_Games_for_Compositional_Handling_of_Competing_Control_Tasks).
 The code can be found [here](src/PyDiffGame/examples/MassesWithSpringsComparison.py).
 Let us consider the following input parameters for the instantiation of an `MassesWithSpringsComparison` object and 
