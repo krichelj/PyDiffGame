@@ -69,9 +69,19 @@ The input parameters to instantiate a `PyDiffGame` object are:
 
 # Tutorial
 
-This example is based on a 'Hello-World' example explained in the M.Sc. Thesis showcasing this work, which can be found [here](https://www.researchgate.net/publication/359819808_Differential_Games_for_Compositional_Handling_of_Competing_Control_Tasks).
-Let us consider the following input parameters for the instantiation of an `InvertedPendulum` object and 
-corresponding call for `run_simulation`:
+Consider the following system of masses and springs:
+
+```python {cmd=true matplotlib=true}
+import matplotlib.pyplot as plt
+plt.plot([1,2,3, 4])
+plt.show()
+```
+
+
+This example is based on a 'Hello-World' example explained in the M.Sc. thesis showcasing this work, which can be found [here](https://www.researchgate.net/publication/359819808_Differential_Games_for_Compositional_Handling_of_Competing_Control_Tasks).
+The code can be found [here](src/PyDiffGame/examples/MassesWithSpringsComparison.py).
+Let us consider the following input parameters for the instantiation of an `MassesWithSpringsComparison` object and 
+corresponding call for `run_multiprocess`:
 
 ```python
 import numpy as np
@@ -187,7 +197,7 @@ if __name__ == '__main__':
     Ns = [2]
     ks = [10]
     ms = [50]
-    qs = [[50 * (10 ** (i+1)) for i in range(N)] for N in Ns]
+    qs = [[500, 50]]
     rs = [1]
     epsilon_xs = [10e-8]
     epsilon_Ps = [10e-8]
@@ -200,20 +210,22 @@ if __name__ == '__main__':
 This will result in the following plot that compares the two systems performance for a differential game vs an LQR:
 
 <p align="center">
-    ![alt-text-1](https://raw.githubusercontent.com/krichelj/PyDiffGame/master/examples/figures/2-players50050.png "title-1") ![alt-text-2](https://raw.githubusercontent.com/krichelj/PyDiffGame/master/examples/figures/LQR50050.png "title-2")
+    <img align=top src="src/PyDiffGame/examples/figures/2-players50050.png" width="500" height="400"/>
+    <img align=top src="src/PyDiffGame/examples/figures/LQR50050.png" width="500" height="400"/>
 </p>
 
-And when tweking the weights by setting
+
+And when tweaking the weights by setting
 
 ```python
-Ns = [2]
-qs = [[50 * (10 ** (N - (i+1))) for i in range(N)] for N in Ns]
+qs = [[500, 5000]]
 ```
 
-we have>: 
+we have: 
 
 <p align="center">
-    ![alt-text-1](https://raw.githubusercontent.com/krichelj/PyDiffGame/master/examples/figures/2-players5005000.png "title-1") ![alt-text-2](https://raw.githubusercontent.com/krichelj/PyDiffGame/master/examples/figures/LQR5005000.png "title-2")
+    <img align=top src="src/PyDiffGame/examples/figures/2-players5005000.png" width="500" height="400"/>
+    <img align=top src="src/PyDiffGame/examples/figures/LQR5005000.png" width="500" height="400"/>
 </p>
 
 
@@ -223,20 +235,20 @@ This research was also supported by The Israeli Smart Transportation Research Ce
 
 <p align="center">
     <a href="https://istrc.net.technion.ac.il/">
-    <img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/Logo_ISTRC_Green_English.png" width="180"  alt=""/>
+    <img src="images/Logo_ISTRC_Green_English.png" width="180"  alt=""/>
     </a>
 &emsp;
 &emsp;
 &emsp;
 &emsp;
 <a href="https://in.bgu.ac.il/en/Pages/default.aspx">
-<img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/BGU-logo-round.png" width="150"  alt=""/>
+<img src="images/BGU-logo-round.png" width="150"  alt=""/>
 </a>
 &emsp;
 &emsp;
 &emsp;
 &emsp;
 <a href="https://in.bgu.ac.il/en/robotics/Pages/default.aspx">
-<img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/logo_abc.png" width="180"  alt=""/>
+<img src="images/logo_abc.png" width="180"  alt=""/>
 </a>
 </p>
