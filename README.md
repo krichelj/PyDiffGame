@@ -28,7 +28,6 @@ To clone Git repository locally run this from the command prompt:
 git clone https://github.com/krichelj/PyDiffGame.git
 ```
 
-
 # Input Parameters
 
 The package contains a file named `PyDiffGame.py` and an abstract class of the same name. An object of this class represents an instance of differential game. 
@@ -66,10 +65,10 @@ The input parameters to instantiate a `PyDiffGame` object are:
 * `debug` : `boolean`, optional, default = `False`
 >Indicates whether to display debug information
 
+
 # Tutorial
 
 Consider the following system of masses and springs:
-
 
 This example is based on a 'Hello-World' example explained in the M.Sc. thesis showcasing this work, which can be found [here](https://www.researchgate.net/publication/359819808_Differential_Games_for_Compositional_Handling_of_Competing_Control_Tasks).
 The code can be found [here](src/PyDiffGame/examples/MassesWithSpringsComparison.py).
