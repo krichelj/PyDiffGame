@@ -38,26 +38,26 @@ The input parameters to instantiate a `PyDiffGame` object are:
 
 * `A` : 2-d `np.array` of shape( $n,n$ )
 >The system dynamics matrix
-* `B` : `list` of 2-d `np.array` objects of len(<img src="https://render.githubusercontent.com/render/math?math=\color{yellow}N">), each array <img src="https://render.githubusercontent.com/render/math?math=\color{yellow}B_i"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{yellow}n, m_i">)
+* `B` : `list` of 2-d `np.array` objects of len( $N$ ), each array $B_i$ of shape( $n,m_i$ )
 >System input matrices for each control objective
-* `Q` : `list` of 2-d `np.array` objects of len(<img src="https://render.githubusercontent.com/render/math?math=\color{yellow}N">), each array <img src="https://render.githubusercontent.com/render/math?math=\color{yellow}Q_i"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{yellow}n, n">)
+* `Q` : `list` of 2-d `np.array` objects of len( $N$ ), each array $Q_i$ of shape( $n,n$ )
 >Cost function state weights for each control objective
-* `R` : `list` of 2-d `np.array` objects of len(<img src="https://render.githubusercontent.com/render/math?math=\color{yellow}N">), each array <img src="https://render.githubusercontent.com/render/math?math=\color{yellow}R_{i}"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{yellow}m_i, m_i">)
+* `R` : `list` of 2-d `np.array` objects of len( $N$ ), each array $R_i$ of shape( $m_i,m_i$ )
 >Cost function input weights for each control objective
-* `x_0` : 1-d `np.array` of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{yellow}n">), optional
+* `x_0` : 1-d `np.array` of len( $n$ ), optional
 >Initial state vector
-* `x_T` : 1-d `np.array` of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{yellow}n">), optional
+* `x_T` : 1-d `np.array` of len( $n$ ), optional
 >Final state vector, in case of signal tracking
 * `T_f` : positive `float`, optional, default = `10`
 >System dynamics horizon. Should be given in the case of finite horizon
-* `P_f` : `list` of 2-d `np.array` objects of len(<img src="https://render.githubusercontent.com/render/math?math=\color{yellow}N">), each array <img src="https://render.githubusercontent.com/render/math?math=\color{yellow}P_{f_i}"> of shape(<img src="https://render.githubusercontent.com/render/math?math=\color{yellow}n,n">), optional, default = uncoupled solution of `scipy's solve_are`
+* `P_f` : `list` of 2-d `np.array` objects of len( $N$ ), each array $P_{f_i}$ of shape( $n,n$ ), optional, default = uncoupled solution of `scipy's solve_are`
 >
 >Final condition for the Riccati equation array. Should be given in the case of finite horizon
 * `show_legend` : `boolean`, optional, default = `True`
 >Indicates whether to display a legend in the plots
-* `state_variables_names` : `list` of `str` objects of len(<img src="https://render.githubusercontent.com/render/math?math=\color{yellow}n">), optional
+* `state_variables_names` : `list` of `str` objects of len( $n$ ), optional
 >The state variables' names to display
-* `epsilon` : `float` in the interval <img src="https://render.githubusercontent.com/render/math?math=\color{yellow}(0,1)">, optional, default = `10 ** (-7)`
+* `epsilon` : `float` in the interval $(0,1)$, optional, default = `10e-7`
 >Numerical convergence threshold
 * `L` : positive `int`, optional, default = `1000`
 >Number of data points
@@ -69,12 +69,6 @@ The input parameters to instantiate a `PyDiffGame` object are:
 # Tutorial
 
 Consider the following system of masses and springs:
-
-```python {cmd=true matplotlib=true}
-import matplotlib.pyplot as plt
-plt.plot([1,2,3, 4])
-plt.show()
-```
 
 
 This example is based on a 'Hello-World' example explained in the M.Sc. thesis showcasing this work, which can be found [here](https://www.researchgate.net/publication/359819808_Differential_Games_for_Compositional_Handling_of_Competing_Control_Tasks).
