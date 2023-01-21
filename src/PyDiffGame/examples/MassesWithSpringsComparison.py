@@ -25,16 +25,18 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
         N_z = np.zeros((N, N))
 
         M_masses = m * N_e
-        K = k * (- 2 * N_e + np.array([[int(abs(i - j) == 1) for j in range(N)] for i in range(N)]))
+        K = k * (2 * N_e - np.array([[int(abs(i - j) == 1) for j in range(N)] for i in range(N)]))
         M_masses_inv = np.linalg.inv(M_masses)
+
         M_inv_K = M_masses_inv @ K
+        print((M_inv_K @ M_inv_K.T == np.eye(M_inv_K.shape[0])).all())
 
         if Ms is None:
-            eigenvectors = np.linalg.eig(-M_inv_K)[1]
+            eigenvectors = np.linalg.eig(M_inv_K)[1]
             Ms = [eigenvector.reshape(1, N) / eigenvector[0] for eigenvector in eigenvectors]
 
         A = np.block([[N_z, N_e],
-                      [M_inv_K, N_z]])
+                      [-M_inv_K, N_z]])
         B = np.block([[N_z],
                       [M_masses_inv]])
 
@@ -110,7 +112,7 @@ def multiprocess_worker_function(N: int,
     masses_with_springs(plot_state_spaces=True,
                         plot_Mx=True,
                         output_variables_names=output_variables_names,
-                        # save_figure=True
+                        save_figure=True
                         )
 
 
@@ -118,10 +120,10 @@ if __name__ == '__main__':
     Ns = [2]
     ks = [10]
     ms = [50]
-    qs = [[50 * (10 ** ((i+1))) for i in range(N)] for N in Ns]
+    qs = [[50 * (10 ** (i+1)) for i in range(N)] for N in Ns]
     rs = [1]
-    epsilon_xs = [10 ** (-8)]
-    epsilon_Ps = [10 ** (-8)]
+    epsilon_xs = [10e-8]
+    epsilon_Ps = [10e-8]
 
     # N, k, m, q, r, epsilon_x, epsilon_P = Ns[0], ks[0], ms[0], qs[0], rs[0], epsilon_xs[0], epsilon_Ps[0]
     # x_0 = np.array([10 * i for i in range(1, N + 1)] + [0] * N)

@@ -62,7 +62,7 @@ class PyDiffGame(ABC, Callable, Sequence):
     _L_default: Final[ClassVar[int]] = 1000
     _eta_default: Final[ClassVar[int]] = 3
     _g: Final[ClassVar[float]] = 9.81
-    __x_max_convergence_iterations: Final[ClassVar[int]] = 25
+    __x_max_convergence_iterations: Final[ClassVar[int]] = 20
     __p_max_convergence_iterations: Final[ClassVar[int]] = 20
 
     __default_figures_folder = 'figures'

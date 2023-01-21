@@ -74,30 +74,22 @@ Let us consider the following input parameters for the instantiation of an `Inve
 corresponding call for `run_simulation`:
 
 ```python
-from __future__ import annotations
-
 import numpy as np
-from time import time
-from numpy import pi, sin, cos
-from matplotlib.animation import FuncAnimation
-import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
-from matplotlib.lines import Line2D
-from scipy.integrate import solve_ivp
-from typing import Optional
+from typing import Sequence, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.PyDiffGameLQRComparison import PyDiffGameLQRComparison
 from PyDiffGame.Objective import GameObjective, LQRObjective
 
 
-class InvertedPendulumComparison(PyDiffGameLQRComparison):
+class MassesWithSpringsComparison(PyDiffGameLQRComparison):
     def __init__(self,
-                 m_c: float,
-                 m_p: float,
-                 p_L: float,
-                 q: float,
-                 r: Optional[float] = 1,
+                 N: int,
+                 m: float,
+                 k: float,
+                 q: float | Sequence[float],
+                 r: float,
+                 Ms: Optional[Sequence[np.array]] = None,
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
@@ -105,55 +97,38 @@ class InvertedPendulumComparison(PyDiffGameLQRComparison):
                  epsilon_P: Optional[float] = PyDiffGame.epsilon_P_default,
                  L: Optional[int] = PyDiffGame.L_default,
                  eta: Optional[int] = PyDiffGame.eta_default):
-        self.__m_c = m_c
-        self.__m_p = m_p
-        self.__p_L = p_L
-        self.__l = self.__p_L / 2  # CoM of uniform rod
-        self.__I = 1 / 12 * self.__m_p * self.__p_L ** 2  # center mass moment of inertia of uniform rod
+        N_e = np.eye(N)
+        N_z = np.zeros((N, N))
+        M_masses = m * N_e
+        K = k * (2 * N_e - np.array([[int(abs(i - j) == 1) for j in range(N)] for i in range(N)]))
+        M_masses_inv = np.linalg.inv(M_masses)
+        M_inv_K = M_masses_inv @ K
 
-        # # original linear system
-        linearized_D = self.__m_c * self.__m_p * self.__l ** 2 + self.__I * (self.__m_c + self.__m_p)
-        a32 = self.__m_p * PyDiffGame.g * self.__l ** 2 / linearized_D
-        a42 = self.__m_p * PyDiffGame.g * self.__l * (self.__m_c + self.__m_p) / linearized_D
-        A = np.array([[0, 0, 1, 0],
-                      [0, 0, 0, 1],
-                      [0, a32, 0, 0],
-                      [0, a42, 0, 0]])
+        if Ms is None:
+            eigenvectors = np.linalg.eig(M_inv_K)[1]
+            Ms = [eigenvector.reshape(1, N) / eigenvector[0] for eigenvector in eigenvectors]
 
-        b21 = (m_p * self.__l ** 2 + self.__I) / linearized_D
-        b31 = m_p * self.__l / linearized_D
-        b22 = b31
-        b32 = (m_c + m_p) / linearized_D
-        B = np.array([[0, 0],
-                      [0, 0],
-                      [b21, b22],
-                      [b31, b32]])
+        A = np.block([[N_z, N_e],
+                      [-M_inv_K, N_z]])
+        B = np.block([[N_z],
+                      [M_masses_inv]])
 
-        M1 = B[2, :].reshape(1, 2)
-        M2 = B[3, :].reshape(1, 2)
-        Ms = [M1, M2]
+        Qs = [np.diag([0.0] * i + [q] + [0.0] * (N - 1) + [q] + [0.0] * (N - i - 1))
+              if isinstance(q, (int, float)) else
+              np.diag([0.0] * i + [q[i]] + [0.0] * (N - 1) + [q[i]] + [0.0] * (N - i - 1)) for i in range(N)]
 
-        Q_x = q * np.array([[1, 0, 2, 0],
-                            [0, 0, 0, 0],
-                            [2, 0, 4, 0],
-                            [0, 0, 0, 0]])
-        Q_theta = q * np.array([[0, 0, 0, 0],
-                                [0, 1, 0, 2],
-                                [0, 0, 0, 0],
-                                [0, 2, 0, 4]])
-        Q_lqr = Q_theta + Q_x
-        Qs = [Q_x, Q_theta]
+        M = np.concatenate(Ms,
+                           axis=0)
+        Q_mat = np.kron(a=np.eye(2),
+                        b=M)
 
-        R_lqr = np.diag([r] * 2)
-        Rs = [np.array([r])] * 2
+        Qs = [Q_mat.T @ Q @ Q_mat for Q in Qs]
+        Rs = [np.array([r])] * N
+        R_lqr = r * N_e
+        Q_lqr = q * np.eye(2 * N) if isinstance(q, (int, float)) else np.diag(2 * q)
 
-        self.__origin = (0.0, 0.0)
-
-        state_variables_names = ['x',
-                                 '\\theta',
-                                 '\\dot{x}',
-                                 '\\dot{\\theta}']
-
+        state_variables_names = ['x_{' + str(i) + '}' for i in range(1, N + 1)] + \
+                                ['\\dot{x}_{' + str(i) + '}' for i in range(1, N + 1)]
         args = {'A': A,
                 'B': B,
                 'x_0': x_0,
@@ -166,181 +141,81 @@ class InvertedPendulumComparison(PyDiffGameLQRComparison):
                 'eta': eta,
                 'force_finite_horizon': T_f is not None}
 
-        lqr_objective = [LQRObjective(Q=Q_lqr, R_ii=R_lqr)]
-        game_objectives = [GameObjective(Q=Q, R_ii=R, M_i=M_i) for Q, R, M_i in zip(Qs, Rs, Ms)]
-        games_objectives = [lqr_objective, game_objectives]
+        lqr_objective = [LQRObjective(Q=Q_lqr,
+                                      R_ii=R_lqr)]
+        game_objectives = [GameObjective(Q=Q,
+                                         R_ii=R,
+                                         M_i=M_i) for Q, R, M_i in zip(Qs, Rs, Ms)]
+        games_objectives = [lqr_objective,
+                            game_objectives]
 
         super().__init__(args=args,
+                         M=M,
                          games_objectives=games_objectives,
                          continuous=True)
 
-    def _simulate_non_linear_system(self,
-                                    i: int,
-                                    plot: bool = False) -> np.array:
-        game = self._games[i]
-        K = game.K
-        x_T = game.x_T
 
-        def nonlinear_state_space(_, x_t: np.array) -> np.array:
-            x_t = x_t - x_T
-
-            if game.is_LQR():
-                u_t = - K[0] @ x_t
-                F_t, M_t = u_t.T
-            else:
-                K_x, K_theta = K
-                v_x = - K_x @ x_t
-                v_theta = - K_theta @ x_t
-                v = np.array([v_x, v_theta])
-                F_t, M_t = game.M_inv @ v
-
-            x, theta, x_dot, theta_dot = x_t
-
-            theta_ddot = 1 / (self.__m_p * self.__l ** 2 + self.__I - (self.__m_p * self.__l) ** 2 * cos(theta) ** 2 /
-                              (self.__m_p + self.__m_c)) * (M_t - self.__m_p * self.__l *
-                                                            (cos(theta) / (self.__m_p + self.__m_c) *
-                                                             (F_t + self.__m_p * self.__l * sin(theta)
-                                                              * theta_dot ** 2) + PyDiffGame.g * sin(theta)))
-            x_ddot = 1 / (self.__m_p + self.__m_c) * (F_t + self.__m_p * self.__l * (sin(theta) * theta_dot ** 2 -
-                                                                                     cos(theta) * theta_ddot))
-            if isinstance(theta_ddot, np.ndarray):
-                theta_ddot = theta_ddot[0]
-                x_ddot = x_ddot[0]
-
-            non_linear_x = np.array([x_dot, theta_dot, x_ddot, theta_ddot],
-                                    dtype=float)
-
-            return non_linear_x
-
-        pendulum_state = solve_ivp(fun=nonlinear_state_space,
-                                   t_span=[0.0, game.T_f],
-                                   y0=game.x_0,
-                                   t_eval=game.forward_time,
-                                   rtol=game.epsilon)
-
-        Y = pendulum_state.y
-
-        if plot:
-            game.plot_state_variables(state_variables=Y.T,
-                                      linear_system=False)
-
-        return Y
-
-    def __run_animation(self,
-                        i: int) -> (Line2D, Rectangle):
-        game = self._games[i]
-        game._x_non_linear = self._simulate_non_linear_system(i=i,
-                                                              plot=True)
-        x_t, theta_t, x_dot_t, theta_dot_t = game._x_non_linear
-
-        pendulumArm = Line2D(xdata=self.__origin,
-                             ydata=self.__origin,
-                             color='r')
-        cart = Rectangle(xy=self.__origin,
-                         width=0.5,
-                         height=0.15,
-                         color='b')
-
-        fig = plt.figure()
-        x_max = max(abs(max(x_t)), abs(min(x_t)))
-        square_side = 1.1 * min(max(self.__p_L, x_max), 3 * self.__p_L)
-
-        ax = fig.add_subplot(111,
-                             aspect='equal',
-                             xlim=(-square_side, square_side),
-                             ylim=(-square_side, square_side),
-                             title=f"Inverted Pendulum {'LQR' if game.is_LQR() else 'Game'} Simulation")
-
-        def init() -> (Line2D, Rectangle):
-            ax.add_patch(cart)
-            ax.add_line(pendulumArm)
-
-            return pendulumArm, cart
-
-        def animate(i: int) -> (Line2D, Rectangle):
-            x_i, theta_i = x_t[i], theta_t[i]
-            pendulum_x_coordinates = [x_i, x_i + self.__p_L * sin(theta_i)]
-            pendulum_y_coordinates = [0, - self.__p_L * cos(theta_i)]
-            pendulumArm.set_xdata(x=pendulum_x_coordinates)
-            pendulumArm.set_ydata(y=pendulum_y_coordinates)
-
-            cart_x_y = [x_i - cart.get_width() / 2, - cart.get_height()]
-            cart.set_xy(xy=cart_x_y)
-
-            return pendulumArm, cart
-
-        ax.grid()
-        t0 = time()
-        animate(0)
-        t1 = time()
-
-        frames = game.L
-        interval = game.T_f - (t1 - t0)
-
-        anim = FuncAnimation(fig=fig,
-                             func=animate,
-                             init_func=init,
-                             frames=frames,
-                             interval=interval,
-                             blit=True)
-        plt.show()
-
-
-def multiprocess_worker_function(x_T: float,
-                                 theta_0: float,
-                                 m_c: float,
-                                 m_p: float,
-                                 p_L: float,
+def multiprocess_worker_function(N: int,
+                                 k: float,
+                                 m: float,
                                  q: float,
+                                 r: float,
                                  epsilon_x: float,
-                                 epsilon_P: float) -> int:
-    x_T = np.array([x_T,  # x
-                    theta_0,  # theta
-                    0,  # x_dot
-                    0]  # theta_dot
-                   )
-    x_0 = np.zeros_like(x_T)
+                                 epsilon_P: float):
+    x_0_vals = [10 * i for i in range(1, N + 1)]
+    x_0 = np.array(x_0_vals + [0] * N)
+    x_T = 10 * x_0
 
-    inverted_pendulum_comparison = \
-        InvertedPendulumComparison(m_c=m_c,
-                                   m_p=m_p,
-                                   p_L=p_L,
-                                   q=q,
-                                   x_0=x_0,
-                                   x_T=x_T,
-                                   epsilon_x=epsilon_x,
-                                   epsilon_P=epsilon_P)  # game class
-    is_max_lqr = \
-        inverted_pendulum_comparison(plot_state_spaces=False,
-                                     run_animations=False,
-                                     non_linear_costs=True,
-                                     agnostic_costs=True)
-
-    # inverted_pendulum_comparison.plot_two_state_spaces(non_linear=True)
-    return int(is_max_lqr)
+    masses_with_springs = MassesWithSpringsComparison(N=N,
+                                                      m=m,
+                                                      k=k,
+                                                      q=q,
+                                                      r=r,
+                                                      x_0=x_0,
+                                                      x_T=x_T,
+                                                      epsilon_x=epsilon_x,
+                                                      epsilon_P=epsilon_P)
+    output_variables_names = ['$x_1 + x_2$', '$x_1 - x_2$', '$\\dot{x}_1 + \\dot{x}_2$', '$\\dot{x}_1 - \\dot{x}_2$']
+    masses_with_springs(plot_state_spaces=True,
+                        plot_Mx=True,
+                        output_variables_names=output_variables_names,
+                        save_figure=True
+                        )
 
 
 if __name__ == '__main__':
-    x_Ts = [10 ** p for p in [2]]
-    theta_Ts = [pi / 2 + pi / n for n in [10]]
-    m_cs = [10 ** p for p in [1, 2]]
-    m_ps = [10 ** p for p in [0, 1, 2]]
-    p_Ls = [10 ** p for p in [0, 1]]
-    qs = [10 ** p for p in [-2, -1, 0, 1]]
-    epsilon_xs = [10 ** (-7)]
-    epsilon_Ps = [10 ** (-3)]
-    params = [x_Ts, theta_Ts, m_cs, m_ps, p_Ls, qs, epsilon_xs, epsilon_Ps]
+    Ns = [2]
+    ks = [10]
+    ms = [50]
+    qs = [[50 * (10 ** (i+1)) for i in range(N)] for N in Ns]
+    rs = [1]
+    epsilon_xs = [10e-8]
+    epsilon_Ps = [10e-8]
 
+    params = [Ns, ks, ms, qs, rs, epsilon_xs, epsilon_Ps]
     PyDiffGameLQRComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
                                              values=params)
-
 ```
 
-This will result in the following plot that compares the two systems performance:
+This will result in the following plot that compares the two systems performance for a differential game vs an LQR:
 
 <p align="center">
-    <img alt="Logo" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/tut.png"/>
+    ![alt-text-1](https://raw.githubusercontent.com/krichelj/PyDiffGame/master/examples/figures/2-players50050.png "title-1") ![alt-text-2](https://raw.githubusercontent.com/krichelj/PyDiffGame/master/examples/figures/LQR50050.png "title-2")
 </p>
+
+And when tweking the weights by setting
+
+```python
+Ns = [2]
+qs = [[50 * (10 ** (N - (i+1))) for i in range(N)] for N in Ns]
+```
+
+we have>: 
+
+<p align="center">
+    ![alt-text-1](https://raw.githubusercontent.com/krichelj/PyDiffGame/master/examples/figures/2-players5005000.png "title-1") ![alt-text-2](https://raw.githubusercontent.com/krichelj/PyDiffGame/master/examples/figures/LQR5005000.png "title-2")
+</p>
+
 
 # Acknowledgments
 This research was supported in part by the Helmsley Charitable Trust through the Agricultural, Biological and Cognitive Robotics Initiative and by the Marcus Endowment Fund both at Ben-Gurion University of the Negev, Israel.
