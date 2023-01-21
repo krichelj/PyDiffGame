@@ -71,6 +71,7 @@ The input parameters to instantiate a `PyDiffGame` object are:
 Consider the following system of masses and springs:
 
 ```math
+\usepackage{tikz}
 \begin{tikzpicture}
  \draw (0,0) circle (2cm);
 \end{tikzpicture}
