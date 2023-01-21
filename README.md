@@ -202,8 +202,8 @@ if __name__ == '__main__':
 This will result in the following plot that compares the two systems performance for a differential game vs an LQR:
 
 <p align="center">
-    <img align=top src="src/PyDiffGame/examples/figures/2-players50050.png" width="500" height="400"/>
-    <img align=top src="src/PyDiffGame/examples/figures/LQR50050.png" width="500" height="400"/>
+    <img align=top src="src/PyDiffGame/examples/figures/2-players50050.png" width="400" height="300"/>
+    <img align=top src="src/PyDiffGame/examples/figures/LQR50050.png" width="400" height="300"/>
 </p>
 
 
@@ -216,8 +216,8 @@ qs = [[500, 5000]]
 we have: 
 
 <p align="center">
-    <img align=top src="src/PyDiffGame/examples/figures/2-players5005000.png" width="500" height="400"/>
-    <img align=top src="src/PyDiffGame/examples/figures/LQR5005000.png" width="500" height="400"/>
+    <img align=top src="src/PyDiffGame/examples/figures/2-players5005000.png" width="400" height="300"/>
+    <img align=top src="src/PyDiffGame/examples/figures/LQR5005000.png" width="400" height="300"/>
 </p>
 
 
