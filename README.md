@@ -6,12 +6,8 @@
   * [Local Installation](#local-installation)
   * [Input Parameters](#input-Parameters)
 
-# Additional Information
-  * [Mathematical Description](Math.md)
-  * [Supported Scenarios](Scenarios.md)
-  * [References](Math.md#references)
-
 # What is this?
+
 `PyDiffGame` is a Python implementation of a multi-objective control systems simulator based on Nash Equilibrium differential game. 
 The method relies on the formulation given in:
 
@@ -34,6 +30,7 @@ If you use this work, please cite our paper:
 ```
 
 # Local Installation
+
 To clone Git repository locally run this from the command prompt:
 ```
 git clone https://github.com/krichelj/PyDiffGame.git
@@ -236,6 +233,7 @@ we have:
 
 
 # Acknowledgments
+
 This research was supported in part by the Helmsley Charitable Trust through the Agricultural, Biological and Cognitive Robotics Initiative and by the Marcus Endowment Fund both at Ben-Gurion University of the Negev, Israel.
 This research was also supported by The Israeli Smart Transportation Research Center (ISTRC) by The Technion and Bar-Ilan Universities, Israel.
 
