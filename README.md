@@ -22,6 +22,19 @@ The method relies on the formulation given in:
 ([IEEE](https://ieeexplore.ieee.org/document/9480269) | 
 [Research Gate](https://www.researchgate.net/publication/353452024_Composition_of_Dynamic_Control_Objectives_Based_on_Differential_Games))
 
+If you use this work, please cite our paper:
+```
+@conference{med_paper,  
+author={Kricheli, Joshua Shay and Sadon, Aviran and Arogeti, Shai and Regev, Shimon and Weiss, Gera},
+  booktitle={29th Mediterranean Conference on Control and Automation (MED)}, 
+  title={{Composition of Dynamic Control Objectives Based on Differential Games}}, 
+  year={2021},
+  volume={},
+  number={},
+  pages={298-304},
+  doi={10.1109/MED51440.2021.9480269}}
+```
+
 # Local Installation
 To clone Git repository locally run this from the command prompt:
 ```
