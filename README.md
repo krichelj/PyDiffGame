@@ -85,7 +85,7 @@ Consider the following system of masses and springs:
     <img align=top src="src/PyDiffGame/examples/figures/two_masses_tikz.png" width="797" height="130"/>
 </p>
 
-Let us consider the following input parameters for the instantiation of an [`MassesWithSpringsComparison`](src/PyDiffGame/examples/MassesWithSpringsComparison.py) object and 
+Let us consider the following input parameters for the instantiation of an [`MassesWithSpringsComparison`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/examples/MassesWithSpringsComparison.py) object and 
 corresponding call for `run_multiprocess`:
 
 ```python
