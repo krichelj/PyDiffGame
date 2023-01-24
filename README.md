@@ -5,6 +5,8 @@
   * [What is this?](#what-is-this)
   * [Local Installation](#local-installation)
   * [Input Parameters](#input-Parameters)
+  * [Tutorial](#tutorial)
+  * [Acknowledgments](#acknowledgments)
 
 # What is this?
 
