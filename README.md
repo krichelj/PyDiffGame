@@ -4,7 +4,7 @@
 
   * [What is this?](#what-is-this)
   * [Local Installation](#local-installation)
-  * [Input Parameters](#input-Parameters)
+  * [Input Parameters](#input-parameters)
   * [Tutorial](#tutorial)
   * [Acknowledgments](#acknowledgments)
 
