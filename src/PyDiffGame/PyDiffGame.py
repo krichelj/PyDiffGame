@@ -374,7 +374,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         Parameters
         ----------
 
-        f: callable
+        f: Callable
             The method requiring convergence
 
         Returns

@@ -29,11 +29,13 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
         M_masses_inv = np.linalg.inv(M_masses)
 
         M_inv_K = M_masses_inv @ K
-        print((M_inv_K @ M_inv_K.T == np.eye(M_inv_K.shape[0])).all())
 
         if Ms is None:
             eigenvectors = np.linalg.eig(M_inv_K)[1]
             Ms = [eigenvector.reshape(1, N) / eigenvector[0] for eigenvector in eigenvectors]
+            Ms = [a / np.linalg.norm(a) ** 2 for a in Ms]
+            print(MassesWithSpringsComparison.are_all_orthogonal(Ms))
+            # print(MassesWithSpringsComparison.are_all_unit_vectors(Ms))
 
         A = np.block([[N_z, N_e],
                       [-M_inv_K, N_z]])
@@ -85,6 +87,52 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
                          games_objectives=games_objectives,
                          continuous=True)
 
+    @staticmethod
+    def are_all_orthogonal(vectors: Sequence[np.array]) -> bool:
+        """
+        Check if a set of vectors are all orthogonal to each other.
+
+        Parameters
+        ----------
+
+        vectors: sequence of vectors of len(n)
+            A sequence of numpy arrays representing the vectors
+
+        Returns
+        ----------
+
+        all_orthogonal: bool
+            True if all the vectors are orthogonal to each other, False otherwise
+        """
+
+        all_orthogonal = not any([any([abs(vectors[i] @ vectors[j].T) > 1e-10 for j in range(i + 1, len(vectors))])
+                                  for i in range(len(vectors))])
+
+        return all_orthogonal
+
+    @staticmethod
+    def are_all_unit_vectors(vectors: Sequence[np.array]) -> bool:
+        """
+        Check if a set of vectors are all of length 1.
+
+        Parameters
+        ----------
+
+        vectors: sequence of vectors of len(n)
+            A sequence of numpy arrays representing the vectors
+
+        Returns
+        ----------
+
+        all_orthogonal: bool
+            True if all the vectors are orthogonal to each other, False otherwise
+        """
+
+        all_unit_vectors = all([abs(np.linalg.norm(v) - 1) < 1e-10 for v in vectors])
+
+        return all_unit_vectors
+
+
 
 def multiprocess_worker_function(N: int,
                                  k: float,
@@ -112,7 +160,7 @@ def multiprocess_worker_function(N: int,
     masses_with_springs(plot_state_spaces=True,
                         plot_Mx=True,
                         output_variables_names=output_variables_names,
-                        save_figure=True
+                        # save_figure=True
                         )
 
 
@@ -120,7 +168,7 @@ if __name__ == '__main__':
     Ns = [2]
     ks = [10]
     ms = [50]
-    qs = [[50 * (10 ** (i+1)) for i in range(N)] for N in Ns]
+    qs = [[50 * (10 ** (i + 1)) for i in range(N)] for N in Ns]
     rs = [1]
     epsilon_xs = [10e-8]
     epsilon_Ps = [10e-8]
