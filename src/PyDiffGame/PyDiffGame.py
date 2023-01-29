@@ -62,11 +62,11 @@ class PyDiffGame(ABC, Callable, Sequence):
     _L_default: Final[ClassVar[int]] = 1000
     _eta_default: Final[ClassVar[int]] = 3
     _g: Final[ClassVar[float]] = 9.81
-    __x_max_convergence_iterations: Final[ClassVar[int]] = 20
-    __p_max_convergence_iterations: Final[ClassVar[int]] = 20
+    __x_max_convergence_iterations: Final[ClassVar[int]] = 25
+    __p_max_convergence_iterations: Final[ClassVar[int]] = 25
 
-    __default_figures_folder = 'figures'
-    __default_figures_filename = 'image'
+    _default_figures_path = Path(fr'{os.getcwd()}/figures')
+    _default_figures_filename = 'image'
 
     @classmethod
     @property
@@ -92,6 +92,16 @@ class PyDiffGame(ABC, Callable, Sequence):
     @property
     def g(cls) -> float:
         return cls._g
+
+    @classmethod
+    @property
+    def default_figures_path(cls) -> Path:
+        return cls._default_figures_path
+
+    @classmethod
+    @property
+    def default_figures_filename(cls) -> str:
+        return cls._default_figures_filename
 
     def __init__(self,
                  A: np.array,
@@ -537,8 +547,8 @@ class PyDiffGame(ABC, Callable, Sequence):
 
     @_post_convergence
     def __save_figure(self,
-                      figure_path: Optional[str | Path] = Path(fr'{os.getcwd()}/{__default_figures_folder}'),
-                      filename: Optional[str] = f'{__default_figures_filename}0'):
+                      figure_path: Optional[str | Path] = _default_figures_filename,
+                      figure_filename: Optional[str] = _default_figures_filename):
         """
         Saves the current figure
 
@@ -547,7 +557,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         figure_path: str or Path, optional, default = figures sub-folder of the current directory
             The desired saved figure's file path
-        filename: str, optional
+        figure_filename: str, optional
             The desired saved figure's filename
         """
 
@@ -557,11 +567,11 @@ class PyDiffGame(ABC, Callable, Sequence):
         if not figure_path.is_dir():
             os.mkdir(figure_path)
 
-        figure_full_filename = Path(fr'{figure_path}/{filename}.png')
+        figure_full_filename = Path(fr'{figure_path}/{figure_filename}.png')
 
         while figure_full_filename.is_file():
             curr_name = figure_full_filename.name
-            curr_num = int(curr_name.split('.png')[-2].split(self.__default_figures_filename)[-1])
+            curr_num = int(curr_name.split('.png')[-2].split(figure_filename)[-1])
             next_num = curr_num + 1
             figure_full_filename = Path(fr'{figure_path}/image{next_num}.png')
 
@@ -1115,6 +1125,8 @@ class PyDiffGame(ABC, Callable, Sequence):
                  M: Optional[np.array] = None,
                  output_variables_names: Optional[Sequence[str]] = None,
                  save_figure: Optional[bool] = False,
+                 figure_path: Optional[str | Path] = _default_figures_path,
+                 figure_filename: Optional[str] = _default_figures_filename,
                  print_characteristic_polynomials: Optional[bool] = False,
                  print_eigenvalues: Optional[bool] = False):
         """
@@ -1144,7 +1156,8 @@ class PyDiffGame(ABC, Callable, Sequence):
                                                             M=M,
                                                             output_variables_names=output_variables_names)
             if save_figure:
-                self.__save_figure()
+                self.__save_figure(figure_path=figure_path,
+                                   figure_filename=figure_filename)
         else:
             self.__solve_game_and_simulate_state_space()
 
