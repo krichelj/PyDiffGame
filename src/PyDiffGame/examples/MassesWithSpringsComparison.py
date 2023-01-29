@@ -32,10 +32,8 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
 
         if Ms is None:
             eigenvectors = np.linalg.eig(M_inv_K)[1]
-            Ms = [eigenvector.reshape(1, N) / eigenvector[0] for eigenvector in eigenvectors]
-            Ms = [a / np.linalg.norm(a) ** 2 for a in Ms]
-            print(MassesWithSpringsComparison.are_all_orthogonal(Ms))
-            # print(MassesWithSpringsComparison.are_all_unit_vectors(Ms))
+            Ms = [eigenvector.reshape(1, N) for eigenvector in eigenvectors]
+            # Ms = [a / np.linalg.norm(a) ** 2 for a in Ms]
 
         A = np.block([[N_z, N_e],
                       [-M_inv_K, N_z]])
@@ -51,13 +49,14 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
 
         M = np.concatenate(Ms,
                            axis=0)
+        print(M.T - np.linalg.inv(M))
         Q_mat = np.kron(a=np.eye(2),
                         b=M)
 
         Qs = [Q_mat.T @ Q @ Q_mat for Q in Qs]
 
         Rs = [np.array([r])] * N
-        R_lqr = r * N_e
+        R_lqr = 1 / 4 * r * N_e
         Q_lqr = q * np.eye(2 * N) if isinstance(q, (int, float)) else np.diag(2 * q)
 
         state_variables_names = ['x_{' + str(i) + '}' for i in range(1, N + 1)] + \
@@ -153,49 +152,59 @@ def multiprocess_worker_function(N: int,
                                                       r=r,
                                                       x_0=x_0,
                                                       x_T=x_T,
+                                                      T_f=25,
                                                       epsilon_x=epsilon_x,
                                                       epsilon_P=epsilon_P)
-    output_variables_names = ['$x_1 + x_2$', '$x_1 - x_2$', '$\\dot{x}_1 + \\dot{x}_2$', '$\\dot{x}_1 - \\dot{x}_2$']
-    # output_variables_names = [f'$n_{i + 1}$' for i in range(N)] + ['$\\dot{n}_{' + str(i + 1) + '}$' for i in range(N)]
+    output_variables_names = ['$x_1 + x_2$',
+                              '$x_1 - x_2$',
+                              '$\\dot{x}_1 + \\dot{x}_2$',
+                              '$\\dot{x}_1 - \\dot{x}_2$']
+
+    # output_variables_names = [f'$q_{i}$' for i in range(N)] + ['$\\dot{q}_{' + str(i) + '}$' for i in range(N)]
+
     masses_with_springs(plot_state_spaces=True,
                         plot_Mx=True,
                         output_variables_names=output_variables_names,
-                        # save_figure=True
+                        save_figure=True,
+                        figure_filename=lambda g: 'LQR' if g.is_LQR() else f'{len(g)}-players'
                         )
 
 
 if __name__ == '__main__':
-    Ns = [2]
+    Ns = [4]
     ks = [10]
     ms = [50]
-    qs = [[50 * (10 ** (i + 1)) for i in range(N)] for N in Ns]
+    qs = [[10000, 1000, 100, 10]]
     rs = [1]
     epsilon_xs = [10e-8]
     epsilon_Ps = [10e-8]
 
-    # N, k, m, q, r, epsilon_x, epsilon_P = Ns[0], ks[0], ms[0], qs[0], rs[0], epsilon_xs[0], epsilon_Ps[0]
-    # x_0 = np.array([10 * i for i in range(1, N + 1)] + [0] * N)
-    # x_T = x_0 * 10
-    #
-    # masses_with_springs = MassesWithSpringsComparison(N=N,
-    #                                                   m=m,
-    #                                                   k=k,
-    #                                                   q=q,
-    #                                                   r=r,
-    #                                                   x_0=x_0,
-    #                                                   x_T=x_T,
-    #                                                   epsilon_x=epsilon_x,
-    #                                                   epsilon_P=epsilon_P)
-    #
-    # # output_variables_names = ['$x_1 + x_2$', '$x_1 - x_2$', '$\\dot{x}_1 + \\dot{x}_2$', '$\\dot{x}_1 - \\dot{x}_2$']
-    # output_variables_names = [f'$n_{i}$' for i in range(N)] + ['$\\dot{n}_{' + str(i) + '}$' for i in range(N)]
-    #
-    # masses_with_springs(plot_state_spaces=True,
-    #                     plot_Mx=True,
-    #                     output_variables_names=output_variables_names,
-    #                     save_figure=False
-    #                     )
+    N, k, m, q, r, epsilon_x, epsilon_P = Ns[0], ks[0], ms[0], qs[0], rs[0], epsilon_xs[0], epsilon_Ps[0]
+    x_0 = np.array([10 * i for i in range(1, N + 1)] + [0] * N)
+    x_T = x_0 * 10 if N == 2 else np.array([(10 * i) ** 3 for i in range(1, N+1)] + [0] * N)
 
-    params = [Ns, ks, ms, qs, rs, epsilon_xs, epsilon_Ps]
-    PyDiffGameLQRComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
-                                             values=params)
+    masses_with_springs = MassesWithSpringsComparison(N=N,
+                                                      m=m,
+                                                      k=k,
+                                                      q=q,
+                                                      r=r,
+                                                      x_0=x_0,
+                                                      x_T=x_T,
+                                                      T_f=25,
+                                                      epsilon_x=epsilon_x,
+                                                      epsilon_P=epsilon_P)
+
+    # output_variables_names = ['$x_1 + x_2$', '$x_1 - x_2$', '$\\dot{x}_1 + \\dot{x}_2$', '$\\dot{x}_1 - \\dot{x}_2$']
+    output_variables_names = [f'$q_{i}$' for i in range(1, N + 1)] + \
+                             ['$\\dot{q}_{' + str(i) + '}$' for i in range(1, N + 1)]
+
+    masses_with_springs(plot_state_spaces=True,
+                        plot_Mx=True,
+                        output_variables_names=output_variables_names,
+                        save_figure=True,
+                        figure_filename=lambda game: 'LQR' if game.is_LQR() else f'{len(game)}-players'
+                        )
+
+    # params = [Ns, ks, ms, qs, rs, epsilon_xs, epsilon_Ps]
+    # PyDiffGameLQRComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
+    #                                          values=params)

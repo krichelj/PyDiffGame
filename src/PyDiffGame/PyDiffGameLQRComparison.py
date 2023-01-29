@@ -2,6 +2,7 @@ import numpy as np
 from tqdm import tqdm
 from time import time
 from termcolor import colored
+from pathlib import Path
 import itertools
 from concurrent.futures import ProcessPoolExecutor
 
@@ -109,6 +110,8 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
                  plot_Mx: Optional[bool] = False,
                  output_variables_names: Optional[Sequence[str]] = None,
                  save_figure: Optional[bool] = False,
+                 figure_path: Optional[str | Path] = PyDiffGame.default_figures_path,
+                 figure_filename: Optional[str | Callable[[PyDiffGame], str]] = PyDiffGame.default_figures_filename,
                  run_animations: Optional[bool] = True,
                  print_characteristic_polynomials: Optional[bool] = False,
                  print_eigenvalues: Optional[bool] = False):
@@ -122,6 +125,8 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
                    M=self.__M,
                    output_variables_names=output_variables_names,
                    save_figure=save_figure,
+                   figure_path=figure_path,
+                   figure_filename=figure_filename if isinstance(figure_filename, str) else figure_filename(game_i),
                    print_characteristic_polynomials=print_characteristic_polynomials,
                    print_eigenvalues=print_eigenvalues)
 
