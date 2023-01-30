@@ -21,11 +21,11 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
                  epsilon_P: Optional[float] = PyDiffGame.epsilon_P_default,
                  L: Optional[int] = PyDiffGame.L_default,
                  eta: Optional[int] = PyDiffGame.eta_default):
-        N_e = np.eye(N)
-        N_z = np.zeros((N, N))
+        I_N = np.eye(N)
+        Z_N = np.zeros((N, N))
 
-        M_masses = m * N_e
-        K = k * (2 * N_e - np.array([[int(abs(i - j) == 1) for j in range(N)] for i in range(N)]))
+        M_masses = m * I_N
+        K = k * (2 * I_N - np.array([[int(abs(i - j) == 1) for j in range(N)] for i in range(N)]))
         M_masses_inv = np.linalg.inv(M_masses)
 
         M_inv_K = M_masses_inv @ K
@@ -35,9 +35,9 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
             Ms = [eigenvector.reshape(1, N) for eigenvector in eigenvectors]
             # Ms = [a / np.linalg.norm(a) ** 2 for a in Ms]
 
-        A = np.block([[N_z, N_e],
-                      [-M_inv_K, N_z]])
-        B = np.block([[N_z],
+        A = np.block([[Z_N, I_N],
+                      [-M_inv_K, Z_N]])
+        B = np.block([[Z_N],
                       [M_masses_inv]])
 
         Qs = [np.diag([0.0] * i + [q] + [0.0] * (N - 1) + [q] + [0.0] * (N - i - 1))
@@ -55,7 +55,7 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
         Qs = [Q_mat.T @ Q @ Q_mat for Q in Qs]
 
         Rs = [np.array([r])] * N
-        R_lqr = 1 / 4 * r * N_e
+        R_lqr = 1 / 4 * r * I_N
         Q_lqr = q * np.eye(2 * N) if isinstance(q, (int, float)) else np.diag(2 * q)
 
         state_variables_names = ['x_{' + str(i) + '}' for i in range(1, N + 1)] + \
