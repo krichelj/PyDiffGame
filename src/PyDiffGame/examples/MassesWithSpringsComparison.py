@@ -49,7 +49,6 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
 
         M = np.concatenate(Ms,
                            axis=0)
-        print(M.T - np.linalg.inv(M))
         Q_mat = np.kron(a=np.eye(2),
                         b=M)
 
@@ -80,6 +79,9 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
                                          M_i=M_i) for Q, R, M_i in zip(Qs, Rs, Ms)]
         games_objectives = [lqr_objective,
                             game_objectives]
+
+        self.figure_filename_generator = lambda g: ('LQR' if g.is_LQR() else f'{N}-players') + \
+                                                   f'_large_{1 if q[0] > q[1] else 2}'
 
         super().__init__(args=args,
                          M=M,
@@ -132,7 +134,6 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
         return all_unit_vectors
 
 
-
 def multiprocess_worker_function(N: int,
                                  k: float,
                                  m: float,
@@ -140,10 +141,11 @@ def multiprocess_worker_function(N: int,
                                  r: float,
                                  epsilon_x: float,
                                  epsilon_P: float):
-    x_0_vals = [10 * i for i in range(1, N + 1)]
-    x_0 = np.array(x_0_vals + [0] * N)
-    # x_T = np.array(list(reversed([x ** 2 for x in x_0_vals])) + [0] * N)
-    x_T = 10 * x_0
+    x_0 = np.array([10 * i for i in range(1, N + 1)] + [0] * N)
+    x_T = x_0 * 10 if N == 2 else np.array([(10 * i) ** 3 for i in range(1, N + 1)] + [0] * N)
+
+    output_variables_names = ['$x_1 + x_2$', '$x_1 - x_2$', '$\\dot{x}_1 + \\dot{x}_2$', '$\\dot{x}_1 - \\dot{x}_2$'] \
+        if N == 2 else [f'$q_{i}$' for i in range(1, N + 1)] + ['$\\dot{q}_{' + str(i) + '}$' for i in range(1, N + 1)]
 
     masses_with_springs = MassesWithSpringsComparison(N=N,
                                                       m=m,
@@ -155,56 +157,54 @@ def multiprocess_worker_function(N: int,
                                                       T_f=25,
                                                       epsilon_x=epsilon_x,
                                                       epsilon_P=epsilon_P)
-    output_variables_names = ['$x_1 + x_2$',
-                              '$x_1 - x_2$',
-                              '$\\dot{x}_1 + \\dot{x}_2$',
-                              '$\\dot{x}_1 - \\dot{x}_2$']
-
-    # output_variables_names = [f'$q_{i}$' for i in range(N)] + ['$\\dot{q}_{' + str(i) + '}$' for i in range(N)]
 
     masses_with_springs(plot_state_spaces=True,
                         plot_Mx=True,
                         output_variables_names=output_variables_names,
                         save_figure=True,
-                        figure_filename=lambda g: 'LQR' if g.is_LQR() else f'{len(g)}-players'
+                        figure_filename=masses_with_springs.figure_filename_generator
                         )
 
 
 if __name__ == '__main__':
-    Ns = [4]
+    d = 0.2
+    N = 8
+
+    Ns = [N]
     ks = [10]
     ms = [50]
-    qs = [[10000, 1000, 100, 10]]
     rs = [1]
-    epsilon_xs = [10e-8]
-    epsilon_Ps = [10e-8]
+    epsilon_xs = [10e-7]
+    epsilon_Ps = [10e-7]
+    qs = [[500, 2000], [500, 250]] if N == 2 else \
+        [[500 * (1 + d) ** i for i in range(N)], [500 * (1 - d) ** i for i in range(N)]]
 
-    N, k, m, q, r, epsilon_x, epsilon_P = Ns[0], ks[0], ms[0], qs[0], rs[0], epsilon_xs[0], epsilon_Ps[0]
-    x_0 = np.array([10 * i for i in range(1, N + 1)] + [0] * N)
-    x_T = x_0 * 10 if N == 2 else np.array([(10 * i) ** 3 for i in range(1, N+1)] + [0] * N)
+    # N, k, m, r, epsilon_x, epsilon_P = Ns[0], ks[0], ms[0], rs[0], epsilon_xs[0], epsilon_Ps[0]
+    # q = [500, 2000] if N == 2 else [500 * 1.3 ** i for i in range(N)]
+    # x_0 = np.array([10 * i for i in range(1, N + 1)] + [0] * N)
+    # x_T = x_0 * 10 if N == 2 else np.array([(10 * i) ** 3 for i in range(1, N + 1)] + [0] * N)
+    #
+    # masses_with_springs = MassesWithSpringsComparison(N=N,
+    #                                                   m=m,
+    #                                                   k=k,
+    #                                                   q=q,
+    #                                                   r=r,
+    #                                                   x_0=x_0,
+    #                                                   x_T=x_T,
+    #                                                   # T_f=25,
+    #                                                   epsilon_x=epsilon_x,
+    #                                                   epsilon_P=epsilon_P)
+    #
+    # output_variables_names = ['$x_1 + x_2$', '$x_1 - x_2$', '$\\dot{x}_1 + \\dot{x}_2$', '$\\dot{x}_1 - \\dot{x}_2$'] \
+    #     if N == 2 else [f'$q_{i}$' for i in range(1, N + 1)] + ['$\\dot{q}_{' + str(i) + '}$' for i in range(1, N + 1)]
+    #
+    # masses_with_springs(plot_state_spaces=True,
+    #                     plot_Mx=True,
+    #                     output_variables_names=output_variables_names,
+    #                     save_figure=True,
+    #                     figure_filename=masses_with_springs.figure_filename_generator
+    #                     )
 
-    masses_with_springs = MassesWithSpringsComparison(N=N,
-                                                      m=m,
-                                                      k=k,
-                                                      q=q,
-                                                      r=r,
-                                                      x_0=x_0,
-                                                      x_T=x_T,
-                                                      T_f=25,
-                                                      epsilon_x=epsilon_x,
-                                                      epsilon_P=epsilon_P)
-
-    # output_variables_names = ['$x_1 + x_2$', '$x_1 - x_2$', '$\\dot{x}_1 + \\dot{x}_2$', '$\\dot{x}_1 - \\dot{x}_2$']
-    output_variables_names = [f'$q_{i}$' for i in range(1, N + 1)] + \
-                             ['$\\dot{q}_{' + str(i) + '}$' for i in range(1, N + 1)]
-
-    masses_with_springs(plot_state_spaces=True,
-                        plot_Mx=True,
-                        output_variables_names=output_variables_names,
-                        save_figure=True,
-                        figure_filename=lambda game: 'LQR' if game.is_LQR() else f'{len(game)}-players'
-                        )
-
-    # params = [Ns, ks, ms, qs, rs, epsilon_xs, epsilon_Ps]
-    # PyDiffGameLQRComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
-    #                                          values=params)
+    params = [Ns, ks, ms, qs, rs, epsilon_xs, epsilon_Ps]
+    PyDiffGameLQRComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
+                                             values=params)
