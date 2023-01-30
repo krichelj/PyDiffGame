@@ -21,6 +21,11 @@ class PVTOLComparison(PyDiffGameLQRComparison):
         g = 9.81  # gravitational constant
         c = 0.05  # damping factor (estimated)
 
+        I_3 = np.eye(3)
+        Z_3 = np.zeros((3, 3))
+
+        A = np.block([[I_3, Z_3],
+                      ])
         A = np.array(
             [[0, 0, 0, 1, 0, 0],
              [0, 0, 0, 0, 1, 0],
