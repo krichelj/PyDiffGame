@@ -40,9 +40,7 @@ git clone https://github.com/krichelj/PyDiffGame.git
 
 # Input Parameters
 
-The package contains a file named `PyDiffGame.py` and an abstract class of the same name. An object of this class represents an instance of differential game. 
-Once the object is created, it can be simulated using the `run_simulation` class method.
-All the constants are defined in the [Mathematical Description](Math.md) section.
+The package contains a file named `PyDiffGame.py` and an abstract class of the same name. An object of this class represents an instance of differential game.
 The input parameters to instantiate a `PyDiffGame` object are:
 
 * `A` : 2-d `np.array` of shape( $n,n$ )
@@ -82,7 +80,7 @@ Consider the following system of masses and springs:
 
 
 <p align="center">
-    <img align=top src="src/PyDiffGame/examples/figures/two_masses_tikz.png" width="797" height="130"/>
+    <img align=top src="src/PyDiffGame/examples/figures/2/two_masses_tikz.png" width="797" height="130"/>
 </p>
 
 Let us consider the following input parameters for the instantiation of an [`MassesWithSpringsComparison`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/examples/MassesWithSpringsComparison.py) object and 
@@ -215,8 +213,8 @@ if __name__ == '__main__':
 This will result in the following plot that compares the two systems performance for a differential game vs an LQR:
 
 <p align="center">
-    <img align=top src="src/PyDiffGame/examples/figures/2-players50050.png" width="400" height="300"/>
-    <img align=top src="src/PyDiffGame/examples/figures/LQR50050.png" width="400" height="300"/>
+    <img align=top src="src/PyDiffGame/examples/figures/2/2-players_large_1.png" width="400" height="300"/>
+    <img align=top src="src/PyDiffGame/examples/figures/2/LQR_large_1.png" width="400" height="300"/>
 </p>
 
 
@@ -229,8 +227,8 @@ qs = [[500, 5000]]
 we have: 
 
 <p align="center">
-    <img align=top src="src/PyDiffGame/examples/figures/2-players5005000.png" width="400" height="300"/>
-    <img align=top src="src/PyDiffGame/examples/figures/LQR5005000.png" width="400" height="300"/>
+    <img align=top src="src/PyDiffGame/examples/figures/2/2-players_large_2.png" width="400" height="300"/>
+    <img align=top src="src/PyDiffGame/examples/figures/2/LQR_large_2.png" width="400" height="300"/>
 </p>
 
 
