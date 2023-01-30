@@ -55,7 +55,7 @@ class PyDiffGame(ABC, Callable, Sequence):
     """
 
     # class fields
-    __T_f_default: Final[ClassVar[int]] = 5
+    __T_f_default: Final[ClassVar[int]] = 20
     _epsilon_x_default: Final[ClassVar[float]] = 10e-7
     _epsilon_P_default: Final[ClassVar[float]] = 10e-7
     _eigvals_tol: Final[ClassVar[float]] = 10e-7
