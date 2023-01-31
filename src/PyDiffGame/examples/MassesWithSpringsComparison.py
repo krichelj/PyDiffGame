@@ -147,6 +147,7 @@ def multiprocess_worker_function(N: int,
     output_variables_names = ['$x_1 + x_2$', '$x_1 - x_2$', '$\\dot{x}_1 + \\dot{x}_2$', '$\\dot{x}_1 - \\dot{x}_2$'] \
         if N == 2 else [f'$q_{i}$' for i in range(1, N + 1)] + ['$\\dot{q}_{' + str(i) + '}$' for i in range(1, N + 1)]
 
+    T_f = 25
     masses_with_springs = MassesWithSpringsComparison(N=N,
                                                       m=m,
                                                       k=k,
@@ -154,7 +155,7 @@ def multiprocess_worker_function(N: int,
                                                       r=r,
                                                       x_0=x_0,
                                                       x_T=x_T,
-                                                      T_f=25,
+                                                      T_f=T_f,
                                                       epsilon_x=epsilon_x,
                                                       epsilon_P=epsilon_P)
 

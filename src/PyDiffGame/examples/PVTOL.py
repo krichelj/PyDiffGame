@@ -2,7 +2,7 @@
 # RMM, 14 Jan 03
 #
 # This file works through an LQR based design problem, using the
-# planar vertical takeoff and landing (PVTOComparison.py) aircraft example from
+# planar vertical takeoff and landing (PVTOLComparison.py) aircraft example from
 # Astrom and Murray, Chapter 5.  It is intended to demonstrate the
 # basic functionality of the python-control package.
 #
@@ -15,7 +15,7 @@ import control as ct
 #
 # System dynamics
 #
-# These are the dynamics for the PVTOComparison.py system, written in state space
+# These are the dynamics for the PVTOLComparison.py system, written in state space
 # form.
 #
 

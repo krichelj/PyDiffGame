@@ -431,9 +431,6 @@ class PyDiffGame(ABC, Callable, Sequence):
             Indicates whether to plot two state spaces
         """
 
-        num_of_variables = temporal_variables.shape[1]
-        variables_range = range(1, num_of_variables + 1)
-
         self._fig = plt.figure(dpi=150)
         self._fig.set_size_inches(8, 6)
         plt.plot(t[:temporal_variables.shape[0]], temporal_variables)
@@ -445,7 +442,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         if self.__show_legend:
             if is_P:
                 labels = ['${P' + str(i) + '}_{' + str(j) + str(k) + '}$' for i in range(1, self._N + 1)
-                          for j in variables_range for k in variables_range]
+                          for j in range(1, self._n + 1) for k in range(1, self._n + 1)]
             elif output_variables_names is not None:
                 labels = output_variables_names
             elif self.__state_variables_names is not None:
@@ -455,12 +452,14 @@ class PyDiffGame(ABC, Callable, Sequence):
                 else:
                     labels = [f'${name}$' for name in self.__state_variables_names]
             else:
-                labels = ["${\mathbf{x}}_{" + str(j) + "}$" for j in variables_range]
+                labels = ["${\mathbf{x}}_{" + str(j) + "}$" for j in range(1, self._n + 1)]
 
             plt.legend(labels=labels,
                        loc='upper left' if is_P else 'best',
-                       ncol=int(num_of_variables / 2),
-                       prop={'size': int(80 / num_of_variables)})
+                       ncol=2,
+                       prop={'size': int(80 / self._n)},
+                       # bbox_to_anchor=(1, 0.5)
+                       )
 
         plt.grid()
         plt.show()
@@ -564,6 +563,9 @@ class PyDiffGame(ABC, Callable, Sequence):
         if self._x_0 is None:
             raise RuntimeError('No parameter x_0 was defined to illustrate a figure')
 
+        if figure_filename == PyDiffGame._default_figures_filename:
+            figure_filename += '0'
+
         if not figure_path.is_dir():
             os.mkdir(figure_path)
 
@@ -571,7 +573,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         while figure_full_filename.is_file():
             curr_name = figure_full_filename.name
-            curr_num = int(curr_name.split('.png')[-2].split(figure_filename)[-1])
+            curr_num = int(curr_name.split('.png')[0][-1])
             next_num = curr_num + 1
             figure_full_filename = Path(fr'{figure_path}/image{next_num}.png')
 
