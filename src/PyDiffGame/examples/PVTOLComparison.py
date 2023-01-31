@@ -18,22 +18,20 @@ class PVTOLComparison(PyDiffGameLQRComparison):
         m = 4  # mass of aircraft
         J = 0.0475  # inertia around pitch axis
         r = 0.25  # distance to center of force
-        g = 9.81  # gravitational constant
         c = 0.05  # damping factor (estimated)
 
         I_3 = np.eye(3)
         Z_3 = np.zeros((3, 3))
 
-        A = np.block([[I_3, Z_3],
-                      ])
-        A = np.array(
-            [[0, 0, 0, 1, 0, 0],
-             [0, 0, 0, 0, 1, 0],
-             [0, 0, 0, 0, 0, 1],
-             [0, 0, -g / m, -c / m, 0, 0],
-             [0, 0, 0, 0, -c / m, 0],
-             [0, 0, 0, 0, 0, 0]]
-        )
+        A_11 = Z_3
+        A_12 = I_3
+        A_21 = np.array([[0, 0, -PyDiffGame.g],
+                         [0, 0, 0],
+                         [0, 0, 0]])
+        A_22 = np.diag([-c / m, -c / m, 0])
+
+        A = np.block([[A_11, A_12],
+                      [A_21, A_22]])
 
         # Input matrix
         B = np.array(
@@ -45,25 +43,32 @@ class PVTOLComparison(PyDiffGameLQRComparison):
              [r / J, 0]]
         )
 
-        I = np.eye(2)
+        I_2 = np.eye(2)
 
-        M = I
+        M = I_2
         Ms = [M[0, :].reshape(1, M.shape[1]), M[1, :].reshape(1, M.shape[1])]
 
-        q_s = 1
-        q_l = q_s * 10000
+        # q_s = 1
+        # q_l = q_s * 10000
 
-        r_y = 10000
+        q_x = 10
+        q_theta = 10
+        q_y = 10000
+
         r_x_theta = 10
+        r_y = 10000
 
-        Q_y = np.diag([q_s, q_l, q_s]*2)
-        Q_x_theta = np.diag([q_l, q_s, q_l]*2)
+        # Q_y = np.diag([q_s, q_l, q_s] * 2)
+        # Q_x_theta = np.diag([q_l, q_s, q_l]*2)
 
-        Qs = [Q_y, Q_x_theta]
-        Rs = [np.array([r_y]), np.array([r_x_theta])]
+        Q_x_theta = np.diag([q_x, 0, q_theta] + [0] * 3)
+        Q_y = np.diag([0, q_y, 0] + [0] * 3)
+
+        Qs = [Q_x_theta, Q_y]
+        Rs = [np.array([r_x_theta]), np.array([r_y])]
 
         R_lqr = np.diag([r_y, r_x_theta])
-        Q_lqr = np.diag([q_s, q_l, q_s] * 2)
+        Q_lqr = np.diag([q_x, q_y, q_theta] + [0] * 3)
 
         variables = ['x', 'y', '\\theta']
 
@@ -100,13 +105,14 @@ if __name__ == '__main__':
     epsilon_x, epsilon_P = 10 ** (-6), 10 ** (-6)
 
     x_0 = np.zeros((6,))
-    # x_0 = np.array([-10, 0] + [0] * 4)
     x_d = 10
     y_d = 50
     x_T = np.array([x_d, y_d] + [0] * 4)
+    T_f = 25
 
     pvtol = PVTOLComparison(x_0=x_0,
                             x_T=x_T,
+                            T_f=T_f,
                             epsilon_x=epsilon_x,
                             epsilon_P=epsilon_P)
     pvtol(plot_state_spaces=True,
