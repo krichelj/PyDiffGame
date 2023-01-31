@@ -32,8 +32,8 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
 
         if Ms is None:
             eigenvectors = np.linalg.eig(M_inv_K)[1]
-            Ms = [eigenvector.reshape(1, N) for eigenvector in eigenvectors]
-            # Ms = [a / np.linalg.norm(a) ** 2 for a in Ms]
+            Ms = [eigenvector.reshape(1, N) / eigenvector[0] for eigenvector in eigenvectors]
+            Ms = [a / np.linalg.norm(a) ** 2 for a in Ms]
 
         A = np.block([[Z_N, I_N],
                       [-M_inv_K, Z_N]])
@@ -169,7 +169,7 @@ def multiprocess_worker_function(N: int,
 
 if __name__ == '__main__':
     d = 0.2
-    N = 8
+    N = 2
 
     Ns = [N]
     ks = [10]
@@ -180,32 +180,32 @@ if __name__ == '__main__':
     qs = [[500, 2000], [500, 250]] if N == 2 else \
         [[500 * (1 + d) ** i for i in range(N)], [500 * (1 - d) ** i for i in range(N)]]
 
-    # N, k, m, r, epsilon_x, epsilon_P = Ns[0], ks[0], ms[0], rs[0], epsilon_xs[0], epsilon_Ps[0]
-    # q = [500, 2000] if N == 2 else [500 * 1.3 ** i for i in range(N)]
-    # x_0 = np.array([10 * i for i in range(1, N + 1)] + [0] * N)
-    # x_T = x_0 * 10 if N == 2 else np.array([(10 * i) ** 3 for i in range(1, N + 1)] + [0] * N)
-    #
-    # masses_with_springs = MassesWithSpringsComparison(N=N,
-    #                                                   m=m,
-    #                                                   k=k,
-    #                                                   q=q,
-    #                                                   r=r,
-    #                                                   x_0=x_0,
-    #                                                   x_T=x_T,
-    #                                                   # T_f=25,
-    #                                                   epsilon_x=epsilon_x,
-    #                                                   epsilon_P=epsilon_P)
-    #
-    # output_variables_names = ['$x_1 + x_2$', '$x_1 - x_2$', '$\\dot{x}_1 + \\dot{x}_2$', '$\\dot{x}_1 - \\dot{x}_2$'] \
-    #     if N == 2 else [f'$q_{i}$' for i in range(1, N + 1)] + ['$\\dot{q}_{' + str(i) + '}$' for i in range(1, N + 1)]
-    #
-    # masses_with_springs(plot_state_spaces=True,
-    #                     plot_Mx=True,
-    #                     output_variables_names=output_variables_names,
-    #                     save_figure=True,
-    #                     figure_filename=masses_with_springs.figure_filename_generator
-    #                     )
+    N, k, m, r, epsilon_x, epsilon_P = Ns[0], ks[0], ms[0], rs[0], epsilon_xs[0], epsilon_Ps[0]
+    q = [500, 2000] if N == 2 else [500 * (1 + d) ** i for i in range(N)]
+    x_0 = np.array([10 * i for i in range(1, N + 1)] + [0] * N)
+    x_T = x_0 * 10 if N == 2 else np.array([(10 * i) ** 3 for i in range(1, N + 1)] + [0] * N)
 
-    params = [Ns, ks, ms, qs, rs, epsilon_xs, epsilon_Ps]
-    PyDiffGameLQRComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
-                                             values=params)
+    masses_with_springs = MassesWithSpringsComparison(N=N,
+                                                      m=m,
+                                                      k=k,
+                                                      q=q,
+                                                      r=r,
+                                                      x_0=x_0,
+                                                      x_T=x_T,
+                                                      # T_f=25,
+                                                      epsilon_x=epsilon_x,
+                                                      epsilon_P=epsilon_P)
+
+    output_variables_names = ['$x_1 + x_2$', '$x_1 - x_2$', '$\\dot{x}_1 + \\dot{x}_2$', '$\\dot{x}_1 - \\dot{x}_2$'] \
+        if N == 2 else [f'$q_{i}$' for i in range(1, N + 1)] + ['$\\dot{q}_{' + str(i) + '}$' for i in range(1, N + 1)]
+
+    masses_with_springs(plot_state_spaces=True,
+                        plot_Mx=True,
+                        output_variables_names=output_variables_names,
+                        save_figure=True,
+                        figure_filename=masses_with_springs.figure_filename_generator
+                        )
+
+    # params = [Ns, ks, ms, qs, rs, epsilon_xs, epsilon_Ps]
+    # PyDiffGameLQRComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
+    #                                          values=params)

@@ -122,7 +122,6 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
         for i, game_i in self._games.items():
             game_i(plot_state_space=plot_state_spaces,
                    plot_Mx=plot_Mx,
-                   M=self.__M,
                    output_variables_names=output_variables_names,
                    save_figure=save_figure,
                    figure_path=figure_path,

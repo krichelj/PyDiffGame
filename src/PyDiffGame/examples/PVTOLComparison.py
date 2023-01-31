@@ -108,7 +108,7 @@ if __name__ == '__main__':
     x_d = 10
     y_d = 50
     x_T = np.array([x_d, y_d] + [0] * 4)
-    T_f = 25
+    T_f = 20
 
     pvtol = PVTOLComparison(x_0=x_0,
                             x_T=x_T,
