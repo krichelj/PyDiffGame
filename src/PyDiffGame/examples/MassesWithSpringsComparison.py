@@ -136,10 +136,10 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
         return all_unit_vectors
 
 
-N2_output_variables_names = ['$\\frac{x_1 + x_2}{\\sqrt{2}}$',
-                             '$\\frac{x_1 - x_2}{\\sqrt{2}}$',
-                             '$\\frac{\\dot{x}_1 + \\dot{x}_2}{\\sqrt{2}}$',
-                             '$\\frac{\\dot{x}_1 - \\dot{x}_2}{\\sqrt{2}}$']
+N2_output_variables_names = ['$\\frac{x_1(t) + x_2(t)}{\\sqrt{2}}$',
+                             '$\\frac{x_2(t) - x_1(t)}{\\sqrt{2}}$',
+                             '$\\frac{\\dot{x}_1(t) + \\dot{x}_2(t)}{\\sqrt{2}}$',
+                             '$\\frac{\\dot{x}_2(t) - \\dot{x}_1(t)}{\\sqrt{2}}$']
 
 
 def multiprocess_worker_function(N: int,
@@ -153,7 +153,8 @@ def multiprocess_worker_function(N: int,
     x_T = x_0 * 10 if N == 2 else np.array([(10 * i) ** 3 for i in range(1, N + 1)] + [0] * N)
 
     output_variables_names = N2_output_variables_names \
-        if N == 2 else [f'$q_{i}$' for i in range(1, N + 1)] + ['$\\dot{q}_{' + str(i) + '}$' for i in range(1, N + 1)]
+        if N == 2 else [f'$q_{i}(t)$' for i in range(1, N + 1)] + ['$\\dot{q}_{' + str(i) + '}(t)$'
+                                                                for i in range(1, N + 1)]
 
     T_f = 25
     masses_with_springs = MassesWithSpringsComparison(N=N,
@@ -177,14 +178,14 @@ def multiprocess_worker_function(N: int,
 
 if __name__ == '__main__':
     d = 0.2
-    N = 2
+    N = 8
 
     Ns = [N]
     ks = [10]
     ms = [50]
     rs = [1]
-    epsilon_xs = [10e-7]
-    epsilon_Ps = [10e-7]
+    epsilon_xs = [10e-8]
+    epsilon_Ps = [10e-8]
     qs = [[500, 2000], [500, 250]] if N == 2 else \
         [[500 * (1 + d) ** i for i in range(N)], [500 * (1 - d) ** i for i in range(N)]]
 
