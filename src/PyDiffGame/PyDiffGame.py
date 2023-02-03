@@ -458,7 +458,7 @@ class PyDiffGame(ABC, Callable, Sequence):
                        loc='upper left' if is_P else 'best',
                        ncol=2,
                        prop={'size': int(80 / self._n)},
-                       # bbox_to_anchor=(1, 0.5)
+                       bbox_to_anchor=(0.25, 0.4)
                        )
 
         plt.grid()
@@ -835,7 +835,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
     def __solve_game_simulate_state_space_and_plot(self,
                                                    plot_Mx: Optional[bool] = False,
-                                                   # M: Optional[np.array] = None,
+                                                   M: Optional[np.array] = None,
                                                    output_variables_names: Optional[Sequence[str]] = None):
         """
         Propagates the game through time, solves for it and plots the state with respect to time
@@ -846,9 +846,9 @@ class PyDiffGame(ABC, Callable, Sequence):
         if self._x_0 is not None:
             self.__plot_x()
 
-            if plot_Mx and (not self.is_LQR()) and self._n % self._m == 0:
+            if plot_Mx and self._n % self._m == 0:
                 C = np.kron(a=np.eye(int(self._n / self._m)),
-                            b=self._M)
+                            b=M)
                 self.__plot_y(C=C,
                               output_variables_names=output_variables_names)
 
@@ -1123,6 +1123,7 @@ class PyDiffGame(ABC, Callable, Sequence):
     def __call__(self,
                  plot_state_space: Optional[bool] = True,
                  plot_Mx: Optional[bool] = False,
+                 M: Optional[np.array] = None,
                  output_variables_names: Optional[Sequence[str]] = None,
                  save_figure: Optional[bool] = False,
                  figure_path: Optional[str | Path] = _default_figures_path,
@@ -1153,6 +1154,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         if plot_state_space:
             self.__solve_game_simulate_state_space_and_plot(plot_Mx=plot_Mx,
+                                                            M=M,
                                                             output_variables_names=output_variables_names)
             if save_figure:
                 self.__save_figure(figure_path=figure_path,
