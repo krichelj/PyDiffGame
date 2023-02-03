@@ -434,7 +434,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         self._fig = plt.figure(dpi=150)
         self._fig.set_size_inches(8, 6)
         plt.plot(t[:temporal_variables.shape[0]], temporal_variables)
-        plt.xlabel('Time')
+        plt.xlabel('Time $[s]$')
 
         if title:
             plt.title(title)
@@ -455,10 +455,10 @@ class PyDiffGame(ABC, Callable, Sequence):
                 labels = ["${\mathbf{x}}_{" + str(j) + "}$" for j in range(1, self._n + 1)]
 
             plt.legend(labels=labels,
-                       loc='upper left' if is_P else 'best',
-                       ncol=2,
-                       prop={'size': int(80 / self._n)},
-                       bbox_to_anchor=(0.25, 0.4)
+                       loc='upper left' if is_P else 'right',
+                       ncol=4,
+                       prop={'size': int(220 / self._n)},
+                       bbox_to_anchor=(1, 0.65)
                        )
 
         plt.grid()
