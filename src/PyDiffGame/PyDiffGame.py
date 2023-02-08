@@ -455,10 +455,10 @@ class PyDiffGame(ABC, Callable, Sequence):
                 labels = ["${\mathbf{x}}_{" + str(j) + "}$" for j in range(1, self._n + 1)]
 
             plt.legend(labels=labels,
-                       loc='upper left' if is_P else 'right',
-                       ncol=4,
-                       prop={'size': int(220 / self._n)},
-                       bbox_to_anchor=(1, 0.65)
+                       loc='upper left' if is_P else 'best',
+                       ncol=2,
+                       prop={'size': int(100 / self._n)},
+                       # bbox_to_anchor=(1, 0.75)
                        )
 
         plt.grid()
@@ -499,7 +499,7 @@ class PyDiffGame(ABC, Callable, Sequence):
     def plot_state_variables(self,
                              state_variables: np.array,
                              linear_system: Optional[bool] = True,
-                             output_variables_names: Optional[Sequence[str]] = None,):
+                             output_variables_names: Optional[Sequence[str]] = None, ):
         """
         Displays plots for the state variables with respect to time
 
@@ -527,9 +527,12 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         self.plot_state_variables(state_variables=self._x)
 
-    def __plot_y(self,
-                 C: np.array,
-                 output_variables_names: Optional[Sequence[str]] = None):
+    def plot_y(self,
+               C: np.array,
+               output_variables_names: Optional[Sequence[str]] = None,
+               save_figure: Optional[bool] = False,
+               figure_path: Optional[str | Path] = _default_figures_filename,
+               figure_filename: Optional[str] = _default_figures_filename):
         """
         Plots an output vector y = C x^T wth respect to time
 
@@ -538,11 +541,22 @@ class PyDiffGame(ABC, Callable, Sequence):
 
         C: 2-d np.array array of shape(p, n)
             The output coefficients with respect to state
+        output_variables_names: Sequence of len(p)
+            Names of output variables
+        save_figure: bool
+            Whether to save the figure or not
+        figure_path: str or Path, optional, default = figures sub-folder of the current directory
+            The desired saved figure's file path
+        figure_filename: str, optional
+            The desired saved figure's filename
         """
 
         y = C @ self._x.T
         self.plot_state_variables(state_variables=y.T,
                                   output_variables_names=output_variables_names)
+        if save_figure:
+            self.__save_figure(figure_path=figure_path,
+                               figure_filename=figure_filename)
 
     @_post_convergence
     def __save_figure(self,
@@ -849,8 +863,8 @@ class PyDiffGame(ABC, Callable, Sequence):
             if plot_Mx and self._n % self._m == 0:
                 C = np.kron(a=np.eye(int(self._n / self._m)),
                             b=M)
-                self.__plot_y(C=C,
-                              output_variables_names=output_variables_names)
+                self.plot_y(C=C,
+                            output_variables_names=output_variables_names)
 
     def _simulate_curr_x_T(self) -> np.array:
         """
