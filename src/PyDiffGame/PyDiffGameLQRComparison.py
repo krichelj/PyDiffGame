@@ -106,7 +106,7 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
         pass
 
     def __call__(self,
-                 plot_state_spaces: Optional[bool] = True,
+                 plot_state_spaces: Optional[bool] = False,
                  plot_Mx: Optional[bool] = False,
                  output_variables_names: Optional[Sequence[str]] = None,
                  save_figure: Optional[bool] = False,

@@ -48,18 +48,12 @@ class PVTOLComparison(PyDiffGameLQRComparison):
         M = I_2
         Ms = [M[0, :].reshape(1, M.shape[1]), M[1, :].reshape(1, M.shape[1])]
 
-        # q_s = 1
-        # q_l = q_s * 10000
+        q_x = 100
+        q_y = 10
+        q_theta = 2 * np.pi / 5
 
-        q_x = 10
-        q_theta = 10
-        q_y = 10000
-
-        r_x_theta = 10
-        r_y = 10000
-
-        # Q_y = np.diag([q_s, q_l, q_s] * 2)
-        # Q_x_theta = np.diag([q_l, q_s, q_l]*2)
+        r_x_theta = 1
+        r_y = 1
 
         Q_x_theta = np.diag([q_x, 0, q_theta] + [0] * 3)
         Q_y = np.diag([0, q_y, 0] + [0] * 3)
@@ -67,13 +61,14 @@ class PVTOLComparison(PyDiffGameLQRComparison):
         Qs = [Q_x_theta, Q_y]
         Rs = [np.array([r_x_theta]), np.array([r_y])]
 
-        R_lqr = np.diag([r_y, r_x_theta])
-        Q_lqr = np.diag([q_x, q_y, q_theta] + [0] * 3)
-
         variables = ['x', 'y', '\\theta']
 
-        state_variables_names = [f'{v}(t)' for v in variables] + \
-                                ['\\dot{' + str(v) + '}(t)' for v in variables]
+        self.state_variables_names = [f'{v}(t)' for v in variables] + \
+                                     ['\\dot{' + str(v) + '}(t)' for v in variables]
+
+        Q_lqr = np.diag([q_x, q_y, q_theta] + [0] * 3)
+        R_lqr = np.diag([r_x_theta, r_y])
+        assert np.all(np.abs(Q_lqr - (Q_x_theta + Q_y)) < epsilon_x)
 
         lqr_objective = [LQRObjective(Q=Q_lqr,
                                       R_ii=R_lqr)]
@@ -88,7 +83,7 @@ class PVTOLComparison(PyDiffGameLQRComparison):
                 'x_0': x_0,
                 'x_T': x_T,
                 'T_f': T_f,
-                'state_variables_names': state_variables_names,
+                'state_variables_names': self.state_variables_names,
                 'epsilon_x': epsilon_x,
                 'epsilon_P': epsilon_P,
                 'L': L,
@@ -102,19 +97,17 @@ class PVTOLComparison(PyDiffGameLQRComparison):
 
 
 if __name__ == '__main__':
-    epsilon_x, epsilon_P = 10 ** (-6), 10 ** (-6)
+    epsilon_x, epsilon_P = 10 ** (-8), 10 ** (-8)
 
     x_0 = np.zeros((6,))
-    x_d = 10
+    x_d = 20
     y_d = 50
     x_T = np.array([x_d, y_d] + [0] * 4)
-    T_f = 20
 
     pvtol = PVTOLComparison(x_0=x_0,
                             x_T=x_T,
-                            T_f=T_f,
+                            # T_f=T_f,
                             epsilon_x=epsilon_x,
                             epsilon_P=epsilon_P)
     pvtol(plot_state_spaces=True,
-          save_figure=True
-          )
+          save_figure=True)
