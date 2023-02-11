@@ -10,7 +10,7 @@
 
 # What is this?
 
-`PyDiffGame` is a Python implementation of a multi-objective control systems simulator based on Nash Equilibrium solution of differential games. 
+`PyDiffGame` is a Python implementation of a Nash Equilibrium solution of Differential Games associated with Multi-Objective Dynamical Control Systems\
 The method relies on the formulation given in:
 
  - The thesis work "_Differential Games for Compositional Handling of Competing Control Tasks_"
@@ -110,20 +110,22 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
                  epsilon_P: Optional[float] = PyDiffGame.epsilon_P_default,
                  L: Optional[int] = PyDiffGame.L_default,
                  eta: Optional[int] = PyDiffGame.eta_default):
-        N_e = np.eye(N)
-        N_z = np.zeros((N, N))
-        M_masses = m * N_e
-        K = k * (2 * N_e - np.array([[int(abs(i - j) == 1) for j in range(N)] for i in range(N)]))
+        I_N = np.eye(N)
+        Z_N = np.zeros((N, N))
+
+        M_masses = m * I_N
+        K = k * (2 * I_N - np.array([[int(abs(i - j) == 1) for j in range(N)] for i in range(N)]))
         M_masses_inv = np.linalg.inv(M_masses)
+
         M_inv_K = M_masses_inv @ K
 
         if Ms is None:
             eigenvectors = np.linalg.eig(M_inv_K)[1]
-            Ms = [eigenvector.reshape(1, N) / eigenvector[0] for eigenvector in eigenvectors]
+            Ms = [eigenvector.reshape(1, N) for eigenvector in eigenvectors]
 
-        A = np.block([[N_z, N_e],
-                      [-M_inv_K, N_z]])
-        B = np.block([[N_z],
+        A = np.block([[Z_N, I_N],
+                      [-M_inv_K, Z_N]])
+        B = np.block([[Z_N],
                       [M_masses_inv]])
 
         Qs = [np.diag([0.0] * i + [q] + [0.0] * (N - 1) + [q] + [0.0] * (N - i - 1))
@@ -132,12 +134,16 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
 
         M = np.concatenate(Ms,
                            axis=0)
+
+        assert np.all(np.abs(np.linalg.inv(M) - M.T) < 10e-12)
+
         Q_mat = np.kron(a=np.eye(2),
                         b=M)
 
         Qs = [Q_mat.T @ Q @ Q_mat for Q in Qs]
+
         Rs = [np.array([r])] * N
-        R_lqr = r * N_e
+        R_lqr = 1 / 4 * r * I_N
         Q_lqr = q * np.eye(2 * N) if isinstance(q, (int, float)) else np.diag(2 * q)
 
         state_variables_names = ['x_{' + str(i) + '}' for i in range(1, N + 1)] + \
@@ -162,10 +168,19 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
         games_objectives = [lqr_objective,
                             game_objectives]
 
+        self.figure_filename_generator = lambda g: ('LQR' if g.is_LQR() else f'{N}-players') + \
+                                                   f'_large_{1 if q[0] > q[1] else 2}'
+
         super().__init__(args=args,
                          M=M,
                          games_objectives=games_objectives,
                          continuous=True)
+
+
+N2_output_variables_names = ['$\\frac{x_1(t) + x_2(t)}{\\sqrt{2}}$',
+                             '$\\frac{x_2(t) - x_1(t)}{\\sqrt{2}}$',
+                             '$\\frac{\\dot{x}_1(t) + \\dot{x}_2(t)}{\\sqrt{2}}$',
+                             '$\\frac{\\dot{x}_2(t) - \\dot{x}_1(t)}{\\sqrt{2}}$']
 
 
 def multiprocess_worker_function(N: int,
@@ -175,10 +190,14 @@ def multiprocess_worker_function(N: int,
                                  r: float,
                                  epsilon_x: float,
                                  epsilon_P: float):
-    x_0_vals = [10 * i for i in range(1, N + 1)]
-    x_0 = np.array(x_0_vals + [0] * N)
-    x_T = 10 * x_0
+    x_0 = np.array([10 * i for i in range(1, N + 1)] + [0] * N)
+    x_T = x_0 * 10 if N == 2 else np.array([(10 * i) ** 3 for i in range(1, N + 1)] + [0] * N)
 
+    output_variables_names = N2_output_variables_names \
+        if N == 2 else [f'$q_{i}(t)$' for i in range(1, N + 1)] + ['$\\dot{q}_{' + str(i) + '}(t)$'
+                                                                   for i in range(1, N + 1)]
+
+    T_f = 25
     masses_with_springs = MassesWithSpringsComparison(N=N,
                                                       m=m,
                                                       k=k,
@@ -186,24 +205,30 @@ def multiprocess_worker_function(N: int,
                                                       r=r,
                                                       x_0=x_0,
                                                       x_T=x_T,
+                                                      T_f=T_f,
                                                       epsilon_x=epsilon_x,
                                                       epsilon_P=epsilon_P)
-    output_variables_names = ['$x_1 + x_2$', '$x_1 - x_2$', '$\\dot{x}_1 + \\dot{x}_2$', '$\\dot{x}_1 - \\dot{x}_2$']
+
     masses_with_springs(plot_state_spaces=True,
                         plot_Mx=True,
                         output_variables_names=output_variables_names,
-                        save_figure=True
+                        save_figure=True,
+                        figure_filename=masses_with_springs.figure_filename_generator
                         )
 
 
 if __name__ == '__main__':
-    Ns = [2]
+    d = 0.2
+    N = 2
+
+    Ns = [N]
     ks = [10]
     ms = [50]
-    qs = [[500, 50]]
     rs = [1]
     epsilon_xs = [10e-8]
     epsilon_Ps = [10e-8]
+    qs = [[500, 2000], [500, 250]] if N == 2 else \
+        [[500 * (1 + d) ** i for i in range(N)], [500 * (1 - d) ** i for i in range(N)]]
 
     params = [Ns, ks, ms, qs, rs, epsilon_xs, epsilon_Ps]
     PyDiffGameLQRComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
