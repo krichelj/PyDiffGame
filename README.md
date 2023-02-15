@@ -167,8 +167,7 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
                 'epsilon_x': epsilon_x,
                 'epsilon_P': epsilon_P,
                 'L': L,
-                'eta': eta,
-                'force_finite_horizon': T_f is not None}
+                'eta': eta}
 
         lqr_objective = [LQRObjective(Q=Q_lqr,
                                       R_ii=R_lqr)]
