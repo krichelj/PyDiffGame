@@ -23,25 +23,33 @@ class PyDiffGame(ABC, Callable, Sequence):
     Parameters
     ----------
 
-    A: 2-d np.array of shape(n, n)
-        The system dynamics matrix
-    B: sequence of 2-d np.arrays of len(N), each array B_i of shape(n, m_i)
-        System input matrices for each control objective
-    objectives: sequence of Objective objects
-        Desired objectives for the game
-    x_0: 1-d np.array of shape(n), optional
+    A: np.array of shape(n, n)
+        System dynamics matrix
+    B: np.array of shape(n, sum_{i=}1^N m_i), optional
+        Input matrix for all virtual control objectives
+    Bs: Sequence of np.arrays of len(N), each array B_i of shape(n, m_i), optional
+        Input matrices for each virtual control objective
+    Qs: Sequence of np.arrays of len(N), each array Q_i of shape(n, n), optional
+        State weight matrices for each virtual control objective
+    Rs: Sequence of np.arrays of len(N), each array R_i of shape(m_i, m_i), optional
+        Input weight matrices for each virtual control objective
+    Ms: Sequence of np.arrays of len(N), each array M_i of shape(m_i, m), optional
+        Decomposition matrices for each virtual control objective
+    objectives: Sequence of Objective objects of len(N), optional
+        Desired objectives for the game, each O_i specifying Q_i R_i and M_i
+    x_0: np.array of shape(n), optional
         Initial state vector
-    x_T: 1-d np.array of shape(n), optional
+    x_T: np.array of shape(n), optional
         Final state vector, in case of signal tracking
     T_f: positive float, optional
         System dynamics horizon. Should be given in the case of finite horizon
-    P_f: sequence of 2-d np.arrays of len(N), each array P_f_i of shape(n, n), optional
+    P_f: Sequence of np.arrays of len(N), each array P_f_i of shape(n, n), optional
         default = uncoupled solution of scipy's solve_are
         Final condition for the Riccati equation array. Should be given in the case of finite horizon
     show_legend: bool, optional
         Indicates whether to display a legend in the plots
-    state_variables_names: sequence of strings of len(n), optional
-        The state variables' names to display
+    state_variables_names: Sequence of str objects of len(n), optional
+        The state variables' names to display when plotting
     epsilon_x: float in the interval (0,1), optional
         Numerical convergence threshold for the state vector of the system
     epsilon_P: float in the interval (0,1), optional
@@ -121,7 +129,6 @@ class PyDiffGame(ABC, Callable, Sequence):
                  epsilon_P: Optional[float] = _epsilon_P_default,
                  L: Optional[int] = _L_default,
                  eta: Optional[int] = _eta_default,
-                 force_finite_horizon: Optional[bool] = False,
                  debug: Optional[bool] = False):
 
         self.__continuous = 'ContinuousPyDiffGame' in [c.__name__ for c in
@@ -138,7 +145,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         self._Rs = Rs if Rs else [o.R for o in objectives]
         self._x_0 = x_0
         self._x_T = x_T
-        self.__infinite_horizon = (not force_finite_horizon) and (T_f is None or P_f is None)
+        self.__infinite_horizon = T_f is None
         self._T_f = self.__T_f_default if T_f is None else T_f
 
         self._Ms = Ms
@@ -205,7 +212,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         if self._N > 1 and self._Ms and not all([M_i.shape[0] == R_ii.shape[0] == R_ii.shape[1]
                                                  if R_ii.ndim > 1 else M_i.shape[0] == R_ii.shape[0]
                                                  for M_i, R_ii in zip(self._Ms, self._Rs)]):
-            raise ValueError('R must be a sequence of square 2-d numpy arrays with shape '
+            raise ValueError('R must be a Sequence of square numpy arrays with shape '
                              'corresponding to the second dimensions of the arrays in M')
 
         if not 1 > self.__epsilon_x > 0:
@@ -214,35 +221,35 @@ class PyDiffGame(ABC, Callable, Sequence):
             raise ValueError('The convergence tolerance of the matrix P must be in the open interval (0,1)')
 
         if self._A.shape != (self._n, self._n):
-            raise ValueError(f'A must be a square 2-d numpy array with shape nxn = {self._n}x{self._n}')
+            raise ValueError(f'A must be a square numpy array with shape nxn = {self._n}x{self._n}')
         if self._B is not None:
             if self._B.shape[0] != self._n:
-                raise ValueError(f'B must be a 2-d numpy array with n = {self._n} rows')
+                raise ValueError(f'B must be a numpy array with n = {self._n} rows')
             if not self.is_fully_controllable():
                 warnings.warn("Warning: The given system is not fully controllable")
         else:
             if not all([B_i.shape[0] == self._n and B_i.shape[1] == R_ii.shape[0] == R_ii.shape[1]
                         if R_ii.ndim > 1 else B_i.shape[1] == R_ii.shape[0] for B_i, R_ii in zip(self._Bs, self._Rs)]):
-                raise ValueError('R must be a sequence of square 2-d numpy arrays with shape '
+                raise ValueError('R must be a Sequence of square numpy arrays with shape '
                                  'corresponding to the second dimensions of the arrays in Bs')
         if not all([np.all(np.linalg.eigvals(R_ii) > 0) if R_ii.ndim > 1 else R_ii > 0
                     for R_ii in self._Rs]):
-            raise ValueError('R must be a sequence of square 2-d positive definite numpy arrays')
+            raise ValueError('R must be a Sequence of square positive definite numpy arrays')
         if not all([Q_i.shape == (self._n, self._n) for Q_i in self._Qs]):
-            raise ValueError(f'Q must be a sequence of square 2-d positive semi-definite numpy arrays with shape nxn '
+            raise ValueError(f'Q must be a Sequence of square positive semi-definite numpy arrays with shape nxn '
                              f'= {self._n}x{self._n}')
         if not all([all([e_i >= 0 or PyDiffGame._eigvals_tol > abs(e_i) >= 0 for e_i in np.linalg.eigvals(Q_i)])
                     for Q_i in self._Qs]):
             raise ValueError('Q must contain positive semi-definite numpy arrays')
 
         if self._x_0 is not None and self._x_0.shape != (self._n,):
-            raise ValueError(f'x_0 must be a 1-d numpy array with length n = {self._n}')
+            raise ValueError(f'x_0 must be a numpy array with length n = {self._n}')
         if self._x_T is not None and self._x_T.shape != (self._n,):
-            raise ValueError(f'x_T must be a 1-d numpy array with length n= {self._n}')
+            raise ValueError(f'x_T must be a numpy array with length n= {self._n}')
         if self._T_f is not None and self._T_f <= 0:
             raise ValueError('T_f must be a positive real number')
         if not all([P_f_i.shape[0] == P_f_i.shape[1] == self._n for P_f_i in self._P_f]):
-            raise ValueError(f'P_f must be a sequence of 2-d positive semi-definite numpy arrays with shape nxn = '
+            raise ValueError(f'P_f must be a Sequence of positive semi-definite numpy arrays with shape nxn = '
                              f'{self._n}x{self._n}')
         # if not all([eig >= 0 for eig_set in [np.linalg.eigvals(P_f_i) for P_f_i in self._P_f] for eig in eig_set]):
         #     warnings.warn("Warning: there is a matrix in P_f that has negative eigenvalues.
@@ -419,9 +426,9 @@ class PyDiffGame(ABC, Callable, Sequence):
         Parameters
         ----------
 
-        t: 1-d np.array array of len(L)
+        t: np.array array of len(L)
             The time axis information to plot
-        temporal_variables: 2-d np.arrays of shape(L, n)
+        temporal_variables: np.arrays of shape(L, n)
             The y-axis information to plot
         is_P: bool
             Indicates whether to accommodate plotting for all the values in P_i or just for x
@@ -507,7 +514,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         Parameters
         ----------
 
-        state_variables: 2-d np.array of shape(L, n)
+        state_variables: np.array of shape(L, n)
             The temporal state variables y-axis information to plot
         linear_system: bool, optional
             Indicates whether the system is linear or not
@@ -540,7 +547,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         Parameters
         ----------
 
-        C: 2-d np.array array of shape(p, n)
+        C: np.array array of shape(p, n)
             The output coefficients with respect to state
         output_variables_names: Sequence of len(p)
             Names of output variables
@@ -611,9 +618,9 @@ class PyDiffGame(ABC, Callable, Sequence):
         Returns
         ----------
 
-        longer_period: 1-d np.array of len(max(self.L, other.L))
+        longer_period: np.array of len(max(self.L, other.L))
             The longer time period of the two games
-        augmented_state_space: 2-d np.array of shape(max(self.L, other.L), self.n + other.n)
+        augmented_state_space: np.array of shape(max(self.L, other.L), self.n + other.n)
             Augmented state space with interpolated and extrapolated values for both games
         """
 
@@ -673,7 +680,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         Returns
         ----------
 
-        P_f: list of 2-d numpy arrays, of len(N), of shape(n, n), solution of scipy's solve_are
+        P_f: list of numpy arrays, of len(N), of shape(n, n), solution of scipy's solve_are
             Final condition for the Riccati equation matrix
         """
 
@@ -712,7 +719,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         Returns
         ----------
 
-        K_i: numpy array of numpy 2-d arrays, of len(N), of shape(n, n), solution of scipy's solve_are
+        K_i: numpy array of numpy arrays, of len(N), of shape(n, n), solution of scipy's solve_are
             Final condition for the Riccati equation matrix
         """
 
@@ -733,7 +740,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         Returns
         ----------
 
-        P_f_i: 2-d numpy array of shape(n, n)
+        P_f_i: numpy array of shape(n, n)
             i'th element of the final condition matrices P_f
         """
 
@@ -874,7 +881,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         Returns
         ----------
 
-        x_T_f: 1-d numpy array of shape(n)
+        x_T_f: numpy array of shape(n)
             Evaluated terminal state vector x(T_f)
         """
 
@@ -890,7 +897,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         Parameters
         ----------
 
-        x: 1-d numpy array of shape(n)
+        x: numpy array of shape(n)
             The solved state vector to consider
         l: int
             The desired segment
@@ -898,7 +905,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         Returns
         ----------
 
-        x_l_tilde: 1-d numpy array of shape(n)
+        x_l_tilde: numpy array of shape(n)
             State difference at the lth segment
         """
 
@@ -919,19 +926,19 @@ class PyDiffGame(ABC, Callable, Sequence):
         Parameters
         ----------
 
-        x: 1-d numpy array of shape(n)
+        x: numpy array of shape(n)
             The solved state vector to consider
         i: int
             The desired input index
         l: int
             The desired segment
-        v_i_T: 1-d numpy array of shape(m_i)
+        v_i_T: numpy array of shape(m_i)
             The terminal value of the ith input
 
         Returns
         ----------
 
-        v_i_l_tilde: 1-d numpy array of shape(m_i)
+        v_i_l_tilde: numpy array of shape(m_i)
             ith virtual input difference at the lth segment
         """
 
@@ -954,17 +961,17 @@ class PyDiffGame(ABC, Callable, Sequence):
         Parameters
         ----------
 
-        x: 1-d numpy array of shape(n)
+        x: numpy array of shape(n)
             The solved state vector to consider
         l: int
             The desired segment
-        x_l_tilde: 1-d numpy array of shape(n)
+        x_l_tilde: numpy array of shape(n)
             The state difference at the lth segment
 
         Returns
         ----------
 
-        u_l_tilde: 1-d numpy array of shape(m)
+        u_l_tilde: numpy array of shape(m)
             Actual input difference at the lth segment
         """
 
@@ -1000,7 +1007,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         Parameters
         ----------
 
-        x: 1-d numpy array of shape(n)
+        x: numpy array of shape(n)
             The solved state vector to consider
         l: int
             The desired segment
@@ -1008,9 +1015,9 @@ class PyDiffGame(ABC, Callable, Sequence):
         Returns
         ----------
 
-        x_l_tilde: 1-d numpy array of shape(n)
+        x_l_tilde: numpy array of shape(n)
             State difference at the lth segment
-        u_l_tilde: 1-d numpy array of shape(m)
+        u_l_tilde: numpy array of shape(m)
             Actual input difference at the lth segment
         """
 
@@ -1036,7 +1043,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         Returns
         ----------
 
-        x: 1-d numpy array of shape(n)
+        x: numpy array of shape(n)
             Desired state vector
         """
 

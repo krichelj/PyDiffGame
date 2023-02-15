@@ -29,7 +29,6 @@ class LQR(PyDiffGame, ABC):
                  epsilon_x: Optional[float] = PyDiffGame._epsilon_x_default,
                  L: Optional[int] = PyDiffGame._L_default,
                  eta: Optional[int] = PyDiffGame._eta_default,
-                 force_finite_horizon: Optional[bool] = False,
                  debug: Optional[bool] = False):
         super().__init__(A=A,
                          B=B,
@@ -43,7 +42,6 @@ class LQR(PyDiffGame, ABC):
                          epsilon_x=epsilon_x,
                          L=L,
                          eta=eta,
-                         force_finite_horizon=force_finite_horizon,
                          debug=debug)
 
 

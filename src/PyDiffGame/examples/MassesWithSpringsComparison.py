@@ -71,8 +71,7 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
                 'epsilon_x': epsilon_x,
                 'epsilon_P': epsilon_P,
                 'L': L,
-                'eta': eta,
-                'force_finite_horizon': T_f is not None}
+                'eta': eta}
 
         lqr_objective = [LQRObjective(Q=Q_lqr,
                                       R_ii=R_lqr)]
@@ -83,7 +82,7 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
                             game_objectives]
 
         self.figure_filename_generator = lambda g: ('LQR' if g.is_LQR() else f'{N}-players') + \
-                                                   f'_large_{1 if q[0] > q[1] else 2}'
+                                                                             f'_large_{1 if q[0] > q[1] else 2}'
 
         super().__init__(args=args,
                          M=M,
@@ -177,7 +176,7 @@ def multiprocess_worker_function(N: int,
 
 if __name__ == '__main__':
     d = 0.2
-    N = 8
+    N = 2
 
     Ns = [N]
     ks = [10]
