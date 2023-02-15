@@ -455,10 +455,11 @@ class PyDiffGame(ABC, Callable, Sequence):
                 labels = ["${\mathbf{x}}_{" + str(j) + "}$" for j in range(1, self._n + 1)]
 
             plt.legend(labels=labels,
-                       loc='upper left' if is_P else 'best',
-                       ncol=2,
-                       prop={'size': int(100 / self._n)},
-                       # bbox_to_anchor=(1, 0.75)
+                       loc='upper left' if is_P else 'right',
+                       ncol=4,
+                       prop={'size': 18},
+                       bbox_to_anchor=(1, 0.65),
+                       framealpha=0.3
                        )
 
         plt.grid()
