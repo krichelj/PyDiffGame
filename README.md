@@ -38,6 +38,8 @@ To clone Git repository locally run this from the command prompt:
 git clone https://github.com/krichelj/PyDiffGame.git
 ```
 
+The package was tested for Python >= 3.10
+
 # Input Parameters
 
 The package contains a file named `PyDiffGame.py` and an abstract class of the same name. An object of this class represents an instance of differential game.
