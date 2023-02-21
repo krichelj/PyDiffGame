@@ -158,7 +158,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         if self._Bs is None:
             if self._Ms is not None and len(self._Ms):
                 self._M = np.concatenate(self._Ms, axis=0)
-                self._M_inv = np.linalg.inv(self._M)
+                self._M_inv = np.linalg.pinv(self._M)
                 l = 0
                 self._Bs = []
 
@@ -690,9 +690,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         for B_i, Q_i, R_ii in zip(self._Bs, self._Qs, self._Rs):
             try:
                 P_f_i = are_solver(self._A, B_i, Q_i, R_ii)
-            except np.linalg.LinAlgError:
-                # rand = np.random.rand(*self._A.shape)
-                # P_f_i = rand @ rand.T
+            except (np.linalg.LinAlgError, ValueError):
                 P_f_i = Q_i
 
             P_f += [P_f_i]
