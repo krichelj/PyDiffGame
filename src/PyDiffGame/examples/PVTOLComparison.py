@@ -46,29 +46,39 @@ class PVTOLComparison(PyDiffGameLQRComparison):
         I_2 = np.eye(2)
 
         M = I_2
-        Ms = [M[0, :].reshape(1, M.shape[1]), M[1, :].reshape(1, M.shape[1])]
+
+        r_x = 1 / m
+        r_y = 1
+        r_theta = r / J
+
+        M_x = np.array([r_x, 0])
+        M_y = np.array([0, r_y])
+        M_theta = np.array([r_theta, 0])
+
+        Ms = [M_x.reshape(1, 2),
+              M_y.reshape(1, 2),
+              M_theta.reshape(1, 2)]
 
         q_x = 100
         q_y = 10
         q_theta = 2 * np.pi / 5
 
-        r_x_theta = 1
-        r_y = 1
 
-        Q_x_theta = np.diag([q_x, 0, q_theta] + [0] * 3)
-        Q_y = np.diag([0, q_y, 0] + [0] * 3)
+        Q_x = np.diag([q_x, 0, 0] * 2)
+        Q_y = np.diag([0, q_y, 0] * 2)
+        Q_theta = np.diag([0, 0, q_theta] * 2)
 
-        Qs = [Q_x_theta, Q_y]
-        Rs = [np.array([r_x_theta]), np.array([r_y])]
+        Qs = [Q_x, Q_y, Q_theta]
+        Rs = [np.array([r_x]), np.array([r_y]), np.array([r_theta])]
 
         variables = ['x', 'y', '\\theta']
 
         self.state_variables_names = [f'{v}(t)' for v in variables] + \
                                      ['\\dot{' + str(v) + '}(t)' for v in variables]
 
-        Q_lqr = np.diag([q_x, q_y, q_theta] + [0] * 3)
-        R_lqr = np.diag([r_x_theta, r_y])
-        assert np.all(np.abs(Q_lqr - (Q_x_theta + Q_y)) < epsilon_x)
+        Q_lqr = np.diag([q_x, q_y, q_theta] * 2)
+        R_lqr = np.diag([r_x + r_theta, r_y])
+        assert np.all(np.abs(Q_lqr - (Q_x + Q_y + Q_theta)) < epsilon_x)
 
         lqr_objective = [LQRObjective(Q=Q_lqr,
                                       R_ii=R_lqr)]
@@ -87,8 +97,7 @@ class PVTOLComparison(PyDiffGameLQRComparison):
                 'epsilon_x': epsilon_x,
                 'epsilon_P': epsilon_P,
                 'L': L,
-                'eta': eta,
-                'force_finite_horizon': T_f is not None}
+                'eta': eta}
 
         super().__init__(args=args,
                          M=M,
