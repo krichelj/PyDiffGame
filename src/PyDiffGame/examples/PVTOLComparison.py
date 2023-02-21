@@ -60,7 +60,7 @@ class PVTOLComparison(PyDiffGameLQRComparison):
               M_theta.reshape(1, 2)]
 
         q_x = 100
-        q_y = 10
+        q_y = 1000
         q_theta = 2 * np.pi / 5
 
 
@@ -78,7 +78,7 @@ class PVTOLComparison(PyDiffGameLQRComparison):
 
         Q_lqr = np.diag([q_x, q_y, q_theta] * 2)
         R_lqr = np.diag([r_x + r_theta, r_y])
-        assert np.all(np.abs(Q_lqr - (Q_x + Q_y + Q_theta)) < epsilon_x)
+        assert np.all(np.abs(Q_lqr - sum(Qs)) < epsilon_x)
 
         lqr_objective = [LQRObjective(Q=Q_lqr,
                                       R_ii=R_lqr)]

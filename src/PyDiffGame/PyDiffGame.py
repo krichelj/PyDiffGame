@@ -162,6 +162,7 @@ class PyDiffGame(ABC, Callable, Sequence):
                     self._M_inv = np.linalg.inv(self._M)
                 except np.linalg.LinAlgError:
                     self._M_inv = np.linalg.pinv(self._M)
+                    print(np.linalg.matrix_rank(self._M_inv))
                 l = 0
                 self._Bs = []
 
@@ -466,10 +467,10 @@ class PyDiffGame(ABC, Callable, Sequence):
 
             plt.legend(labels=labels,
                        loc='upper left' if is_P else 'right',
-                       ncol=4,
-                       prop={'size': 18},
-                       bbox_to_anchor=(1, 0.65),
-                       framealpha=0.3
+                       ncol=2,
+                       prop={'size': 14},
+                       bbox_to_anchor=(1, 0.75),
+                       # framealpha=0.3
                        )
 
         plt.grid()
