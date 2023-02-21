@@ -158,7 +158,10 @@ class PyDiffGame(ABC, Callable, Sequence):
         if self._Bs is None:
             if self._Ms is not None and len(self._Ms):
                 self._M = np.concatenate(self._Ms, axis=0)
-                self._M_inv = np.linalg.pinv(self._M)
+                try:
+                    self._M_inv = np.linalg.inv(self._M)
+                except np.linalg.LinAlgError:
+                    self._M_inv = np.linalg.pinv(self._M)
                 l = 0
                 self._Bs = []
 
