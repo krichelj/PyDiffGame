@@ -11,7 +11,7 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
                  N: int,
                  m: float,
                  k: float,
-                 q: float | Sequence[float],
+                 q: float | Sequence[float] | Sequence[Sequence[float]],
                  r: float,
                  Ms: Optional[Sequence[np.array]] = None,
                  x_0: Optional[np.array] = None,
@@ -42,9 +42,6 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
         Qs = [np.diag([0.0] * i + [q] + [0.0] * (N - 1) + [q] + [0.0] * (N - i - 1))
               if isinstance(q, (int, float)) else
               np.diag([0.0] * i + [q[i]] + [0.0] * (N - 1) + [q[i]] + [0.0] * (N - i - 1)) for i in range(N)]
-
-        # Qs = [np.array([[int(i == j)]*2*N for j in range(2 * N)]) for i in range(N)]
-        # Qs = [Qs[i].T + Qs[i] - np.diag([0] * i + [1] + [0]*(N - i + 1)) for i in range(N)]
 
         M = np.concatenate(Ms,
                            axis=0)
