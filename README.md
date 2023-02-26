@@ -38,11 +38,11 @@ To clone Git repository locally run this from the command prompt:
 git clone https://github.com/krichelj/PyDiffGame.git
 ```
 
-The package was tested for Python >= 3.10
+The package was tested for Python >= 3.10, along with the listed packages versions in [`requirments.txt`](https://github.com/krichelj/PyDiffGame/blob/master/requirements.txt)
 
 # Input Parameters
 
-The package contains a file named `PyDiffGame.py` and an abstract class of the same name. An object of this class represents an instance of differential game.
+The package defines an abstract class [`PyDiffGame.py`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/PyDiffGame.py). An object of this class represents an instance of differential game.
 The input parameters to instantiate a `PyDiffGame` object are:
 
 * `A` : `np.array` of shape( $n,n$ )
@@ -210,9 +210,6 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
         games_objectives = [lqr_objective,
                             game_objectives]
 
-        self.figure_filename_generator = lambda g: ('LQR' if g.is_LQR() else f'{N}-players') + \
-                                                                             f'_large_{1 if q[0] > q[1] else 2}'
-
         super().__init__(args=args,
                          M=M,
                          games_objectives=games_objectives,
@@ -230,10 +227,10 @@ output_variables_names = ['$\\frac{x_1 + x_2}{\\sqrt{2}}$',
 masses_with_springs(plot_state_spaces=True,
                     plot_Mx=True,
                     output_variables_names=output_variables_names,
-                    save_figure=True,
-                    figure_filename=masses_with_springs.figure_filename_generator)
+                    save_figure=True)
 ```
 
+Refer 
 This will result in the following plot that compares the two systems performance for a differential game vs an LQR:
 
 <p align="center">
