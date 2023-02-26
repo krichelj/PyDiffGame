@@ -88,6 +88,7 @@ The input parameters to instantiate a `PyDiffGame` object are:
 
 # Tutorial
 
+To demonstrate the use of the package, we provide a few running examples.
 Consider the following system of masses and springs:
 
 
@@ -95,8 +96,38 @@ Consider the following system of masses and springs:
     <img align=top src="src/PyDiffGame/examples/figures/2/two_masses_tikz.png" width="797" height="130"/>
 </p>
 
-Let us consider the following input parameters for the instantiation of an [`MassesWithSpringsComparison`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/examples/MassesWithSpringsComparison.py) object and 
-corresponding call for `run_multiprocess`:
+The performance of the system under the use of the suggested method is compared with that of a Linear Quadratic Regulator (LQR). For that purpose, class named [`PyDiffGameLQRComparison`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/PyDiffGameLQRComparison.py) is defined. A comparison of a system should subclass this class.
+As an example, for the masses and springs system, consider the following instantiation of an [`MassesWithSpringsComparison`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/examples/MassesWithSpringsComparison.py) object:
+
+```python
+import numpy as np
+from PyDiffGame.examples.MassesWithSpringsComparison import MassesWithSpringsComparison
+
+N = 2
+k = 10
+m = 50
+r = 1
+epsilon_x = 10e-8
+epsilon_P = 10e-8
+q = [[500, 2000], [500, 250]]
+
+x_0 = np.array([10 * i for i in range(1, N + 1)] + [0] * N)
+x_T = x_0 * 10 if N == 2 else np.array([(10 * i) ** 3 for i in range(1, N + 1)] + [0] * N)
+T_f = 25
+
+masses_with_springs = MassesWithSpringsComparison(N=N,
+                                                  m=m,
+                                                  k=k,
+                                                  q=q,
+                                                  r=r,
+                                                  x_0=x_0,
+                                                  x_T=x_T,
+                                                  T_f=T_f,
+                                                  epsilon_x=epsilon_x,
+                                                  epsilon_P=epsilon_P)
+```
+
+Consider the constructor of the class `MassesWithSpringsComparison`:
 
 ```python
 import numpy as np
@@ -112,7 +143,7 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
                  N: int,
                  m: float,
                  k: float,
-                 q: float | Sequence[float],
+                 q: float | Sequence[float] | Sequence[Sequence[float]],
                  r: float,
                  Ms: Optional[Sequence[np.array]] = None,
                  x_0: Optional[np.array] = None,
@@ -180,70 +211,27 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
                             game_objectives]
 
         self.figure_filename_generator = lambda g: ('LQR' if g.is_LQR() else f'{N}-players') + \
-                                                   f'_large_{1 if q[0] > q[1] else 2}'
+                                                                             f'_large_{1 if q[0] > q[1] else 2}'
 
         super().__init__(args=args,
                          M=M,
                          games_objectives=games_objectives,
                          continuous=True)
+```
 
+Finally, consider calling the `masses_with_springs` object as follows:
 
-N2_output_variables_names = ['$\\frac{x_1(t) + x_2(t)}{\\sqrt{2}}$',
-                             '$\\frac{x_2(t) - x_1(t)}{\\sqrt{2}}$',
-                             '$\\frac{\\dot{x}_1(t) + \\dot{x}_2(t)}{\\sqrt{2}}$',
-                             '$\\frac{\\dot{x}_2(t) - \\dot{x}_1(t)}{\\sqrt{2}}$']
+```python
+output_variables_names = ['$\\frac{x_1 + x_2}{\\sqrt{2}}$',
+                          '$\\frac{x_2 - x_1}{\\sqrt{2}}$',
+                          '$\\frac{\\dot{x}_1 + \\dot{x}_2}{\\sqrt{2}}$',
+                          '$\\frac{\\dot{x}_2 - \\dot{x}_1}{\\sqrt{2}}$']
 
-
-def multiprocess_worker_function(N: int,
-                                 k: float,
-                                 m: float,
-                                 q: float,
-                                 r: float,
-                                 epsilon_x: float,
-                                 epsilon_P: float):
-    x_0 = np.array([10 * i for i in range(1, N + 1)] + [0] * N)
-    x_T = x_0 * 10 if N == 2 else np.array([(10 * i) ** 3 for i in range(1, N + 1)] + [0] * N)
-
-    output_variables_names = N2_output_variables_names \
-        if N == 2 else [f'$q_{i}(t)$' for i in range(1, N + 1)] + ['$\\dot{q}_{' + str(i) + '}(t)$'
-                                                                   for i in range(1, N + 1)]
-
-    T_f = 25
-    masses_with_springs = MassesWithSpringsComparison(N=N,
-                                                      m=m,
-                                                      k=k,
-                                                      q=q,
-                                                      r=r,
-                                                      x_0=x_0,
-                                                      x_T=x_T,
-                                                      T_f=T_f,
-                                                      epsilon_x=epsilon_x,
-                                                      epsilon_P=epsilon_P)
-
-    masses_with_springs(plot_state_spaces=True,
-                        plot_Mx=True,
-                        output_variables_names=output_variables_names,
-                        save_figure=True,
-                        figure_filename=masses_with_springs.figure_filename_generator
-                        )
-
-
-if __name__ == '__main__':
-    d = 0.2
-    N = 2
-
-    Ns = [N]
-    ks = [10]
-    ms = [50]
-    rs = [1]
-    epsilon_xs = [10e-8]
-    epsilon_Ps = [10e-8]
-    qs = [[500, 2000], [500, 250]] if N == 2 else \
-        [[500 * (1 + d) ** i for i in range(N)], [500 * (1 - d) ** i for i in range(N)]]
-
-    params = [Ns, ks, ms, qs, rs, epsilon_xs, epsilon_Ps]
-    PyDiffGameLQRComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
-                                             values=params)
+masses_with_springs(plot_state_spaces=True,
+                    plot_Mx=True,
+                    output_variables_names=output_variables_names,
+                    save_figure=True,
+                    figure_filename=masses_with_springs.figure_filename_generator)
 ```
 
 This will result in the following plot that compares the two systems performance for a differential game vs an LQR:
