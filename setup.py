@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="PyDiffGame",
-    version="0.1.0",
+    version="0.1.1",
     author="Dr. Aviran Sadon, Joshua Shay Kricheli and Prof. Gera Weiss",
     author_email="skricheli2@gmail.com",
     description="PyDiffGame is a Python implementation of a Nash Equilibrium solution to Differential Games, based on a reduction of Game Hamilton-Bellman-Jacobi (GHJB) equations to Game Algebraic and Differential Riccati equations, associated with Multi-Objective Dynamical Control Systems",
