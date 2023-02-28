@@ -31,11 +31,11 @@ If you use this work, please cite our paper:
   doi={10.1109/MED51440.2021.9480269}}
 ```
 
-# Local Installation
+# Installation
 
-To clone Git repository locally run this from the command prompt:
+To install this package run this from the command prompt:
 ```
-git clone https://github.com/krichelj/PyDiffGame.git
+pip install PyDiffGame
 ```
 
 The package was tested for Python >= 3.10, along with the listed packages versions in [`requirments.txt`](https://github.com/krichelj/PyDiffGame/blob/master/requirements.txt)
