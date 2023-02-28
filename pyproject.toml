@@ -12,17 +12,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-requires = [
-    "setuptools>=61.0",
-    "numpy",
-    "scipy",
-    "matplotlib",
-    "wheel",
-    "quadpy",
-    "tqdm",
-    "sympy"
-]
-build-backend = "setuptools.build_meta"
 
 [project.urls]
 "Homepage" = "https://shaykricheli.com/PyDiffGame/"
