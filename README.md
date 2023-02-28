@@ -47,7 +47,7 @@ The input parameters to instantiate a `PyDiffGame` object are:
 
 * `A` : `np.array` of shape( $n,n$ )
 >System dynamics matrix
-* `B` : `np.array` of shape( $n,\sum_{i=}1^N m_i$ ), optional
+* `B` : `np.array` of shape( $n,\sum_{i=1}^N m_i$ ), optional
 >Input matrix for all virtual control objectives
 * `Bs` : `Sequence` of `np.array` objects of len( $N$ ), each array $B_i$ of shape( $n,m_i$ ), optional
 >Input matrices for each virtual control objective
