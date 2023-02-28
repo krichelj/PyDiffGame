@@ -45,34 +45,34 @@ The package was tested for Python >= 3.10, along with the listed packages versio
 The package defines an abstract class [`PyDiffGame.py`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/PyDiffGame.py). An object of this class represents an instance of differential game.
 The input parameters to instantiate a `PyDiffGame` object are:
 
-* `A` : `np.array` of shape( $n,n$ )
+* `A` : `np.array` of shape $(n,n)$
 >System dynamics matrix
 * `B` : `np.array` of shape( $n,\sum_{i=1}^N m_i$ ), optional
 >Input matrix for all virtual control objectives
-* `Bs` : `Sequence` of `np.array` objects of len( $N$ ), each array $B_i$ of shape( $n,m_i$ ), optional
+* `Bs` : `Sequence` of `np.array` objects of len $(N)$, each array $B_i$ of shape $(n,m_i)$, optional
 >Input matrices for each virtual control objective
-* `Qs` : `Sequence` of `np.array` objects of len( $N$ ), each array $Q_i$ of shape( $n,n$ ), optional
+* `Qs` : `Sequence` of `np.array` objects of len $(N)$, each array $Q_i$ of shape $(n,n)$, optional
 >State weight matrices for each virtual control objective
-* `Rs` : `Sequence` of `np.array` objects of len( $N$ ), each array $R_i$ of shape( $m_i,m_i$ ), optional
+* `Rs` : `Sequence` of `np.array` objects of len $(N)$, each array $R_i$ of shape $(m_i,m_i)$, optional
 >Input weight matrices for each virtual control objective
-* `Ms` : `Sequence` of `np.array` objects of len( $N$ ), each array $M_i$ of shape( $m_i,m$ ), optional
+* `Ms` : `Sequence` of `np.array` objects of len $(N)$, each array $M_i$ of shape $(m_i,m)$, optional
 >Decomposition matrices for each virtual control objective
-* `objectives` : `Sequence` of `Objective` objects of len( $N$ ), each $O_i$ specifying $Q_i, R_i$ and $M_i$, optional
+* `objectives` : `Sequence` of `Objective` objects of len $(N)$, each $O_i$ specifying $Q_i, R_i$ and $M_i$, optional
 >Desired objectives for the game
-* `x_0` : `np.array` of len( $n$ ), optional
+* `x_0` : `np.array` of len $(n)$, optional
 >Initial state vector
-* `x_T` : `np.array` of len( $n$ ), optional
+* `x_T` : `np.array` of len $(n)$, optional
 >Final state vector, in case of signal tracking
 * `T_f` : positive `float`, optional
 >System dynamics horizon. Should be given in the case of finite horizon
-* `P_f` : `list` of `np.array` objects of len( $N$ ), each array $P_{f_i}$ of shape( $n,n$ ), optional, default = uncoupled solution of `scipy's solve_are`
+* `P_f` : `list` of `np.array` objects of len $(N)$, each array $P_{f_i}$ of shape $(n,n)$, optional, default = uncoupled solution of `scipy's solve_are`
 >
 >Final condition for the Riccati equation array. Should be given in the case of finite horizon
-* `state_variables_names` : `Sequence` of `str` objects of len( $N$ ), optional
+* `state_variables_names` : `Sequence` of `str` objects of len $(N)$, optional
 >The state variables' names to display when plotting
 * `show_legend` : `boolean`, optional
 >Indicates whether to display a legend in the plots
-* `state_variables_names` : `Sequence` of `str` objects of len( $n$ ), optional
+* `state_variables_names` : `Sequence` of `str` objects of len $(n)$, optional
 >The state variables' names to display
 * `epsilon_x` : `float` in the interval $(0,1)$, optional
 >Numerical convergence threshold for the state vector of the system
