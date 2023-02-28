@@ -8,7 +8,7 @@ setuptools.setup(
     version="0.0.1",
     author="Dr. Aviran Sadon, Joshua Shay Kricheli and Prof. Gera Weiss",
     author_email="skricheli2@gmail.com",
-    description="Multi-Objective Control Systems Simulator based on Differential Games",
+    description="PyDiffGame is a Python implementation of a Nash Equilibrium solution to Differential Games, based on a reduction of Game Hamilton-Bellman-Jacobi (GHJB) equations to Game Algebraic and Differential Riccati equations, associated with Multi-Objective Dynamical Control Systems",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/krichelj/PyDiffGame",
@@ -22,5 +22,5 @@ setuptools.setup(
     ],
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
-    python_requires=">=3.6",
+    python_requires=">=3.7",
 )

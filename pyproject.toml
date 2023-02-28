@@ -1,9 +1,29 @@
-[build-system]
+[project]
+name = "PyDiffGame"
+version = "0.1.0"
+authors = [
+  { name="Joshua Shay Kricheli", email="skricheli2@gmail.com" },
+]
+description = "PyDiffGame is a Python implementation of a Nash Equilibrium solution to Differential Games, based on a reduction of Game Hamilton-Bellman-Jacobi (GHJB) equations to Game Algebraic and Differential Riccati equations, associated with Multi-Objective Dynamical Control Systems"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
 requires = [
-    "setuptools>=42",
+    "setuptools>=61.0",
     "numpy",
     "scipy",
     "matplotlib",
-    "wheel"
+    "wheel",
+    "quadpy",
+    "tqdm",
+    "sympy"
 ]
 build-backend = "setuptools.build_meta"
+
+[project.urls]
+"Homepage" = "https://shaykricheli.com/PyDiffGame/"
+"Bug Tracker" = "https://github.com/krichelj/PyDiffGame/issues"

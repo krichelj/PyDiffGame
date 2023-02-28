@@ -2,7 +2,7 @@ matplotlib>=3.7.0
 numpy>=1.22.3
 quadpy>=0.16.17
 scipy>=1.8.0
-setuptools>=67.3.1
+setuptools>=61.0
 tqdm>=4.63.0
 sympy~=1.11.1
 termcolor==2.0.1
