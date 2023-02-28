@@ -93,7 +93,7 @@ Consider the following system of masses and springs:
 
 
 <p align="center">
-    <img align=top src="src/PyDiffGame/examples/figures/2/two_masses_tikz.png" width="797" height="130"/>
+    <img align=top src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/src/PyDiffGame/examples/figures/2/two_masses_tikz.png" width="797" height="130"/>
 </p>
 
 The performance of the system under the use of the suggested method is compared with that of a Linear Quadratic Regulator (LQR). For that purpose, class named [`PyDiffGameLQRComparison`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/PyDiffGameLQRComparison.py) is defined. A comparison of a system should subclass this class.
@@ -234,8 +234,8 @@ Refer
 This will result in the following plot that compares the two systems performance for a differential game vs an LQR:
 
 <p align="center">
-    <img align=top src="src/PyDiffGame/examples/figures/2/2-players_large_1.png" width="400" height="300"/>
-    <img align=top src="src/PyDiffGame/examples/figures/2/LQR_large_1.png" width="400" height="300"/>
+    <img align=top src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/src/PyDiffGame/examples/figures/2/2-players_large_1.png" width="400" height="300"/>
+    <img align=top src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/src/PyDiffGame/examples/figures/2/LQR_large_1.png" width="400" height="300"/>
 </p>
 
 
@@ -248,8 +248,8 @@ qs = [[500, 5000]]
 we have: 
 
 <p align="center">
-    <img align=top src="src/PyDiffGame/examples/figures/2/2-players_large_2.png" width="400" height="300"/>
-    <img align=top src="src/PyDiffGame/examples/figures/2/LQR_large_2.png" width="400" height="300"/>
+    <img align=top src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/src/PyDiffGame/examples/figures/2/2-players_large_2.png" width="400" height="300"/>
+    <img align=top src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/src/PyDiffGame/examples/figures/2/LQR_large_2.png" width="400" height="300"/>
 </p>
 
 
@@ -260,20 +260,20 @@ This research was also supported by The Israeli Smart Transportation Research Ce
 
 <p align="center">
     <a href="https://istrc.net.technion.ac.il/">
-    <img src="images/Logo_ISTRC_Green_English.png" width="180"  alt=""/>
+    <img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/Logo_ISTRC_Green_English.png" width="180"  alt=""/>
     </a>
 &emsp;
 &emsp;
 &emsp;
 &emsp;
 <a href="https://in.bgu.ac.il/en/Pages/default.aspx">
-<img src="images/BGU-logo-round.png" width="150"  alt=""/>
+<img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/BGU-logo-round.png" width="150"  alt=""/>
 </a>
 &emsp;
 &emsp;
 &emsp;
 &emsp;
 <a href="https://in.bgu.ac.il/en/robotics/Pages/default.aspx">
-<img src="images/logo_abc.png" width="180"  alt=""/>
+<img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/logo_abc.png" width="180"  alt=""/>
 </a>
 </p>
