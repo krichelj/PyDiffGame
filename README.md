@@ -2,6 +2,8 @@
     <img alt="Logo" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/logo.png"/>
 </p>
 
+[![pages-build-deployment](https://github.com/krichelj/PyDiffGame/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/krichelj/PyDiffGame/actions/workflows/pages/pages-build-deployment)
+
   * [What is this?](#what-is-this)
   * [Local Installation](#local-installation)
   * [Input Parameters](#input-parameters)
