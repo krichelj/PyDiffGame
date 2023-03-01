@@ -3,6 +3,7 @@
 </p>
 
 [![pages-build-deployment](https://github.com/krichelj/PyDiffGame/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/krichelj/PyDiffGame/actions/workflows/pages/pages-build-deployment)
+[![CodeQL](https://github.com/krichelj/PyDiffGame/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/krichelj/PyDiffGame/actions/workflows/github-code-scanning/codeql)
 
   * [What is this?](#what-is-this)
   * [Local Installation](#local-installation)
