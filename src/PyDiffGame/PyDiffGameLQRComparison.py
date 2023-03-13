@@ -1,7 +1,6 @@
 import numpy as np
 from tqdm import tqdm
 from time import time
-from termcolor import colored
 from pathlib import Path
 import itertools
 from concurrent.futures import ProcessPoolExecutor
@@ -147,8 +146,7 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
 
             for combo, submittal in tqdm(iterable=submittals.items(), total=len(submittals)):
                 values = combo[1:-1].split(delimiter)
-                print_str = f"""{colored(text=f"{delimiter.join([f'{n}={v}' for n, v in zip(names, values)])}", 
-                                            color='blue')}"""
+                print_str = f"{delimiter.join([f'{n}={v}' for n, v in zip(names, values)])}"
                 print(print_str)
                 submittal.result()
 
