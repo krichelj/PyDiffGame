@@ -173,7 +173,7 @@ def multiprocess_worker_function(N: int,
 
 if __name__ == '__main__':
     d = 0.2
-    N = 2
+    N = 8
 
     Ns = [N]
     ks = [10]

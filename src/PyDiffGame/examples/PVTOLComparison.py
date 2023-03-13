@@ -47,7 +47,7 @@ class PVTOLComparison(PyDiffGameLQRComparison):
 
         M = I_2
 
-        psi = 1
+        psi = 1000
 
         M_x = np.array([1, 0])
         M_y = np.array([0, 1])
