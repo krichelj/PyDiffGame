@@ -445,7 +445,15 @@ class PyDiffGame(ABC, Callable, Sequence):
         self._fig = plt.figure(dpi=150)
         self._fig.set_size_inches(8, 6)
         plt.plot(t[:temporal_variables.shape[0]], temporal_variables)
-        plt.xlabel('Time $[s]$')
+        plt.xlabel('Time $[s]$', fontsize=18)
+        plt.xticks(fontsize=18)
+        plt.yticks(fontsize=18)
+        plt.subplots_adjust(wspace=0)
+
+        if not is_P and max(np.max(temporal_variables, axis=0)) > 1e3:
+            plt.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
+            plt.gca().yaxis.get_offset_text().set_size(18)
+
 
         if title:
             plt.title(title)
@@ -467,10 +475,10 @@ class PyDiffGame(ABC, Callable, Sequence):
 
             plt.legend(labels=labels,
                        loc='upper left' if is_P else 'right',
-                       ncol=2,
-                       prop={'size': 14},
-                       bbox_to_anchor=(1, 0.75),
-                       # framealpha=0.3
+                       ncol=4 if self._n > 8 else 2,
+                       prop={'size': 26},
+                       bbox_to_anchor=(1, 0.55),
+                       framealpha=0.3
                        )
 
         plt.grid()
