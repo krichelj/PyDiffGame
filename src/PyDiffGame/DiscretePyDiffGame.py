@@ -1,6 +1,6 @@
 import numpy as np
 import scipy as sp
-import quadpy
+# import quadpy
 from typing import Sequence, Optional
 
 from PyDiffGame.PyDiffGame import PyDiffGame
@@ -44,7 +44,6 @@ class DiscretePyDiffGame(PyDiffGame):
                  epsilon_P: Optional[float] = PyDiffGame._epsilon_P_default,
                  L: Optional[int] = PyDiffGame._L_default,
                  eta: Optional[int] = PyDiffGame._eta_default,
-                 force_finite_horizon: Optional[bool] = False,
                  debug: Optional[bool] = False):
 
         super().__init__(A=A,
@@ -64,7 +63,6 @@ class DiscretePyDiffGame(PyDiffGame):
                          epsilon_P=epsilon_P,
                          L=L,
                          eta=eta,
-                         force_finite_horizon=force_finite_horizon,
                          debug=debug
                          )
 

@@ -529,7 +529,7 @@ class PyDiffGame(ABC, Callable, Sequence):
         self.__plot_temporal_variables(t=self._forward_time,
                                        temporal_variables=state_variables,
                                        is_P=False,
-                                       title=self.__get_temporal_state_variables_title(linear_system=linear_system),
+                                       # title=self.__get_temporal_state_variables_title(linear_system=linear_system),
                                        output_variables_names=output_variables_names)
 
     def __plot_x(self):

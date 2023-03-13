@@ -47,38 +47,30 @@ class PVTOLComparison(PyDiffGameLQRComparison):
 
         M = I_2
 
-        r_x = 1 / m
-        r_y = 1
-        r_theta = r / J
+        psi = 1
 
-        M_x = np.array([r_x, 0])
-        M_y = np.array([0, r_y])
-        M_theta = np.array([r_theta, 0])
+        M_x = np.array([1, 0])
+        M_y = np.array([0, 1])
+        M_theta = np.array([1, 0])
 
-        Ms = [M_x.reshape(1, 2),
-              M_y.reshape(1, 2),
-              M_theta.reshape(1, 2)]
+        Ms = [M_i.reshape(1, 2) for M_i in [M_x, M_y, M_theta]]
 
-        q_x = 100
-        q_y = 1000
-        q_theta = 2 * np.pi / 5
+        self.figure_filename_generator = lambda g: ('LQR_' if g.is_LQR() else '') + f'PVTOL{psi}'
 
-
-        Q_x = np.diag([q_x, 0, 0] * 2)
-        Q_y = np.diag([0, q_y, 0] * 2)
-        Q_theta = np.diag([0, 0, q_theta] * 2)
+        Q_x = np.diag([1, 0, 0] * 2)
+        Q_y = np.diag([0, 1, 0] * 2)
+        Q_theta = np.diag([0, 0, 1] * 2)
 
         Qs = [Q_x, Q_y, Q_theta]
-        Rs = [np.array([r_x]), np.array([r_y]), np.array([r_theta])]
+        Rs = [np.array([psi]), np.array([1]), np.array([1])]
 
         variables = ['x', 'y', '\\theta']
 
-        self.state_variables_names = [f'{v}(t)' for v in variables] + \
-                                     ['\\dot{' + str(v) + '}(t)' for v in variables]
+        self.state_variables_names = [f'{v}(t)' for v in variables] + ['\\dot{' + str(v) + '}(t)' for v in variables]
 
-        Q_lqr = np.diag([q_x, q_y, q_theta] * 2)
-        R_lqr = np.diag([r_x + r_theta, r_y])
-        assert np.all(np.abs(Q_lqr - sum(Qs)) < epsilon_x)
+        Q_lqr = np.diag([1, 1, 1] * 2)
+        R_lqr = np.diag([1 + psi, 1])
+        # assert np.all(np.abs(Q_lqr - sum(Qs)) < epsilon_x)
 
         lqr_objective = [LQRObjective(Q=Q_lqr,
                                       R_ii=R_lqr)]
@@ -109,7 +101,7 @@ if __name__ == '__main__':
     epsilon_x, epsilon_P = 10 ** (-8), 10 ** (-8)
 
     x_0 = np.zeros((6,))
-    x_d = 20
+    x_d = 50
     y_d = 50
     x_T = np.array([x_d, y_d] + [0] * 4)
 
@@ -119,4 +111,5 @@ if __name__ == '__main__':
                             epsilon_x=epsilon_x,
                             epsilon_P=epsilon_P)
     pvtol(plot_state_spaces=True,
-          save_figure=True)
+          save_figure=True,
+          figure_filename=pvtol.figure_filename_generator)
