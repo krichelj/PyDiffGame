@@ -20,11 +20,8 @@ class PVTOLComparison(PyDiffGameLQRComparison):
         r = 0.25  # distance to center of force
         c = 0.05  # damping factor (estimated)
 
-        I_3 = np.eye(3)
-        Z_3 = np.zeros((3, 3))
-
-        A_11 = Z_3
-        A_12 = I_3
+        A_11 = np.zeros((3, 3))
+        A_12 = np.eye(3)
         A_21 = np.array([[0, 0, -PyDiffGame.g],
                          [0, 0, 0],
                          [0, 0, 0]])
@@ -43,34 +40,34 @@ class PVTOLComparison(PyDiffGameLQRComparison):
              [r / J, 0]]
         )
 
-        I_2 = np.eye(2)
+        psi = 1
 
-        M = I_2
+        M_x = [1, 0]
+        M_y = [0, 1]
+        M_theta = [1, 0]
 
-        psi = 1000
+        Ms = [np.array(M_i).reshape(1, 2) for M_i in [M_x, M_y, M_theta]]
+        M = np.concatenate(Ms, axis=0)
 
-        M_x = np.array([1, 0])
-        M_y = np.array([0, 1])
-        M_theta = np.array([1, 0])
+        self.figure_filename_generator = lambda g: ('LQR_' if g.is_LQR() else '') + f"PVTOL{str(psi).replace('.', '')}"
 
-        Ms = [M_i.reshape(1, 2) for M_i in [M_x, M_y, M_theta]]
+        Q_x_diag = [psi, 0, 0]
+        Q_y_diag = [0, 1, 0]
+        Q_theta_diag = [0, 0, 1]
 
-        self.figure_filename_generator = lambda g: ('LQR_' if g.is_LQR() else '') + f'PVTOL{psi}'
+        r_x = 1
+        r_y = 1
+        r_theta = 1
 
-        Q_x = np.diag([1, 0, 0] * 2)
-        Q_y = np.diag([0, 1, 0] * 2)
-        Q_theta = np.diag([0, 0, 1] * 2)
-
-        Qs = [Q_x, Q_y, Q_theta]
-        Rs = [np.array([psi]), np.array([1]), np.array([1])]
+        Qs = [np.diag(Q_i_diag * 2) for Q_i_diag in [Q_x_diag, Q_y_diag, Q_theta_diag]]
+        Rs = [np.array([r_i]) for r_i in [r_x, r_y, r_theta]]
 
         variables = ['x', 'y', '\\theta']
 
         self.state_variables_names = [f'{v}(t)' for v in variables] + ['\\dot{' + str(v) + '}(t)' for v in variables]
 
-        Q_lqr = np.diag([1, 1, 1] * 2)
-        R_lqr = np.diag([1 + psi, 1])
-        # assert np.all(np.abs(Q_lqr - sum(Qs)) < epsilon_x)
+        Q_lqr = sum(Qs)
+        R_lqr = np.diag([r_x + r_theta, r_y])
 
         lqr_objective = [LQRObjective(Q=Q_lqr,
                                       R_ii=R_lqr)]
@@ -93,21 +90,20 @@ class PVTOLComparison(PyDiffGameLQRComparison):
 
         super().__init__(args=args,
                          M=M,
-                         games_objectives=games_objectives,
-                         continuous=True)
+                         games_objectives=games_objectives)
 
 
 if __name__ == '__main__':
-    epsilon_x, epsilon_P = 10 ** (-8), 10 ** (-8)
+    epsilon_x = epsilon_P = 10 ** (-8)
 
     x_0 = np.zeros((6,))
-    x_d = 50
-    y_d = 50
+    x_d = y_d = 50
     x_T = np.array([x_d, y_d] + [0] * 4)
+    T_f = 25
 
     pvtol = PVTOLComparison(x_0=x_0,
                             x_T=x_T,
-                            # T_f=T_f,
+                            T_f=T_f,
                             epsilon_x=epsilon_x,
                             epsilon_P=epsilon_P)
     pvtol(plot_state_spaces=True,

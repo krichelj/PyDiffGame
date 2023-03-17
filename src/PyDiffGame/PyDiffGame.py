@@ -162,7 +162,6 @@ class PyDiffGame(ABC, Callable, Sequence):
                     self._M_inv = np.linalg.inv(self._M)
                 except np.linalg.LinAlgError:
                     self._M_inv = np.linalg.pinv(self._M)
-                    print(np.linalg.matrix_rank(self._M_inv))
                 l = 0
                 self._Bs = []
 
