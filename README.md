@@ -277,6 +277,9 @@ This research was also supported by The Israeli Smart Transportation Research Ce
 &emsp;
 &emsp;
 <a href="https://helmsleytrust.org/">
-<img src="https://helmsleytrust.org/wp-content/uploads/2020/12/helmsley-charitable-trust-logo-white.png" width="180"  alt=""/>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://helmsleytrust.org/wp-content/uploads/2020/12/helmsley-charitable-trust-logo-white.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://helmsleytrust.org/wp-content/uploads/2020/12/helmsley-charitable-trust-logo-blue.png">
+</picture>
 </a>
 </p>
