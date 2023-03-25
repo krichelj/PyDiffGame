@@ -262,21 +262,21 @@ This research was supported in part by the Helmsley Charitable Trust through the
 This research was also supported by The Israeli Smart Transportation Research Center (ISTRC) by The Technion and Bar-Ilan Universities, Israel.
 
 <p align="center">
-    <a href="https://istrc.net.technion.ac.il/">
-    <img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/Logo_ISTRC_Green_English.png" width="180"  alt=""/>
-    </a>
-&emsp;
-&emsp;
-&emsp;
+<a href="https://istrc.net.technion.ac.il/">
+<img src="https://github.com/krichelj/PyDiffGame/blob/master/images/Logo_ISTRC_Green_English.png?raw=true" width="150"  alt=""/>
+</a>
 &emsp;
 <a href="https://in.bgu.ac.il/en/Pages/default.aspx">
-<img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/BGU-logo-round.png" width="150"  alt=""/>
+<img src="https://www.bgu.ac.il/media/5rgd1k0q/logo.png?format=webp" width="190"  alt=""/>
 </a>
 &emsp;
 &emsp;
-&emsp;
-&emsp;
 <a href="https://in.bgu.ac.il/en/robotics/Pages/default.aspx">
-<img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/logo_abc.png" width="180"  alt=""/>
+<img src="https://in.bgu.ac.il/en/robotics/Site%20Assets/Pages/default/logo_abc.png" width="180"  alt=""/>
+</a>
+&emsp;
+&emsp;
+<a href="https://helmsleytrust.org/">
+<img src="https://helmsleytrust.org/wp-content/uploads/2020/12/helmsley-charitable-trust-logo-white.png" width="180"  alt=""/>
 </a>
 </p>
