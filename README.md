@@ -4,6 +4,7 @@
 
 [![pages-build-deployment](https://github.com/krichelj/PyDiffGame/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/krichelj/PyDiffGame/actions/workflows/pages/pages-build-deployment)
 [![CodeQL](https://github.com/krichelj/PyDiffGame/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/krichelj/PyDiffGame/actions/workflows/github-code-scanning/codeql)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
   * [What is this?](#what-is-this)
   * [Local Installation](#local-installation)
@@ -50,7 +51,7 @@ The input parameters to instantiate a `PyDiffGame` object are:
 
 * `A` : `np.array` of shape $(n,n)$
 >System dynamics matrix
-* `B` : `np.array` of shape( $n,\sum_{i=1}^N m_i$ ), optional
+* `B` : `np.array` of shape $(n, m_1 + ... + m_N)$, optional
 >Input matrix for all virtual control objectives
 * `Bs` : `Sequence` of `np.array` objects of len $(N)$, each array $B_i$ of shape $(n,m_i)$, optional
 >Input matrices for each virtual control objective
