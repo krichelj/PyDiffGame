@@ -267,7 +267,7 @@ This research was also supported by The Israeli Smart Transportation Research Ce
 </a>
 &emsp;
 <a href="https://in.bgu.ac.il/en/Pages/default.aspx">
-<img src="https://www.bgu.ac.il/media/5rgd1k0q/logo.png?format=webp" width="190"  alt=""/>
+<img src="https://www.bgu.ac.il/media/5rgd1k0q/logo.png" width="190"  alt=""/>
 </a>
 &emsp;
 &emsp;
@@ -278,9 +278,9 @@ This research was also supported by The Israeli Smart Transportation Research Ce
 &emsp;
 <a href="https://helmsleytrust.org/">
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://helmsleytrust.org/wp-content/uploads/2020/12/helmsley-charitable-trust-logo-white.png">
-  <source media="(prefers-color-scheme: light)" srcset="https://helmsleytrust.org/wp-content/uploads/2020/12/helmsley-charitable-trust-logo-blue.png">
-  <img alt="Helmsley Charitable Trust" src="https://helmsleytrust.org/wp-content/uploads/2020/12/helmsley-charitable-trust-logo-blue.png" width="180">
+  <source media="(prefers-color-scheme: dark)" srcset="https://helmsleytrust.org/wp-content/themes/helmsley/assets/img/helmsley-charitable-trust-logo-white.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://helmsleytrust.org/wp-content/themes/helmsley/assets/img/helmsley-charitable-trust-logo-blue.png">
+  <img alt="Helmsley Charitable Trust" src="https://helmsleytrust.org/wp-content/themes/helmsley/assets/img/helmsley-charitable-trust-logo-blue.png" width="180">
 </picture>
 </a>
 </p>
