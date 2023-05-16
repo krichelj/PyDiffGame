@@ -3,7 +3,6 @@
 </p>
 
 [![pages-build-deployment](https://github.com/krichelj/PyDiffGame/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/krichelj/PyDiffGame/actions/workflows/pages/pages-build-deployment)
-[![CodeQL](https://github.com/krichelj/PyDiffGame/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/krichelj/PyDiffGame/actions/workflows/github-code-scanning/codeql)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
   * [What is this?](#what-is-this)
