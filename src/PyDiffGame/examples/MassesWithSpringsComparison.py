@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Sequence, Optional
+from typing import Sequence, Optional, Union
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.PyDiffGameLQRComparison import PyDiffGameLQRComparison
@@ -11,7 +11,7 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
                  N: int,
                  m: float,
                  k: float,
-                 q: float | Sequence[float] | Sequence[Sequence[float]],
+                 q: Union[float, Sequence[float], Sequence[Sequence[float]]],
                  r: float,
                  Ms: Optional[Sequence[np.array]] = None,
                  x_0: Optional[np.array] = None,

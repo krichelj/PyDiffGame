@@ -4,7 +4,7 @@ import sys
 import numpy as np
 from scipy.integrate import odeint
 from numpy.linalg import eigvals, inv
-from typing import Sequence, Optional
+from typing import Sequence, Optional, Union
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.Objective import Objective
@@ -30,7 +30,7 @@ class ContinuousPyDiffGame(PyDiffGame):
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
-                 P_f: Optional[Sequence[np.array] | np.array] = None,
+                 P_f: Optional[Union[Sequence[np.array], np.array]] = None,
                  show_legend: Optional[bool] = True,
                  state_variables_names: Optional[Sequence[str]] = None,
                  epsilon_x: Optional[float] = PyDiffGame._epsilon_x_default,

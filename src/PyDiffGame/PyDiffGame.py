@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import scipy as sp
 import sympy
 import warnings
-from typing import Callable, Final, ClassVar, Optional, Sequence
+from typing import Callable, Final, ClassVar, Optional, Sequence, Union
 from abc import ABC, abstractmethod
 
 from PyDiffGame.Objective import Objective, GameObjective, LQRObjective
@@ -122,7 +122,7 @@ class PyDiffGame(ABC, Callable, Sequence):
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
-                 P_f: Optional[Sequence[np.array] | np.array] = None,
+                 P_f: Optional[Union[Sequence[np.array], np.array]] = None,
                  show_legend: Optional[bool] = True,
                  state_variables_names: Optional[Sequence[str]] = None,
                  epsilon_x: Optional[float] = _epsilon_x_default,
@@ -550,7 +550,7 @@ class PyDiffGame(ABC, Callable, Sequence):
                C: np.array,
                output_variables_names: Optional[Sequence[str]] = None,
                save_figure: Optional[bool] = False,
-               figure_path: Optional[str | Path] = _default_figures_filename,
+               figure_path: Optional[Union[str, Path]] = _default_figures_filename,
                figure_filename: Optional[str] = _default_figures_filename):
         """
         Plots an output vector y = C x^T wth respect to time
@@ -579,7 +579,7 @@ class PyDiffGame(ABC, Callable, Sequence):
 
     @_post_convergence
     def __save_figure(self,
-                      figure_path: Optional[str | Path] = _default_figures_filename,
+                      figure_path: Optional[Union[str, Path]] = _default_figures_filename,
                       figure_filename: Optional[str] = _default_figures_filename):
         """
         Saves the current figure
@@ -1157,7 +1157,7 @@ class PyDiffGame(ABC, Callable, Sequence):
                  M: Optional[np.array] = None,
                  output_variables_names: Optional[Sequence[str]] = None,
                  save_figure: Optional[bool] = False,
-                 figure_path: Optional[str | Path] = _default_figures_path,
+                 figure_path: Optional[Union[str, Path]] = _default_figures_path,
                  figure_filename: Optional[str] = _default_figures_filename,
                  print_characteristic_polynomials: Optional[bool] = False,
                  print_eigenvalues: Optional[bool] = False):

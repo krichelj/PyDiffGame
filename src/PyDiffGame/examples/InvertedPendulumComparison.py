@@ -235,9 +235,8 @@ def multiprocess_worker_function(x_T: float,
                                    epsilon_P=epsilon_P)  # game class
     is_max_lqr = \
         inverted_pendulum_comparison(plot_state_spaces=False,
-                                     run_animations=False,
-                                     non_linear_costs=True,
-                                     agnostic_costs=True)
+                                     run_animations=False
+                                     )
 
     # inverted_pendulum_comparison.plot_two_state_spaces(non_linear=True)
     return int(is_max_lqr)
