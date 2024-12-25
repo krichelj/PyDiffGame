@@ -6,7 +6,7 @@ import itertools
 from concurrent.futures import ProcessPoolExecutor
 
 import inspect
-from typing import Sequence, Any, Optional, Callable
+from typing import Sequence, Any, Optional, Callable, Union
 from abc import ABC
 
 from PyDiffGame.PyDiffGame import PyDiffGame
@@ -34,9 +34,9 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
     def __init__(self,
                  args: dict[str, Any],
                  games_objectives: Sequence[Sequence[GameObjective]],
-                 M: np.array,
+                 M: np.array = None,
                  continuous: bool = True):
-        GameClass = ContinuousPyDiffGame if continuous else DiscretePyDiffGame
+        game_class = ContinuousPyDiffGame if continuous else DiscretePyDiffGame
 
         self.__args = args
         self.__verify_input()
@@ -46,7 +46,7 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
         self.__M = M
 
         for i, game_i_objectives in enumerate(games_objectives):
-            game_i = GameClass(**self.__args | {'objectives': [o for o in game_i_objectives]})
+            game_i = game_class(**self.__args | {'objectives': [o for o in game_i_objectives]})
             self._games[i] = game_i
 
             if game_i.is_LQR():
@@ -109,8 +109,9 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
                  plot_Mx: Optional[bool] = False,
                  output_variables_names: Optional[Sequence[str]] = None,
                  save_figure: Optional[bool] = False,
-                 figure_path: Optional[str | Path] = PyDiffGame.default_figures_path,
-                 figure_filename: Optional[str | Callable[[PyDiffGame], str]] = PyDiffGame.default_figures_filename,
+                 figure_path: Optional[Union[str, Path]] = PyDiffGame.default_figures_path,
+                 figure_filename: Optional[Union[str, Callable[[PyDiffGame], str]]] =
+                 PyDiffGame.default_figures_filename,
                  run_animations: Optional[bool] = True,
                  print_characteristic_polynomials: Optional[bool] = False,
                  print_eigenvalues: Optional[bool] = False):
@@ -133,7 +134,7 @@ class PyDiffGameLQRComparison(ABC, Callable, Sequence):
                 self.__run_animation(i=i)
 
     @staticmethod
-    def run_multiprocess(multiprocess_worker_function: Callable[[Any], None],
+    def run_multiprocess(multiprocess_worker_function: Callable,
                          values: Sequence[Sequence]):
         t_start = time()
         combos = list(itertools.product(*values))

@@ -1,7 +1,7 @@
 import numpy as np
 import scipy as sp
-# import quadpy
-from typing import Sequence, Optional
+
+from typing import Sequence, Optional, Union
 
 from PyDiffGame.PyDiffGame import PyDiffGame
 from PyDiffGame.Objective import Objective
@@ -37,7 +37,7 @@ class DiscretePyDiffGame(PyDiffGame):
                  x_0: Optional[np.array] = None,
                  x_T: Optional[np.array] = None,
                  T_f: Optional[float] = None,
-                 P_f: Optional[Sequence[np.array] | np.array] = None,
+                 P_f: Optional[Union[Sequence[np.array], np.array]] = None,
                  show_legend: Optional[bool] = True,
                  state_variables_names: Optional[Sequence] = None,
                  epsilon_x: Optional[float] = PyDiffGame._epsilon_x_default,
@@ -132,12 +132,13 @@ class DiscretePyDiffGame(PyDiffGame):
         """
 
         A_tilda = np.exp(self._A * self._delta)
-        e_AT = quadpy.quad(f=lambda T: np.array([np.exp(t * self._A) for t in T]).swapaxes(0, 2).swapaxes(0, 1),
-                           a=0,
-                           b=self._delta)[0]
+        e_AT = sp.integrate.quad(lambda T: np.array([
+            np.exp(t * self._A) for t in T]).swapaxes(0, 2).swapaxes(0, 1),
+                                 a=0,
+                                 b=self._delta)[0]
 
         self._A = A_tilda
-        B_tilda = e_AT
+        B_tilda = np.array(e_AT)
         self._Bs = [B_tilda @ B_i for B_i in self._Bs]
         self._Q = [Q_i * self._delta for Q_i in self._Q]
         self._R = [R_i / self._delta for R_i in self._Rs]
