@@ -267,7 +267,7 @@ This research was also supported by The Israeli Smart Transportation Research Ce
 </a>
 &emsp;
 <a href="https://in.bgu.ac.il/en/Pages/default.aspx">
-<img src="https://www.bgu.ac.il/media/5rgd1k0q/logo.png" width="233"  alt=""/>
+<img alt="BGU Logo" src="https://tamrur.bgu.ac.il/restore/BGU.sig.png" width="233">
 </a>
 &emsp;
 &emsp;
