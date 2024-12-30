@@ -261,14 +261,6 @@ we have:
 This research was supported in part by the Leona M. and Harry B. Helmsley Charitable Trust through the Agricultural, Biological and Cognitive Robotics Initiative and by the Marcus Endowment Fund both at Ben-Gurion University of the Negev, Israel.
 This research was also supported by The Israeli Smart Transportation Research Center (ISTRC) by The Technion and Bar-Ilan Universities, Israel.
 
-<style>
-  @media (prefers-color-scheme: dark) {
-    .bgu-logo-dark {
-      mix-blend-mode: screen;
-    }
-  }
-</style>
-
 <p align="center">
 <a href="https://istrc.net.technion.ac.il/">
 <img src="https://github.com/krichelj/PyDiffGame/blob/master/images/Logo_ISTRC_Green_English.png?raw=true" width="233"  alt=""/>
