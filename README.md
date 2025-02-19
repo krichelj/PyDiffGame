@@ -6,9 +6,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
   * [What is this?](#what-is-this)
-  * [Local Installation](#local-installation)
+  * [Installation](#installation)
   * [Input Parameters](#input-parameters)
   * [Tutorial](#tutorial)
+  * [Authors](#authors)
   * [Acknowledgments](#acknowledgments)
 
 # What is this?
@@ -22,21 +23,6 @@ The method relies on the formulation given in:
  - The conference article "_Composition of Dynamic Control Objectives Based on Differential Games_" 
 ([IEEE](https://ieeexplore.ieee.org/document/9480269) | 
 [Research Gate](https://www.researchgate.net/publication/353452024_Composition_of_Dynamic_Control_Objectives_Based_on_Differential_Games))
-
-If you use this work, please cite our paper:
-```
-@inproceedings{pydiffgame_paper,
-    author={Kricheli, Joshua Shay and Sadon, Aviran and Arogeti, Shai and Regev, Shimon and Weiss, Gera},
-    booktitle={29th Mediterranean Conference on Control and Automation (MED 2021)},
-    title={{Composition of Dynamic Control Objectives Based on Differential Games}},
-    year={2021},
-    volume={},
-    number={},
-    pages={298-304},
-    doi={10.1109/MED51440.2021.9480269}}
-```
-
-Further details can be found in the [citation document](CITATIONS.bib).
 
 # Installation
 
@@ -237,7 +223,6 @@ masses_with_springs(plot_state_spaces=True,
                     save_figure=True)
 ```
 
-Refer 
 This will result in the following plot that compares the two systems performance for a differential game vs an LQR:
 
 <p align="center">
@@ -259,11 +244,27 @@ we have:
     <img align=top src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/src/PyDiffGame/examples/figures/2/LQR_large_2.png" width="400" height="300"/>
 </p>
 
+# Authors
+
+If you use this work, please cite our paper:
+```
+@inproceedings{pydiffgame_paper,
+    author={Kricheli, Joshua Shay and Sadon, Aviran and Arogeti, Shai and Regev, Shimon and Weiss, Gera},
+    booktitle={29th Mediterranean Conference on Control and Automation (MED 2021)},
+    title={{Composition of Dynamic Control Objectives Based on Differential Games}},
+    year={2021},
+    volume={},
+    number={},
+    pages={298-304},
+    doi={10.1109/MED51440.2021.9480269}}
+```
+
+Further details can be found in the [citation document](CITATIONS.bib).
 
 # Acknowledgments
 
-This research was supported in part by the Leona M. and Harry B. Helmsley Charitable Trust through the Agricultural, Biological and Cognitive Robotics Initiative and by the Marcus Endowment Fund both at Ben-Gurion University of the Negev, Israel.
-This research was also supported by The Israeli Smart Transportation Research Center (ISTRC) by The Technion and Bar-Ilan Universities, Israel.
+This research was supported in part by the Leona M. and Harry B. Helmsley Charitable Trust through the '_Agricultural, Biological and Cognitive Robotics Initiative_' ('ABC') and by the Marcus Endowment Fund both at Ben-Gurion University of the Negev, Israel.
+This research was also supported by The '_Israeli Smart Transportation Research Center_' ('ISTRC') by The Technion and Bar-Ilan Universities, Israel.
 
 <p align="center">
 <a href="https://istrc.net.technion.ac.il/">
