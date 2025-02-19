@@ -1,8 +1,12 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "PyDiffGame"
-version = "0.1.1"
+version = "0.1.2"
 authors = [
-  { name="Joshua Shay Kricheli", email="skricheli2@gmail.com" },
+  { name="Joshua Shay Kricheli", email="skricheli2@gmail.com" }
 ]
 description = "PyDiffGame is a Python implementation of a Nash Equilibrium solution to Differential Games, based on a reduction of Game Hamilton-Bellman-Jacobi (GHJB) equations to Game Algebraic and Differential Riccati equations, associated with Multi-Objective Dynamical Control Systems"
 readme = "README.md"
@@ -14,5 +18,9 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "https://shaykricheli.com/PyDiffGame/"
+"Homepage" = "https://krichelj.github.io/PyDiffGame/"
 "Bug Tracker" = "https://github.com/krichelj/PyDiffGame/issues"
+
+# Specify where your source code is located
+[tool.hatch.build.targets.wheel]
+packages = ["src/PyDiffGame"]  # Replace with the actual path to your package
