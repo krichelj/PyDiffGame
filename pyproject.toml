@@ -10,7 +10,7 @@ authors = [
 ]
 description = "PyDiffGame is a Python implementation of a Nash Equilibrium solution to Differential Games, based on a reduction of Game Hamilton-Bellman-Jacobi (GHJB) equations to Game Algebraic and Differential Riccati equations, associated with Multi-Objective Dynamical Control Systems"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",

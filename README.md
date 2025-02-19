@@ -24,6 +24,8 @@ The method relies on the formulation given in:
 ([IEEE](https://ieeexplore.ieee.org/document/9480269) | 
 [Research Gate](https://www.researchgate.net/publication/353452024_Composition_of_Dynamic_Control_Objectives_Based_on_Differential_Games))
 
+The package was tested for Python >= 3.10.
+
 # Installation
 
 To install this package run this from the command prompt:
