@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "PyDiffGame"
-version = "0.1.2"
+version = "1.0.0"
 authors = [
   { name="Joshua Shay Kricheli", email="skricheli2@gmail.com" }
 ]
