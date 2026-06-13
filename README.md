@@ -11,6 +11,7 @@
   * [Tutorial](#tutorial)
   * [Authors](#authors)
   * [Acknowledgments](#acknowledgments)
+  * [Star History](#star-history)
 
 # What is this?
 
@@ -287,6 +288,18 @@ This research was also supported by The '_Israeli Smart Transportation Research 
   <source media="(prefers-color-scheme: dark)" srcset="https://helmsleytrust.org/wp-content/themes/helmsley/assets/img/helmsley-charitable-trust-logo-white.png">
   <source media="(prefers-color-scheme: light)" srcset="https://helmsleytrust.org/wp-content/themes/helmsley/assets/img/helmsley-charitable-trust-logo-blue.png">
   <img alt="Helmsley Charitable Trust" src="https://helmsleytrust.org/wp-content/themes/helmsley/assets/img/helmsley-charitable-trust-logo-blue.png" width="233">
+</picture>
+</a>
+</p>
+
+# Star History
+
+<p align="center">
+<a href="https://star-history.com/#krichelj/PyDiffGame&Date">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=krichelj/PyDiffGame&type=Date&theme=dark"/>
+  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=krichelj/PyDiffGame&type=Date"/>
+  <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=krichelj/PyDiffGame&type=Date" width="600"/>
 </picture>
 </a>
 </p>
