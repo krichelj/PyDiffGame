@@ -271,23 +271,22 @@ This research was also supported by The '_Israeli Smart Transportation Research 
 
 <p align="center">
 <a href="https://istrc.net.technion.ac.il/">
-<img src="https://github.com/krichelj/PyDiffGame/blob/master/images/Logo_ISTRC_Green_English.png?raw=true" width="233"  alt=""/>
+<img src="https://github.com/krichelj/PyDiffGame/blob/master/images/Logo_ISTRC_Green_English.png?raw=true" height="80" alt="ISTRC"/>
 </a>
 &emsp;
 <a href="https://in.bgu.ac.il/en/Pages/default.aspx">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTZ8GbtJiX8lNUygX7-inRBuWESK438jWbRjQ&s">
   <source media="(prefers-color-scheme: light)" srcset="https://tamrur.bgu.ac.il/restore/BGU.sig.png">
-  <img alt="BGU Logo" src="https://tamrur.bgu.ac.il/restore/BGU.sig.png" width="233" class="bgu-logo-dark">
+  <img alt="Ben-Gurion University of the Negev" src="https://tamrur.bgu.ac.il/restore/BGU.sig.png" height="80">
 </picture>
 </a>
-&emsp;
 &emsp;
 <a href="https://helmsleytrust.org/">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://helmsleytrust.org/wp-content/themes/helmsley/assets/img/helmsley-charitable-trust-logo-white.png">
   <source media="(prefers-color-scheme: light)" srcset="https://helmsleytrust.org/wp-content/themes/helmsley/assets/img/helmsley-charitable-trust-logo-blue.png">
-  <img alt="Helmsley Charitable Trust" src="https://helmsleytrust.org/wp-content/themes/helmsley/assets/img/helmsley-charitable-trust-logo-blue.png" width="233">
+  <img alt="Helmsley Charitable Trust" src="https://helmsleytrust.org/wp-content/themes/helmsley/assets/img/helmsley-charitable-trust-logo-blue.png" height="80">
 </picture>
 </a>
 </p>
