@@ -73,7 +73,7 @@ class ContinuousPyDiffGame(PyDiffGame):
         """Integrate the coupled DREs backwards over repeated horizons until steady state."""
 
         Ps = list(self._P_f)
-        previous_norm = np.inf
+        norms: list[float] = []
         for _ in range(self.max_P_iterations):
             solution = solve_ivp(
                 fun=self._dP_dt,
@@ -86,9 +86,15 @@ class ContinuousPyDiffGame(PyDiffGame):
             )
             Ps = self._unflatten(solution.y[:, -1])
             norm = sum(float(np.linalg.norm(P)) for P in Ps)
-            if abs(norm - previous_norm) < self._epsilon_P:
+            if not np.isfinite(norm):
+                raise RuntimeError(
+                    "coupled algebraic Riccati iteration diverged (non-finite norm); "
+                    "this infinite-horizon game may have no stabilising Nash equilibrium - "
+                    "try a finite horizon by passing T_f."
+                )
+            norms.append(norm)
+            if self._converged(norms):
                 break
-            previous_norm = norm
         return Ps
 
     def _solve_finite_horizon(self) -> None:
@@ -182,10 +188,15 @@ class ContinuousPyDiffGame(PyDiffGame):
         """
 
         self._require_solved()
-        Ps = self._P if isinstance(self._P, list) else [self._P[0, i] for i in range(self._N)]
-        A_cl = self._closed_loop(self._K if isinstance(self._K, list) else self._K[0])
+        if not self._infinite_horizon:
+            raise RuntimeError(
+                "algebraic_riccati_residuals() is only defined for the infinite-horizon problem; "
+                "the finite-horizon solution solves the time-varying differential Riccati equation."
+            )
+        A_cl = self._closed_loop(self._K)
         return [
-            A_cl.T @ P_i + P_i @ A_cl + Q_i + P_i @ S_i @ P_i for P_i, S_i, Q_i in zip(Ps, self._S, self._Qs)
+            A_cl.T @ P_i + P_i @ A_cl + Q_i + P_i @ S_i @ P_i
+            for P_i, S_i, Q_i in zip(self._P, self._S, self._Qs)
         ]
 
 

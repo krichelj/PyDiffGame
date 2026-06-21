@@ -205,6 +205,22 @@ class PyDiffGame(ABC):
                 solutions.append(Q_i)
         return solutions
 
+    def _converged(self, norms: Sequence[float]) -> bool:
+        """Relative convergence test over a trailing window of Riccati norms.
+
+        Inspects the last ``eta`` successive changes in the summed Riccati-matrix
+        norm and reports convergence when *all* of them are below ``epsilon_P``
+        *relative* to the current norm. Using a window of ``eta`` (rather than a
+        single step) guards against a premature stop on one lucky iteration, and
+        the relative scaling makes the tolerance meaningful across problem sizes.
+        """
+
+        if len(norms) <= self._eta:
+            return False
+        window = norms[-(self._eta + 1) :]
+        scale = max(abs(window[-1]), 1.0)
+        return all(abs(b - a) <= self._epsilon_P * scale for a, b in zip(window[:-1], window[1:]))
+
     @abstractmethod
     def _solve_are(self, B: FloatArray, Q: FloatArray, R: FloatArray) -> FloatArray:
         """Solve the (continuous or discrete) algebraic Riccati equation for ``(A, B)``."""
