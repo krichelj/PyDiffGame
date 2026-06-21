@@ -1,17 +1,33 @@
-# Imports
+"""Hierarchical quadrotor control via continuous differential games.
+
+A quadrotor is stabilised by a two-layer controller:
+
+* a *low-level* angular-rate controller, designed as a 3-player continuous
+  differential game on the body-rate dynamics (one player per body axis), and
+* a *high-level* outflow/position controller, designed as a 2-player continuous
+  differential game on a 9-state outer-loop model.
+
+Both layers solve their feedback Nash gains with
+:class:`~PyDiffGame.continuous.ContinuousPyDiffGame` and the resulting commands
+drive the full nonlinear rigid-body dynamics, integrated with
+:func:`scipy.integrate.odeint`.
+
+Run directly to simulate a short trajectory headless::
+
+    python -m PyDiffGame.examples.QuadRotorControl
+"""
+
+from __future__ import annotations
 
 import numpy as np
+from numpy import arctan, cos, sin
 from numpy.linalg import inv
-import matplotlib.pyplot as plt
 from scipy.integrate import odeint
-from tqdm import tqdm
-from math import cos, sin
 from scipy.optimize import nnls
-from numpy import sin, cos, arctan
-from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
-from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 
-from PyDiffGame.ContinuousPyDiffGame import ContinuousPyDiffGame
+from PyDiffGame.continuous import ContinuousPyDiffGame
+from PyDiffGame.objective import GameObjective
+from PyDiffGame.plotting import show
 
 # Global Constants
 
@@ -21,7 +37,7 @@ Ixx = 7.5e-3
 Iyy = 7.5e-3
 Izz = 1.3e-2
 m = 0.65
-l = 0.23
+length = 0.23
 Jr = 6e-5
 b = 3.13e-5
 d = 7.5e-7
@@ -32,17 +48,18 @@ a3 = (Izz - Ixx) / Iyy
 a4 = Jr / Iyy
 a5 = (Ixx - Iyy) / Izz
 
-b1 = l / Ixx
-b2 = l / Iyy
+b1 = length / Ixx
+b2 = length / Iyy
 b3 = 1 / Izz
 
-v_d_s_0_2 = 0
-h_d_s_0_2 = 0
+v_d_s_0_2 = 0.0
+h_d_s_0_2 = 0.0
 sum_theta = sum_theta_init
-sum_theta_2 = 0
+sum_theta_2 = 0.0
 
 
 # Low-Level Control
+
 
 def quad_rotor_state_diff_eqn_for_given_pqrT(X, _, p, q, r, T, Plast):
     phi, dPhidt, theta, dThetadt, psi, dPsidt, z, dzdt, x, dxdt, y, dydt = X
@@ -51,16 +68,15 @@ def quad_rotor_state_diff_eqn_for_given_pqrT(X, _, p, q, r, T, Plast):
 
     K = cos(phi) * cos(theta) / m
     U = low_level_angular_rate_controller([dPhidt, dThetadt, dPsidt], p, q, r, T, Plast)
-    omegas_squared_coeffs = np.array([[b] * 4,
-                                      [0, -b, 0, b],
-                                      [b, 0, -b, 0],
-                                      [-d, d, -d, d]
-                                      ])
+    omegas_squared_coeffs = np.array([[b] * 4, [0, -b, 0, b], [b, 0, -b, 0], [-d, d, -d, d]])
     u1, u2, u3, u4 = U
     omegas_squared = nnls(omegas_squared_coeffs, np.array([u1, u2, u3, u4]))[0]
     omegas = np.sqrt(omegas_squared)
 
-    u5 = d * (omegas[0] - omegas[1] + omegas[2] - omegas[3])
+    # Residual rotor angular rate Omega_r = w1 - w2 + w3 - w4 (rad/s) driving the
+    # gyroscopic coupling. It must NOT be scaled by the drag coefficient d, which
+    # would shrink it by ~1e6 and zero out the gyroscopic terms.
+    u5 = omegas[0] - omegas[1] + omegas[2] - omegas[3]
 
     dPhiddt = dThetadt * (dPsidt * a1 + u5 * a2) + b1 * u2
     dThetaddt = dPhidt * (dPsidt * a3 - u5 * a4) + b2 * u3
@@ -69,22 +85,18 @@ def quad_rotor_state_diff_eqn_for_given_pqrT(X, _, p, q, r, T, Plast):
     dxddt = u_x * u1 / m
     dyddt = u_y * u1 / m
 
-    return np.array([dPhidt, dPhiddt, dThetadt, dThetaddt, dPsidt, dPsiddt, dzdt,
-                     dzddt, dxdt, dxddt, dydt, dyddt], dtype='float64')
+    return np.array(
+        [dPhidt, dPhiddt, dThetadt, dThetaddt, dPsidt, dPsiddt, dzdt, dzddt, dxdt, dxddt, dydt, dyddt],
+        dtype=np.float64,
+    )
 
 
 def low_level_angular_rate_controller(x, p, q, r, T, Plast):
-    B1 = np.array([[b1],
-                   [0],
-                   [0]])
+    B1 = np.array([[b1], [0], [0]])
 
-    B2 = np.array([[0],
-                   [b2],
-                   [0]])
+    B2 = np.array([[0], [b2], [0]])
 
-    B3 = np.array([[0],
-                   [0],
-                   [b3]])
+    B3 = np.array([[0], [0], [b3]])
 
     R1 = np.array([[0.1]])
     R2 = np.array([[0.1]])
@@ -95,9 +107,13 @@ def low_level_angular_rate_controller(x, p, q, r, T, Plast):
     P_sol = Plast
     reduced_X = np.array(x) - np.array([p, q, r])
     reduced_X_tr = reduced_X.T
-    inv_Rs = [inv(r) for r in R]
-    B_t = [b.T for b in B]
-    U_angular = np.array([- r @ b @ p @ reduced_X_tr for r, b, p in zip(inv_Rs, B_t, P_sol)]).reshape(3, )
+    inv_Rs = [inv(r_i) for r_i in R]
+    B_t = [b_i.T for b_i in B]
+    U_angular = np.array(
+        [-r_i @ b_i @ p_i @ reduced_X_tr for r_i, b_i, p_i in zip(inv_Rs, B_t, P_sol)]
+    ).reshape(
+        3,
+    )
     u2, u3, u4 = U_angular
     U = [T, u2, u3, u4]
 
@@ -105,56 +121,55 @@ def low_level_angular_rate_controller(x, p, q, r, T, Plast):
 
 
 def get_P_quad_given_angular_rates(x, P_sol):
-    A = np.array([[0, (1 / 2) * a1 * x[2], (1 / 2) * a1 * x[1]],
-                  [(1 / 2) * a3 * x[2], 0, (1 / 2) * a3 * x[0]],
-                  [(1 / 2) * a5 * x[1], (1 / 2) * a5 * x[0], 0]])
+    A = np.array(
+        [
+            [0, (1 / 2) * a1 * x[2], (1 / 2) * a1 * x[1]],
+            [(1 / 2) * a3 * x[2], 0, (1 / 2) * a3 * x[0]],
+            [(1 / 2) * a5 * x[1], (1 / 2) * a5 * x[0], 0],
+        ]
+    )
 
-    B1 = np.array([[b1],
-                   [0],
-                   [0]])
+    B1 = np.array([[b1], [0], [0]])
 
-    B2 = np.array([[0],
-                   [b2],
-                   [0]])
+    B2 = np.array([[0], [b2], [0]])
 
-    B3 = np.array([[0],
-                   [0],
-                   [b3]])
+    B3 = np.array([[0], [0], [b3]])
 
-    Q1 = np.array([[1000, 0, 0],
-                   [0, 10, 0],
-                   [0, 0, 10]])
+    Q1 = np.array([[1000, 0, 0], [0, 10, 0], [0, 0, 10]])
 
-    Q2 = np.array([[10, 0, 0],
-                   [0, 1000, 0],
-                   [0, 0, 10]])
+    Q2 = np.array([[10, 0, 0], [0, 1000, 0], [0, 0, 10]])
 
-    Q3 = np.array([[10, 0, 0],
-                   [0, 10, 0],
-                   [0, 0, 1000]])
+    Q3 = np.array([[10, 0, 0], [0, 10, 0], [0, 0, 1000]])
 
     R1 = np.array([[0.1]])
     R2 = np.array([[0.1]])
     R3 = np.array([[0.1]])
 
-    B = [B1, B2, B3]
+    Bs = [B1, B2, B3]
     R = [R1, R2, R3]
     Q = [Q1, Q2, Q3]
-    game = ContinuousPyDiffGame(A=A, Bs=B, Qs=Q, Rs=R, P_f=P_sol, show_legend=False)
-    game()
-    Plast = game.P[-1]
 
-    return Plast
+    # Each player drives one body axis; the decomposition matrices are the rows
+    # of the identity so that ``concat(M) == I`` and ``B == hstack(Bs)``.
+    identity = np.eye(3)
+    Ms = [identity[i : i + 1, :] for i in range(3)]
+    objectives = [GameObjective(Q=Q_i, R=R_i, M=M_i) for Q_i, R_i, M_i in zip(Q, R, Ms)]
+
+    game = ContinuousPyDiffGame(A=A, objectives=objectives, Bs=Bs, P_f=P_sol, show_legend=False)
+    game.solve()
+
+    return game.P
 
 
 # High-Level Control
+
 
 def get_mf_numerator(F3, R11, F1, R31, a_y, R12, R32):
     return F3 * R11 - F1 * R31 + a_y * (R12 * R31 - R11 * R32)
 
 
 def get_mf_denominator(F2, R11, F1, R21, a_y, R22, R12):
-    return - F2 * R11 + F1 * R21 + a_y * (R11 * R22 - R12 * R21)
+    return -F2 * R11 + F1 * R21 + a_y * (R11 * R22 - R12 * R21)
 
 
 def get_mc_numerator(mf_numerator, a_z, R31, R13, R11, R33):
@@ -179,19 +194,18 @@ def calculate_Bs(u_sizes, dividing_matrix, B):
 
     last = 0
     for u_size in u_sizes:
-        Bs += [block_matrix[:, last:u_size + last]]
+        Bs += [block_matrix[:, last : u_size + last]]
         last = u_size
 
     return Bs
 
 
 def wall_punishment(wall_distance, a_y):
-    return 3 * (10 ** 2) * (wall_distance / a_y) ** 2
+    return 3 * (10**2) * (wall_distance / a_y) ** 2
 
 
 def get_higher_level_control2(state, st, a_y):
     global v_d_s_0_2, h_d_s_0_2, sum_theta, sum_theta_2
-    # a_y = 1
     a_z = -2.5
 
     x = state[8]
@@ -212,7 +226,7 @@ def get_higher_level_control2(state, st, a_y):
     tanpsi = spsi / cpsi
 
     vp_x = sectheta * (sphi * stheta - cphi * tanpsi)
-    vp_y = sectheta * (- cphi * stheta - sphi * tanpsi)
+    vp_y = sectheta * (-cphi * stheta - sphi * tanpsi)
 
     R11 = ctheta * cpsi
     R21 = cpsi * stheta * sphi - cphi * spsi
@@ -220,7 +234,7 @@ def get_higher_level_control2(state, st, a_y):
     R12 = ctheta * spsi
     R22 = spsi * stheta * sphi + cphi * cpsi
     R32 = spsi * stheta * cphi - sphi * cpsi
-    R13 = - stheta
+    R13 = -stheta
     R23 = ctheta * sphi
     R33 = ctheta * cphi
     r = np.array([[R11, R21, R31], [R12, R22, R32], [R13, R23, R33]])
@@ -236,8 +250,12 @@ def get_higher_level_control2(state, st, a_y):
     mfr = mfr_numerator / mfr_denominator
     mfl = mfl_numerator / mfl_denominator
 
-    mcr = get_mc_numerator(mfr_numerator, a_z, R31, R13, R11, R33) / get_mc_denominator(mfr_denominator, a_z, R11, R23)
-    mcl = get_mc_numerator(mfl_numerator, a_z, R31, R13, R11, R33) / get_mc_denominator(mfl_denominator, a_z, R11, R23)
+    mcr = get_mc_numerator(mfr_numerator, a_z, R31, R13, R11, R33) / get_mc_denominator(
+        mfr_denominator, a_z, R11, R23
+    )
+    mcl = get_mc_numerator(mfl_numerator, a_z, R31, R13, R11, R33) / get_mc_denominator(
+        mfl_denominator, a_z, R11, R23
+    )
 
     at_mcl = arctan(mcl)
     at_mcr = arctan(mcr)
@@ -266,48 +284,54 @@ def get_higher_level_control2(state, st, a_y):
     v_d_s_0_2 = v_d_s
     h_d_s_0_2 = h_d_s
 
-    Q1 = np.array([[1000, 0, 0, 0, 0, 0, 0, 0, 0],
-                   [0, 1000, 0, 0, 0, 0, 0, 0, 0],
-                   [0, 0, 1000, 0, 0, 0, 0, 0, 0],
-                   [0, 0, 0, 0.1, 0, 0, 0, 0, 0],
-                   [0, 0, 0, 0, 0.1, 0, 0, 0, 0],
-                   [0, 0, 0, 0, 0, 10, 0, 0, 0],
-                   [0, 0, 0, 0, 0, 0, 0.05, 0, 0],
-                   [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                   [0, 0, 0, 0, 0, 0, 0, 0, 0]])
+    Q1 = np.array(
+        [
+            [1000, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1000, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 1000, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0.1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0.1, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 10, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0.05, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        ]
+    )
 
-    R1 = np.array([[10, 0, 0, 0],
-                   [0, 10, 0, 0],
-                   [0, 0, 10, 0],
-                   [0, 0, 0, 0.01]])
+    R1 = np.array([[10, 0, 0, 0], [0, 10, 0, 0], [0, 0, 10, 0], [0, 0, 0, 0.01]])
 
-    A = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0],
-                  [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                  [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                  [0, 0, 0, 0, 1, 0, 0, 0, 0],
-                  [g, 0, 0, 0, 0, 0, 0, 0, 0],
-                  [0, 0, 0, 0, 0, 0, 1, 0, 0],
-                  [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                  [0, 1, 0, 0, 0, 0, 0, 0, 0],
-                  [0, 1, 0, 0, 0, 0, 0, 0, 0]])
+    A = np.array(
+        [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0],
+            [g, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0, 0, 0],
+        ]
+    )
 
-    B = np.array([[1, 0, 0, 0],
-                  [0, 1, 0, 0],
-                  [0, 0, 1, 0],
-                  [0, 0, 0, 0],
-                  [0, 0, 0, 0],
-                  [0, 0, 0, 0],
-                  [0, 0, 0, -1 / m],
-                  [0, 0, 0, 0],
-                  [0, 0, 0, 0]])
+    B = np.array(
+        [
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, -1 / m],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+        ]
+    )
 
-    dividing_matrix = np.array([[1, 0, 0, 0, 0],
-                                [0, 1, 0, 0, 1],
-                                [0, 0, 1, 0, 0],
-                                [0, 0, 0, 1, 0]])
+    dividing_matrix = np.array([[1, 0, 0, 0, 0], [0, 1, 0, 0, 1], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0]])
 
     u_sizes = [4, 1]
-    Ms = [dividing_matrix[:, :u_sizes[0]].T, dividing_matrix[:, u_sizes[0]:u_sizes[0] + u_sizes[1]].T]
+    Ms = [dividing_matrix[:, : u_sizes[0]].T, dividing_matrix[:, u_sizes[0] : u_sizes[0] + u_sizes[1]].T]
     Bs = calculate_Bs(u_sizes, dividing_matrix, B)
 
     R2 = np.array([[10]])
@@ -315,24 +339,32 @@ def get_higher_level_control2(state, st, a_y):
     max_punishment = wall_punishment(a_y, a_y)
     curr_punishment = min(max_punishment, wall_punishment(p_y_tilda[0], a_y))
 
-    Q_wall_0 = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0, 0, 0, curr_punishment]])
-    Q_speed_up_0 = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0],
-                             [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                             [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                             [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                             [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                             [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                             [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                             [0, 0, 0, 0, 0, 0, 0, 1000, 0],
-                             [0, 0, 0, 0, 0, 0, 0, 0, 0]])
+    Q_wall_0 = np.array(
+        [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, curr_punishment],
+        ]
+    )
+    Q_speed_up_0 = np.array(
+        [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 1000, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+        ]
+    )
 
     R = [R1, R2]
     if abs(p_y_tilda[0] / a_y) < 0.5:
@@ -341,21 +373,19 @@ def get_higher_level_control2(state, st, a_y):
         Q = [0.01 * Q1, 0.01 * Q_wall_0]
     P_sol = [0.01 * Q1, 0.01 * Q1]
 
-    game = ContinuousPyDiffGame(A=A, Bs=Bs, Qs=Q, Rs=R, P_f=P_sol, show_legend=False)
-    game()
-    Plast = game.P[-1]
-    N = 2
-    M = 9
-    P_size = M ** 2
-    Plast = [(Plast[i * P_size:(i + 1) * P_size]).reshape(M, M) for i in range(N)]
+    objectives = [GameObjective(Q=Q_i, R=R_i, M=M_i) for Q_i, R_i, M_i in zip(Q, R, Ms)]
+    game = ContinuousPyDiffGame(A=A, objectives=objectives, Bs=Bs, P_f=P_sol, show_legend=False)
+    game.solve()
+    Plast = game.P
 
-    inv_Rs = [inv(r) for r in R]
-    B_t = [b.T for b in Bs]
+    inv_Rs = [inv(r_i) for r_i in R]
+    B_t = [b_i.T for b_i in Bs]
 
-    U_Agenda1 = - inv_Rs[0] @ B_t[0] @ Plast[0] @ np.array(
-        [-phi_tilda[0], -vp_y, -vp_x, -p_y_tilda[0], -h_d[0], -p_z_tilda[0], -v_d[0], sum_theta, sum_theta_2])
-    U_Agenda2 = - inv_Rs[1] @ B_t[1] @ Plast[1] @ np.array(
-        [-phi_tilda[0], -vp_y, -vp_x, -p_y_tilda[0], -h_d[0], -p_z_tilda[0], -v_d[0], sum_theta, sum_theta_2])
+    reduced_state = np.array(
+        [-phi_tilda[0], -vp_y, -vp_x, -p_y_tilda[0], -h_d[0], -p_z_tilda[0], -v_d[0], sum_theta, sum_theta_2]
+    )
+    U_Agenda1 = -inv_Rs[0] @ B_t[0] @ Plast[0] @ reduced_state
+    U_Agenda2 = -inv_Rs[1] @ B_t[1] @ Plast[1] @ reduced_state
 
     Us = [U_Agenda1, U_Agenda2]
 
@@ -363,7 +393,8 @@ def get_higher_level_control2(state, st, a_y):
     p_r, q_r, r_r, t_r = U_all_Out
 
     tilda_state = np.array(
-        [phi_tilda[0], vp_y, vp_x, p_y_tilda[0], h_d[0], p_z_tilda[0], v_d[0], sum_theta, sum_theta_2])
+        [phi_tilda[0], vp_y, vp_x, p_y_tilda[0], h_d[0], p_z_tilda[0], v_d[0], sum_theta, sum_theta_2]
+    )
     sum_theta = sum_theta - vp_y * 0.1
     sum_theta_2 = sum_theta_2 - vp_y * 0.1
 
@@ -372,177 +403,236 @@ def get_higher_level_control2(state, st, a_y):
 
 # Simulation
 
-Q1 = np.array([[1000, 0, 0],
-               [0, 10, 0],
-               [0, 0, 10]])
-Q2 = np.array([[10, 0, 0],
-               [0, 1000, 0],
-               [0, 0, 10]])
-Q3 = np.array([[10, 0, 0],
-               [0, 10, 0],
-               [0, 0, 1000]])
-Q = [Q1, Q2, Q3]
-M = 3
-P_size = M ** 2
-N = 3
-tTotal = [0]
-tTotal_low = [0]
-a_ys = [0.55]
-quad_rotor_state_PD_dynamic = {}
-quad_rotor_omega_D_dynamic = {}
-quad_rotor_state_PD_dynamic_low = {}
-tilda_state_dynamic = {}
 
-for a_y in a_ys:
+def run_simulation(a_ys=(0.55,), n_steps=8):
+    """Run the hierarchical closed-loop simulation for each wall distance ``a_y``.
 
-    T_start = 0
-    deltaTstate = 0.1
-    X_rotor_0 = np.array([0.1, 0, 0, 0, 0.1, 0, -1, 0, 0, 0, 0.3, 0])
-    omega_rotor_0 = np.array([0, 0, 0])
-    quad_rotor_state_PD_dynamic[a_y] = [X_rotor_0]
-    quad_rotor_omega_D_dynamic[a_y] = [omega_rotor_0]
-    quad_rotor_state_PD_dynamic_low[a_y] = [X_rotor_0]
-    tilda_state = np.array([0, 0, 0, 0, 0, 0, 0, sum_theta_init, 0])
-    tilda_state_dynamic[a_y] = [tilda_state]
+    Returns dictionaries of recorded trajectories keyed by ``a_y`` plus the
+    common time vectors.
+    """
 
-    X_rotor_0_PD = X_rotor_0
-    Plast = [Q1, Q2, Q3]
-    v_d_s_0_2 = 0
-    h_d_s_0_2 = 0
-    sum_theta = sum_theta_init
-    sum_theta_2 = 0
+    global v_d_s_0_2, h_d_s_0_2, sum_theta, sum_theta_2
 
-    for i in tqdm(range(300)):
-        # p_r, q_r, r_r, t_r, tilda_state_l = get_higher_level_control(X_rotor_0_PD,T_start, a_y)
-        p_r2, q_r2, r_r2, t_r2, tilda_state_l2 = get_higher_level_control2(X_rotor_0_PD, T_start, a_y)
-        tilda_state = [tilda_state_l2]
-        tilda_state_dynamic[a_y] = np.append(tilda_state_dynamic[a_y], tilda_state, axis=0)
-        T_end = T_start + deltaTstate
-        data_points = 100
-        t = np.linspace(T_start, T_end, data_points)
-        Plast = get_P_quad_given_angular_rates([X_rotor_0_PD[1], X_rotor_0_PD[3], X_rotor_0_PD[5]], Plast)
-        Plast = [(Plast[k * P_size:(k + 1) * P_size]).reshape(M, M) for k in range(N)]
-        quad_rotor_state_PD = odeint(quad_rotor_state_diff_eqn_for_given_pqrT, X_rotor_0_PD, t,
-                                     args=(p_r2, q_r2, r_r2, t_r2, Plast))
-        omega_rotor_i = np.array([p_r2, q_r2, r_r2])
-        X_rotor_0_PD = quad_rotor_state_PD[-1]
-        T_start = T_end
-        quad_rotor_state_PD_dynamic[a_y] = np.append(quad_rotor_state_PD_dynamic[a_y],
-                                                     quad_rotor_state_PD, axis=0)
-        quad_rotor_omega_D_dynamic[a_y] = np.append(quad_rotor_omega_D_dynamic[a_y],
-                                                    [omega_rotor_i], axis=0)
-        quad_rotor_state_PD_dynamic_low[a_y] = np.append(quad_rotor_state_PD_dynamic_low[a_y],
-                                                         [X_rotor_0_PD], axis=0)
-        if a_y == a_ys[0]:
-            tTotal = np.append(tTotal, t)
-            tTotal_low = np.append(tTotal_low, T_end)
+    tTotal = [0]
+    tTotal_low = [0]
+    quad_rotor_state_PD_dynamic = {}
+    quad_rotor_omega_D_dynamic = {}
+    quad_rotor_state_PD_dynamic_low = {}
+    tilda_state_dynamic = {}
 
-angles = {'phi': [0, 0], 'theta': [2, 1], 'psi': [4, 2]}
-positions = {'x': [8, 7], 'z': [6, 5], 'y': [10, 3]}
-velocities = {'y_dot': [11, 4], 'z_dot': [7, 6], 'x_dot': 9}
+    for a_y in a_ys:
+        T_start = 0
+        deltaTstate = 0.1
+        X_rotor_0 = np.array([0.1, 0, 0, 0, 0.1, 0, -1, 0, 0, 0, 0.3, 0])
+        omega_rotor_0 = np.array([0, 0, 0])
+        quad_rotor_state_PD_dynamic[a_y] = [X_rotor_0]
+        quad_rotor_omega_D_dynamic[a_y] = [omega_rotor_0]
+        quad_rotor_state_PD_dynamic_low[a_y] = [X_rotor_0]
+        tilda_state = np.array([0, 0, 0, 0, 0, 0, 0, sum_theta_init, 0])
+        tilda_state_dynamic[a_y] = [tilda_state]
 
+        X_rotor_0_PD = X_rotor_0
+        Q1 = np.array([[1000, 0, 0], [0, 10, 0], [0, 0, 10]])
+        Q2 = np.array([[10, 0, 0], [0, 1000, 0], [0, 0, 10]])
+        Q3 = np.array([[10, 0, 0], [0, 10, 0], [0, 0, 1000]])
+        Plast = [Q1, Q2, Q3]
+        v_d_s_0_2 = 0.0
+        h_d_s_0_2 = 0.0
+        sum_theta = sum_theta_init
+        sum_theta_2 = 0.0
+
+        for _ in range(n_steps):
+            p_r2, q_r2, r_r2, t_r2, tilda_state_l2 = get_higher_level_control2(X_rotor_0_PD, T_start, a_y)
+            tilda_state = [tilda_state_l2]
+            tilda_state_dynamic[a_y] = np.append(tilda_state_dynamic[a_y], tilda_state, axis=0)
+            T_end = T_start + deltaTstate
+            data_points = 100
+            t = np.linspace(T_start, T_end, data_points)
+            Plast = get_P_quad_given_angular_rates([X_rotor_0_PD[1], X_rotor_0_PD[3], X_rotor_0_PD[5]], Plast)
+            quad_rotor_state_PD = odeint(
+                quad_rotor_state_diff_eqn_for_given_pqrT,
+                X_rotor_0_PD,
+                t,
+                args=(p_r2, q_r2, r_r2, t_r2, Plast),
+            )
+            omega_rotor_i = np.array([p_r2, q_r2, r_r2])
+            X_rotor_0_PD = quad_rotor_state_PD[-1]
+            T_start = T_end
+            quad_rotor_state_PD_dynamic[a_y] = np.append(
+                quad_rotor_state_PD_dynamic[a_y], quad_rotor_state_PD, axis=0
+            )
+            quad_rotor_omega_D_dynamic[a_y] = np.append(
+                quad_rotor_omega_D_dynamic[a_y], [omega_rotor_i], axis=0
+            )
+            quad_rotor_state_PD_dynamic_low[a_y] = np.append(
+                quad_rotor_state_PD_dynamic_low[a_y], [X_rotor_0_PD], axis=0
+            )
+            if a_y == a_ys[0]:
+                tTotal = np.append(tTotal, t)
+                tTotal_low = np.append(tTotal_low, T_end)
+
+    return (
+        quad_rotor_state_PD_dynamic,
+        quad_rotor_omega_D_dynamic,
+        quad_rotor_state_PD_dynamic_low,
+        tilda_state_dynamic,
+        np.asarray(tTotal),
+        np.asarray(tTotal_low),
+    )
+
+
+# Plotting (guarded; only runs when explicitly enabled)
+
+angles = {"phi": [0, 0], "theta": [2, 1], "psi": [4, 2]}
+positions = {"x": [8, 7], "z": [6, 5], "y": [10, 3]}
+velocities = {"y_dot": [11, 4], "z_dot": [7, 6], "x_dot": 9}
 plot_vars = {**angles, **positions, **velocities}
 
 
-def plot_var(var):
-    var_indices = plot_vars[var]
+def plot_results(
+    quad_rotor_state_PD_dynamic,
+    quad_rotor_omega_D_dynamic,
+    quad_rotor_state_PD_dynamic_low,
+    tilda_state_dynamic,
+    tTotal,
+    tTotal_low,
+    a_ys,
+):
+    """Produce the full set of diagnostic figures (not shown under Agg)."""
 
-    for a_y in quad_rotor_state_PD_dynamic_low.keys():
-        plt.figure(dpi=130)
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.axes_grid1.inset_locator import mark_inset, zoomed_inset_axes
 
-        plt.title('$a _y = \ $' + str(a_y) + '$ \ [m]$', fontsize=16)
-
-        plt.plot(tTotal_low[1:],
-                 quad_rotor_state_PD_dynamic_low[a_y][1:, var_indices[0] if var != 'x_dot' else var_indices])
-
-        if var in positions.keys():
-            plt.plot(tTotal_low[1:], tilda_state_dynamic[a_y][1:, var_indices[1]])
-        else:
-            plt.plot(tTotal_low[1:], -tilda_state_dynamic[a_y][1:, var_indices[1]])
-
-        if var in positions.keys():
-            plt.legend(['$' + var + ' \\ [m]$', '$\\tilde{' + var + '} \\ [m]$'])
-        else:
-            if 'dot' in var:
-                plt.legend(['$\\dot{' + var[0] + '} \\ \\left[ \\frac{m}{sec} \\right]$',
-                            '$\\tilde{\\dot{' + var[0] + '}} \\ \\left[ \\frac{m}{sec} \\right]$'])
+    def plot_var(var):
+        var_indices = plot_vars[var]
+        for a_y in quad_rotor_state_PD_dynamic_low.keys():
+            plt.figure(dpi=130)
+            plt.title(r"$a _y = \ $" + str(a_y) + r"$ \ [m]$", fontsize=16)
+            plt.plot(
+                tTotal_low[1:],
+                quad_rotor_state_PD_dynamic_low[a_y][1:, var_indices[0] if var != "x_dot" else var_indices],
+            )
+            if var in positions.keys():
+                plt.plot(tTotal_low[1:], tilda_state_dynamic[a_y][1:, var_indices[1]])
             else:
-                plt.legend(['$\\' + var + ' \\ [rad]$', '$\\tilde{\\' + var + '} \\ [rad]$'])
+                plt.plot(tTotal_low[1:], -tilda_state_dynamic[a_y][1:, var_indices[1]])
+            if var in positions.keys():
+                plt.legend([r"$" + var + r" \\ [m]$", r"$\tilde{" + var + r"} \\ [m]$"])
+            else:
+                if "dot" in var:
+                    plt.legend(
+                        [
+                            r"$\dot{" + var[0] + r"} \ \left[ \frac{m}{sec} \right]$",
+                            r"$\tilde{\dot{" + var[0] + r"}} \ \left[ \frac{m}{sec} \right]$",
+                        ]
+                    )
+                else:
+                    plt.legend([r"$\\" + var + r" \ [rad]$", r"$\tilde{\\" + var + r"} \ [rad]$"])
+            plt.xlabel(r"$t \ [sec]$", fontsize=16)
+            plt.grid()
 
-        plt.xlabel('$t \ [sec]$', fontsize=16)
+    for curr_a_y, var in quad_rotor_state_PD_dynamic_low.items():
+        plt.figure(dpi=300)
+        plt.plot(tTotal_low[1:], var[1:, 9])
+        plt.plot(tTotal_low[1:], abs(tilda_state_dynamic[curr_a_y][1:, 3] / curr_a_y))
+        plt.plot(tTotal_low[1:], 0.5 * np.ones(len(tTotal_low[1:])))
         plt.grid()
-        plt.show()
+        plt.xlabel(r"$t \ [sec]$", fontsize=12)
+        plt.legend(["Forward Velocity", "Wall Distance Measure"])
+
+    for var in ["x", "y", "y_dot", "z", "z_dot", "phi", "theta", "psi"]:
+        plot_var(var)
+
+    time_ratio1 = len(tTotal_low) / max(tTotal_low)
+    time_ratio2 = len(tTotal) / max(tTotal)
+
+    for a_y in quad_rotor_omega_D_dynamic.keys():
+        fig, ax = plt.subplots(1, dpi=150)
+        t01 = int(time_ratio1 * 0.8)
+        t1 = int(time_ratio1 * 1.1)
+        t02 = int(time_ratio2 * 0.8)
+        t2 = int(time_ratio2 * 1)
+        x1 = tTotal_low[t01:t1]
+        y1 = quad_rotor_omega_D_dynamic[a_y][t01:t1, 1]
+        x2 = tTotal[t02:t2]
+        y2 = quad_rotor_state_PD_dynamic[a_y][t02:t2, 3]
+        ax.step(x1, y1, linewidth=1)
+        ax.plot(x2, y2, linewidth=1)
+        plt.xlabel(r"$t \ [sec]$", fontsize=14)
+        plt.grid()
+        axins = zoomed_inset_axes(ax, 3.5, borderpad=3)
+        mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec="0.5")
+        axins.set_xlim([0.898, 0.905])
+        axins.set_ylim([0.193, 0.205])
+        axins.step(x1, y1, linewidth=1)
+        axins.plot(x2, y2, linewidth=1)
+        plt.grid()
+        fig.legend(
+            [
+                r"$\dot{\theta}_d \ \left[ \frac{rad}{sec} \right]$",
+                r"$\dot{\theta} \ \left[ \frac{rad}{sec} \right]$",
+            ],
+            bbox_to_anchor=(0.28, 0.35) if a_y != 0.6 else (0.3, 0.35),
+        )
+
+    for sol in quad_rotor_state_PD_dynamic_low.values():
+        plt.figure(dpi=300)
+        plt.plot(tTotal_low[0:], sol[0:, 0:6])
+        plt.xlabel(r"$t \ [sec]$", fontsize=14)
+        plt.legend(
+            [
+                r"$\phi[rad]$",
+                r"$\dot{\phi}\left[ \frac{rad}{sec} \right]$",
+                r"$\theta[rad]$",
+                r"$\dot{\theta}\left[ \frac{rad}{sec} \right]$",
+                r"$\psi[rad]$",
+                r"$\dot{\psi}\left[ \frac{rad}{sec} \right]$",
+            ],
+            ncol=2,
+            loc="upper right",
+        )
+        plt.grid()
+
+    for sol in quad_rotor_state_PD_dynamic_low.values():
+        plt.figure(dpi=300)
+        plt.plot(tTotal_low[0:], sol[0:, 6:8], tTotal_low[0:], sol[0:, 10:12])
+        plt.xlabel(r"$t \ [sec]$", fontsize=14)
+        plt.legend(
+            [
+                r"$z[m]$",
+                r"$\dot{z}\left[ \frac{m}{sec} \right]$",
+                r"$y[m]$",
+                r"$\dot{y}\left[ \frac{m}{sec} \right]$",
+            ]
+        )
+        plt.grid()
 
 
-for curr_a_y, var in quad_rotor_state_PD_dynamic_low.items():
-    plt.figure(dpi=300)
-    plt.plot(tTotal_low[1:], var[1:, 9])
-    plt.plot(tTotal_low[1:], abs(tilda_state_dynamic[curr_a_y][1:, 3] / curr_a_y))
-    plt.plot(tTotal_low[1:], 0.5 * np.ones(len(tTotal_low[1:])))
-    plt.grid()
-    plt.xlabel('$t \ [sec]$', fontsize=12)
-    # plt.title('$a_y = ' + str(curr_a_y) + ' \ [m]$', fontsize=12)
-    #   plt.legend(['$\\dot{x} \ [\\frac{m}{s}]$', '$\\frac{\\tilde{y}}{a_y}$'])
-    plt.legend(['Forward Velocity', 'Wall Distance Measure'])
-    plt.show()
+def main(*, n_steps: int = 8, plot: bool = True) -> None:
+    """Run a short hierarchical quadrotor simulation and report the result."""
 
-for var in ['x', 'y', 'y_dot', 'z', 'z_dot', 'phi', 'theta', 'psi']:
-    plot_var(var)
+    a_ys = (0.55,)
+    (state_pd, omega_d, state_pd_low, tilda_state_dynamic, tTotal, tTotal_low) = run_simulation(
+        a_ys=a_ys, n_steps=n_steps
+    )
 
-time_ratio1 = len(tTotal_low) / max(tTotal_low)
-time_ratio2 = len(tTotal) / max(tTotal)
+    if plot:
+        plot_results(state_pd, omega_d, state_pd_low, tilda_state_dynamic, tTotal, tTotal_low, a_ys)
+        show()
 
-for a_y in quad_rotor_omega_D_dynamic.keys():
-    fig, ax = plt.subplots(1, dpi=150)
+    final_state = state_pd_low[a_ys[0]][-1]
+    print("Quadrotor hierarchical control simulation complete.")
+    print(f"  wall distances a_y = {list(a_ys)}")
+    print(f"  high/low-level game steps = {n_steps}")
+    print(f"  simulated time           = {float(tTotal_low[-1]):.2f} s")
+    print(
+        f"  final position (x, y, z) = ({final_state[8]:.3f}, {final_state[10]:.3f}, {final_state[6]:.3f}) m"
+    )
+    print(
+        f"  final angles (phi, theta, psi) = "
+        f"({final_state[0]:.3f}, {final_state[2]:.3f}, {final_state[4]:.3f}) rad"
+    )
 
-    t01 = int(time_ratio1 * 0.8)
-    t1 = int(time_ratio1 * 1.1)
-    t02 = int(time_ratio2 * 0.8)
-    t2 = int(time_ratio2 * 1)
 
-    x1 = tTotal_low[t01:t1]
-    y1 = quad_rotor_omega_D_dynamic[a_y][t01:t1, 1]
-    x2 = tTotal[t02:t2]
-    y2 = quad_rotor_state_PD_dynamic[a_y][t02:t2, 3]
-
-    ax.step(x1, y1, linewidth=1)
-    ax.plot(x2, y2, linewidth=1)
-    plt.xlabel('$t \ [sec]$', fontsize=14)
-    plt.grid()
-
-    axins = zoomed_inset_axes(ax, 3.5, borderpad=3)
-    mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec="0.5")
-
-    xlim = [0.898, 0.905]
-    ylim = [0.193, 0.205]
-
-    axins.set_xlim(xlim)
-    axins.set_ylim(ylim)
-    axins.step(x1, y1, linewidth=1)
-    axins.plot(x2, y2, linewidth=1)
-    plt.grid()
-
-    fig.legend(['$\\dot{\\theta}_d \\ \\left[ \\frac{rad}{sec} \\right]$',
-                '$\\dot{\\theta} \\ \\left[ \\frac{rad}{sec} \\right]$'],
-               bbox_to_anchor=(0.28, 0.35) if a_y != 0.6 else (0.3, 0.35))
-
-    plt.show()
-
-for sol in quad_rotor_state_PD_dynamic_low.values():
-    plt.figure(dpi=300)
-    plt.plot(tTotal_low[0:], sol[0:, 0:6])
-    plt.xlabel('$t \ [sec]$', fontsize=14)
-    plt.legend(['$\\phi[rad]$', '$\\dot{\phi}\\left[ \\frac{rad}{sec} \\right]$', '$\\theta[rad]$',
-                '$\\dot{\\theta}\\left[ \\frac{rad}{sec} \\right]$', '$\\psi[rad]$',
-                '$\\dot{\psi}\\left[ \\frac{rad}{sec} \\right]$'], ncol=2, loc='upper right')
-    plt.grid()
-    plt.show()
-
-for sol in quad_rotor_state_PD_dynamic_low.values():
-    plt.figure(dpi=300)
-    plt.plot(tTotal_low[0:], sol[0:, 6:8], tTotal_low[0:], sol[0:, 10:12])
-    plt.xlabel('$t \ [sec]$', fontsize=14)
-    plt.legend(
-        ['$z[m]$', '$\\dot{z}\\left[ \\frac{m}{sec} \\right]$', '$y[m]$', '$\\dot{y}\\left[ \\frac{m}{sec} \\right]$'])
-    plt.grid()
-    plt.show()
+if __name__ == "__main__":
+    main()
