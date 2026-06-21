@@ -133,14 +133,13 @@ class DiscretePyDiffGame(PyDiffGame):
             gains = self._step_gains(Ps)
         else:
             Ps = list(self._P_f)
-            previous = np.inf
+            norms: list[float] = []
             for _ in range(self.max_P_iterations):
                 gains = self._step_gains(Ps)
                 Ps = self._step_P(Ps, gains)
-                norm = sum(float(np.linalg.norm(P)) for P in Ps)
-                if abs(norm - previous) < self._epsilon_P:
+                norms.append(sum(float(np.linalg.norm(P)) for P in Ps))
+                if self._converged(norms):
                     break
-                previous = norm
             gains = self._step_gains(Ps)
 
         self._P = Ps

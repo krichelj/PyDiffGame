@@ -73,7 +73,10 @@ def quad_rotor_state_diff_eqn_for_given_pqrT(X, _, p, q, r, T, Plast):
     omegas_squared = nnls(omegas_squared_coeffs, np.array([u1, u2, u3, u4]))[0]
     omegas = np.sqrt(omegas_squared)
 
-    u5 = d * (omegas[0] - omegas[1] + omegas[2] - omegas[3])
+    # Residual rotor angular rate Omega_r = w1 - w2 + w3 - w4 (rad/s) driving the
+    # gyroscopic coupling. It must NOT be scaled by the drag coefficient d, which
+    # would shrink it by ~1e6 and zero out the gyroscopic terms.
+    u5 = omegas[0] - omegas[1] + omegas[2] - omegas[3]
 
     dPhiddt = dThetadt * (dPsidt * a1 + u5 * a2) + b1 * u2
     dThetaddt = dPhidt * (dPsidt * a3 - u5 * a4) + b2 * u3
