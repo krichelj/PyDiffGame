@@ -81,24 +81,35 @@ def _style() -> None:
 # --------------------------------------------------------------------------- #
 # Figure 1 — masses-and-springs system schematic (faithful to the TikZ original)
 # --------------------------------------------------------------------------- #
-def _coil(ax, x0: float, x1: float, y: float, *, radius: float = 0.34, coils_per_unit: float = 3.2) -> None:
+def _coil(ax, x0: float, x1: float, y: float, *, radius: float = 0.26, coils_per_unit: float = 5.5) -> None:
     """Draw a continuous, tightly-wound helical coil spring between ``(x0, y)`` and ``(x1, y)``.
 
     The coil is a single parametric polyline: an axial advance plus a circular
     ``(cos, sin)`` component so consecutive turns overlap into visible loops
-    (a slinky-like helix), rather than a chain of separate rings. ``coils_per_unit``
-    is shared across springs so every spring has the same pitch.
+    (a slinky-like helix). A ``sin`` envelope tapers the radius to zero at both
+    ends, so the helix lands exactly on the axis at ``(xa, y)`` / ``(xb, y)`` —
+    no doubling-back lead, no stray hook. ``coils_per_unit`` is shared across
+    springs so every spring has the same pitch.
     """
-    lead = 0.07 * (x1 - x0)
+    lead = 0.06 * (x1 - x0)
     xa, xb = x0 + lead, x1 - lead
     span = xb - xa
-    n = max(7, int(round(span * coils_per_unit)))
-    theta = np.linspace(0.0, 2.0 * np.pi * n, n * 80)
-    cx = xa + span * (theta / (2.0 * np.pi * n)) + radius * np.cos(theta)
-    cy = y + radius * np.sin(theta)
-    # straight leads from the attachment points to the first/last coil points
-    ax.plot([x0, cx[0]], [y, cy[0]], color=STRUCT, lw=2.0, solid_capstyle="round", zorder=2)
-    ax.plot([cx[-1], x1], [cy[-1], y], color=STRUCT, lw=2.0, solid_capstyle="round", zorder=2)
+    n = max(11, int(round(span * coils_per_unit)))
+    theta = np.linspace(0.0, 2.0 * np.pi * n, n * 100)
+    # Flat-top (Tukey) envelope: uniform coil amplitude across the middle, with a
+    # short cosine taper to zero over the last ~12% at each end so the helix lands
+    # cleanly on the axis (no spindle shape, no stray hook).
+    t_norm = theta / (2.0 * np.pi * n)
+    alpha = 0.12
+    env = np.ones_like(theta)
+    left, right = t_norm < alpha, t_norm > 1.0 - alpha
+    env[left] = 0.5 * (1.0 - np.cos(np.pi * t_norm[left] / alpha))
+    env[right] = 0.5 * (1.0 - np.cos(np.pi * (1.0 - t_norm[right]) / alpha))
+    cx = xa + span * t_norm + radius * env * np.cos(theta)
+    cy = y + radius * env * np.sin(theta)
+    # short straight leads from the attachment points onto the (on-axis) coil ends
+    ax.plot([x0, xa], [y, y], color=STRUCT, lw=2.0, solid_capstyle="round", zorder=2)
+    ax.plot([xb, x1], [y, y], color=STRUCT, lw=2.0, solid_capstyle="round", zorder=2)
     ax.plot(cx, cy, color=STRUCT, lw=2.0, solid_capstyle="round", solid_joinstyle="round", zorder=2)
 
 
@@ -123,7 +134,7 @@ def figure_schematic() -> None:
     fig, ax = plt.subplots(figsize=(11.0, 3.1))
 
     floor_top = 0.0
-    mh, mw = 1.0, 1.35  # mass height / width
+    mh, mw = 1.1, 0.95  # mass height / width (upright boxes, as in the original)
     y_c = floor_top + mh / 2  # spring + mass centreline
     wall_h = 1.55
     xw_l, xw_r = 1.0, 13.0  # wall inner faces
@@ -142,9 +153,9 @@ def figure_schematic() -> None:
     _coil(ax, m1_l + mw, m2_l, y_c)
     _coil(ax, m2_l + mw, xw_r, y_c)
 
-    # spring stiffness labels
+    # spring stiffness labels, just above the coils
     for sx in ((xw_l + m1_l) / 2, (m1_l + mw + m2_l) / 2, (m2_l + mw + xw_r) / 2):
-        ax.text(sx, floor_top + mh + 0.18, r"$k$", ha="center", va="bottom", color=STRUCT, fontsize=15)
+        ax.text(sx, y_c + 0.42, r"$k$", ha="center", va="bottom", color=STRUCT, fontsize=15)
 
     for ml, label in masses:
         ax.add_patch(
@@ -239,7 +250,6 @@ def figure_trajectories(lqr_game, game, lqr_cost, game_cost, x_T) -> None:
     ax.plot(t, game.x[:, 1], color=RED, lw=1.7, ls=(0, (5, 3)))
     for tgt, col in ((x_T[0], BLUE), (x_T[1], RED)):
         ax.axhline(tgt, color=col, ls=(0, (1, 3)), lw=1.0, alpha=0.55)
-    ax.set_title("Modal game reproduces the monolithic LQR", color=INK)
     ax.set_xlabel(r"time  $t$  $[\mathrm{s}]$")
     ax.set_ylabel("mass position")
     ax.set_xlim(t[0], t[-1])
