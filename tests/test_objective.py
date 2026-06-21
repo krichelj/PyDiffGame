@@ -1,5 +1,7 @@
 """Tests for the :class:`~PyDiffGame.objective.Objective` data model."""
 
+from dataclasses import FrozenInstanceError
+
 import numpy as np
 import pytest
 
@@ -21,7 +23,7 @@ def test_game_objective_carries_decomposition():
 
 def test_objective_is_frozen():
     obj = LQRObjective(Q=np.eye(2), R=1.0)
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         obj.Q = np.zeros((2, 2))  # type: ignore[misc]
 
 

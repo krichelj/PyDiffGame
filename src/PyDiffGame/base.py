@@ -16,9 +16,9 @@ from typing import ClassVar, Final
 
 import numpy as np
 
+from PyDiffGame import plotting
 from PyDiffGame._typing import ArrayLike, FloatArray, PathInput
 from PyDiffGame.objective import Objective
-from PyDiffGame import plotting
 
 
 class PyDiffGame(ABC):
@@ -269,11 +269,11 @@ class PyDiffGame(ABC):
     # Solve / simulate orchestration
     # ------------------------------------------------------------------ #
     @abstractmethod
-    def solve(self) -> "PyDiffGame":
+    def solve(self) -> PyDiffGame:
         """Solve the Riccati equation(s) and store ``P`` and the gains ``K``."""
 
     @abstractmethod
-    def simulate(self) -> "PyDiffGame":
+    def simulate(self) -> PyDiffGame:
         """Propagate the closed-loop state trajectory from ``x_0``."""
 
     @abstractmethod
@@ -291,7 +291,7 @@ class PyDiffGame(ABC):
         save_figure: bool = False,
         figure_path: PathInput = default_figures_path,
         figure_filename: str = default_figures_filename,
-    ) -> "PyDiffGame":
+    ) -> PyDiffGame:
         """Solve, simulate (if ``x_0`` is set) and optionally plot the state."""
 
         self.solve()
@@ -305,7 +305,7 @@ class PyDiffGame(ABC):
                 )
         return self
 
-    def __call__(self, **kwargs) -> "PyDiffGame":
+    def __call__(self, **kwargs) -> PyDiffGame:
         """Alias for :meth:`run` so a game instance is callable."""
 
         return self.run(**kwargs)

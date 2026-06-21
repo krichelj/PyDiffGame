@@ -4,23 +4,85 @@ build-backend = "hatchling.build"
 
 [project]
 name = "PyDiffGame"
-version = "1.0.0"
+version = "2.0.0"
 authors = [
-  { name="Joshua Shay Kricheli", email="skricheli2@gmail.com" }
+  { name = "Joshua Shay Kricheli", email = "skricheli2@gmail.com" },
 ]
-description = "PyDiffGame is a Python implementation of a Nash Equilibrium solution to Differential Games, based on a reduction of Game Hamilton-Bellman-Jacobi (GHJB) equations to Game Algebraic and Differential Riccati equations, associated with Multi-Objective Dynamical Control Systems"
+description = "Nash-equilibrium solutions to linear-quadratic differential games, via a reduction of the Game Hamilton-Jacobi-Bellman equations to coupled algebraic and differential Riccati equations for multi-objective dynamical control systems."
 readme = "README.md"
-requires-python = ">=3.10"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+keywords = [
+    "differential-games",
+    "nash-equilibrium",
+    "optimal-control",
+    "lqr",
+    "riccati",
+    "control-theory",
+]
 classifiers = [
-    "Programming Language :: Python :: 3",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Typing :: Typed",
+]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "matplotlib>=3.7",
+    "tqdm>=4.63",
+]
+
+[project.optional-dependencies]
+examples = [
+    "control>=0.10",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "mypy>=1.10",
+    "control>=0.10",
 ]
 
 [project.urls]
 "Homepage" = "https://krichelj.github.io/PyDiffGame/"
+"Repository" = "https://github.com/krichelj/PyDiffGame"
 "Bug Tracker" = "https://github.com/krichelj/PyDiffGame/issues"
 
-# Specify where your source code is located
 [tool.hatch.build.targets.wheel]
-packages = ["src/PyDiffGame"]  # Replace with the actual path to your package
+packages = ["src/PyDiffGame"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["error::SyntaxWarning"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "NPY"]
+# Math-heavy code: allow ambiguous single-letter names (A, B, Q, R, P, K, l...)
+# and the equal-length zips that are pervasive in the matrix recurrences.
+ignore = ["E741", "B905"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/PyDiffGame/examples/*" = ["E501"]
+"tests/*" = ["F401", "F811"]
+
+[tool.mypy]
+python_version = "3.11"
+packages = ["PyDiffGame"]
+ignore_missing_imports = true
+warn_unused_ignores = true

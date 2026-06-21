@@ -118,7 +118,7 @@ class DiscretePyDiffGame(PyDiffGame):
     # ------------------------------------------------------------------ #
     # Solve
     # ------------------------------------------------------------------ #
-    def solve(self) -> "DiscretePyDiffGame":
+    def solve(self) -> DiscretePyDiffGame:
         if self._infinite_horizon:
             self._solve_infinite_horizon()
         else:
@@ -185,7 +185,7 @@ class DiscretePyDiffGame(PyDiffGame):
     # ------------------------------------------------------------------ #
     # Simulate
     # ------------------------------------------------------------------ #
-    def simulate(self) -> "DiscretePyDiffGame":
+    def simulate(self) -> DiscretePyDiffGame:
         self._require_solved()
         if self._x_0 is None:
             raise RuntimeError("simulate() requires x_0")
