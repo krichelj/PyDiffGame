@@ -1,6 +1,8 @@
-matplotlib>=3.7.0
-numpy>=1.24.2
-scipy>=1.8.0
-setuptools>=61.0
-tqdm>=4.63.0
-sympy~=1.11.1
+# Runtime dependencies (mirrors [project.dependencies] in pyproject.toml).
+# For development install the package with its extras instead:
+#   pip install -e ".[dev]"
+# The examples additionally require the `control` package (".[examples]").
+numpy>=1.24
+scipy>=1.10
+matplotlib>=3.7
+tqdm>=4.63
