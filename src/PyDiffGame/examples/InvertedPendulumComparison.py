@@ -1,56 +1,75 @@
+"""Inverted-pendulum-on-a-cart benchmark: differential game vs. LQR.
+
+A uniform rod pinned to a cart forms the classic underactuated inverted
+pendulum.  Linearising about the upright equilibrium yields a ``4``-dimensional
+linear system (cart position, pendulum angle and their velocities) driven by a
+two-dimensional physical input (cart force ``F`` and pendulum moment ``M``).
+The input is decomposed so that the cart and the pendulum each become one player
+of a differential game, and the result is compared against a single LQR
+controller acting on the whole system.
+
+The nonlinear closed loop can additionally be simulated by feeding the designed
+gains back into the full (un-linearised) equations of motion.
+
+Run directly to solve a single instance and report the costs and stability::
+
+    python -m PyDiffGame.examples.InvertedPendulumComparison
+"""
+
 from __future__ import annotations
 
 import numpy as np
-import scipy as sp
-from time import time
-import matplotlib
-import matplotlib.pyplot as plt
+from scipy.integrate import solve_ivp
 
-from typing import Optional
-
-from PyDiffGame.PyDiffGame import PyDiffGame
-from PyDiffGame.PyDiffGameLQRComparison import PyDiffGameLQRComparison
-from PyDiffGame.Objective import GameObjective, LQRObjective
+from PyDiffGame.base import PyDiffGame
+from PyDiffGame.comparison import PyDiffGameLQRComparison
+from PyDiffGame.objective import GameObjective, LQRObjective
+from PyDiffGame.plotting import show
 
 
 class InvertedPendulumComparison(PyDiffGameLQRComparison):
-    def __init__(self,
-                 m_c: float,
-                 m_p: float,
-                 p_L: float,
-                 q: float,
-                 r: Optional[float] = 1,
-                 x_0: Optional[np.array] = None,
-                 x_T: Optional[np.array] = None,
-                 T_f: Optional[float] = None,
-                 epsilon_x: Optional[float] = PyDiffGame.epsilon_x_default,
-                 epsilon_P: Optional[float] = PyDiffGame.epsilon_P_default,
-                 L: Optional[int] = PyDiffGame.L_default,
-                 eta: Optional[int] = PyDiffGame.eta_default):
-        self.__m_c = m_c
-        self.__m_p = m_p
-        self.__p_L = p_L
-        self.__l = self.__p_L / 2  # CoM of uniform rod
-        self.__I = 1 / 12 * self.__m_p * self.__p_L ** 2  # center mass moment of inertia of uniform rod
+    """Compare a two-player differential game with an LQR for the cart-pendulum."""
 
-        # # original linear system
-        linearized_D = self.__m_c * self.__m_p * self.__l ** 2 + self.__I * (self.__m_c + self.__m_p)
-        a32 = self.__m_p * PyDiffGame.g * self.__l ** 2 / linearized_D
-        a42 = self.__m_p * PyDiffGame.g * self.__l * (self.__m_c + self.__m_p) / linearized_D
+    def __init__(
+        self,
+        m_c: float,
+        m_p: float,
+        p_L: float,
+        q: float,
+        r: float = 1.0,
+        x_0: np.ndarray | None = None,
+        x_T: np.ndarray | None = None,
+        T_f: float | None = None,
+        epsilon_x: float = PyDiffGame.epsilon_x_default,
+        epsilon_P: float = PyDiffGame.epsilon_P_default,
+        L: int = PyDiffGame.L_default,
+        eta: int = PyDiffGame.eta_default,
+    ) -> None:
+        self._m_c = m_c
+        self._m_p = m_p
+        self._p_L = p_L
+        self._l = p_L / 2  # centre of mass of the uniform rod
+        self._I = 1 / 12 * m_p * p_L**2  # moment of inertia of the uniform rod about its centre
+
+        # Linearised system about the upright equilibrium.
+        linearized_D = m_c * m_p * self._l**2 + self._I * (m_c + m_p)
+        a32 = m_p * PyDiffGame.g * self._l**2 / linearized_D
+        a42 = m_p * PyDiffGame.g * self._l * (m_c + m_p) / linearized_D
         A = np.array([[0, 0, 1, 0],
                       [0, 0, 0, 1],
                       [0, a32, 0, 0],
-                      [0, a42, 0, 0]])
+                      [0, a42, 0, 0]], dtype=float)
 
-        b21 = (m_p * self.__l ** 2 + self.__I) / linearized_D
-        b31 = m_p * self.__l / linearized_D
+        b21 = (m_p * self._l**2 + self._I) / linearized_D
+        b31 = m_p * self._l / linearized_D
         b22 = b31
         b32 = (m_c + m_p) / linearized_D
         B = np.array([[0, 0],
                       [0, 0],
                       [b21, b22],
-                      [b31, b32]])
+                      [b31, b32]], dtype=float)
 
+        # Each physical-input row becomes one player's decomposition matrix.
         M1 = B[2, :].reshape(1, 2)
         M2 = B[3, :].reshape(1, 2)
         Ms = [M1, M2]
@@ -58,200 +77,156 @@ class InvertedPendulumComparison(PyDiffGameLQRComparison):
         Q_x = q * np.array([[1, 0, 2, 0],
                             [0, 0, 0, 0],
                             [2, 0, 4, 0],
-                            [0, 0, 0, 0]])
+                            [0, 0, 0, 0]], dtype=float)
         Q_theta = q * np.array([[0, 0, 0, 0],
                                 [0, 1, 0, 2],
                                 [0, 0, 0, 0],
-                                [0, 2, 0, 4]])
-        Q_lqr = Q_theta + Q_x
+                                [0, 2, 0, 4]], dtype=float)
+        Q_lqr = Q_x + Q_theta
         Qs = [Q_x, Q_theta]
 
         R_lqr = np.diag([r] * 2)
-        Rs = [np.array([r])] * 2
+        Rs = [np.array([[r]])] * 2
 
-        self.__origin = (0.0, 0.0)
+        self._origin = (0.0, 0.0)
 
-        state_variables_names = ['x',
-                                 '\\theta',
-                                 '\\dot{x}',
-                                 '\\dot{\\theta}']
+        state_variables_names = [
+            "x",
+            r"\theta",
+            r"\dot{x}",
+            r"\dot{\theta}",
+        ]
 
-        args = {'A': A,
-                'B': B,
-                'x_0': x_0,
-                'x_T': x_T,
-                'T_f': T_f,
-                'state_variables_names': state_variables_names,
-                'epsilon_x': epsilon_x,
-                'epsilon_P': epsilon_P,
-                'L': L,
-                'eta': eta,
-                'force_finite_horizon': T_f is not None}
-
-        lqr_objective = [LQRObjective(Q=Q_lqr, R_ii=R_lqr)]
-        game_objectives = [GameObjective(Q=Q, R_ii=R, M_i=M_i) for Q, R, M_i in zip(Qs, Rs, Ms)]
+        lqr_objective = [LQRObjective(Q=Q_lqr, R=R_lqr)]
+        game_objectives = [
+            GameObjective(Q=Q_i, R=R_i, M=M_i) for Q_i, R_i, M_i in zip(Qs, Rs, Ms)
+        ]
         games_objectives = [lqr_objective, game_objectives]
 
-        super().__init__(args=args,
-                         games_objectives=games_objectives,
-                         continuous=True)
+        super().__init__(
+            A=A,
+            B=B,
+            games_objectives=games_objectives,
+            continuous=True,
+            x_0=x_0,
+            x_T=x_T,
+            T_f=T_f,
+            L=L,
+            eta=eta,
+            epsilon_x=epsilon_x,
+            epsilon_P=epsilon_P,
+            state_variables_names=state_variables_names,
+        )
 
-    def __simulate_non_linear_system(self,
-                                     i: int,
-                                     plot: bool = False) -> np.array:
+    def simulate_nonlinear_system(self, i: int) -> np.ndarray:
+        """Simulate the full nonlinear cart-pendulum closed loop for game ``i``.
+
+        The infinite-horizon feedback gains designed on the linear model are fed
+        back into the un-linearised equations of motion.  Returns the state
+        trajectory with shape ``(n, L)``.
+        """
+
         game = self._games[i]
+        game.solve()
         K = game.K
-        x_T = game.x_T
+        x_T = game.x_T if game.x_T is not None else np.zeros(game.n)
 
-        def nonlinear_state_space(_, x_t: np.array) -> np.array:
-            x_t = x_t - x_T
+        def nonlinear_state_space(_t: float, x_t: np.ndarray) -> np.ndarray:
+            x_tilde = x_t - x_T
 
-            if game.is_LQR():
-                u_t = - K[0] @ x_t
-                F_t, M_t = u_t.T
+            if game.is_lqr:
+                F_t, M_t = (-K[0] @ x_tilde).ravel()
             else:
                 K_x, K_theta = K
-                v_x = - K_x @ x_t
-                v_theta = - K_theta @ x_t
-                v = np.array([v_x, v_theta])
-                F_t, M_t = game.M_inv @ v
+                v = np.array([
+                    float((-K_x @ x_tilde).item()),
+                    float((-K_theta @ x_tilde).item()),
+                ])
+                F_t, M_t = (game.M_inv @ v).ravel()
 
-            x, theta, x_dot, theta_dot = x_t
+            _x, theta, _x_dot, theta_dot = x_t
 
             theta_ddot = 1 / (
-                    self.__m_p * self.__l ** 2 + self.__I - (self.__m_p * self.__l) ** 2 * np.cos(theta) ** 2 /
-                    (self.__m_p + self.__m_c)) * (M_t - self.__m_p * self.__l *
-                                                  (np.cos(theta) / (self.__m_p + self.__m_c) *
-                                                   (F_t + self.__m_p * self.__l * np.sin(theta)
-                                                    * theta_dot ** 2) + PyDiffGame.g * np.sin(theta)))
-            x_ddot = 1 / (self.__m_p + self.__m_c) * (F_t + self.__m_p * self.__l * (np.sin(theta) * theta_dot ** 2 -
-                                                                                     np.cos(theta) * theta_ddot))
-            if isinstance(theta_ddot, np.ndarray):
-                theta_ddot = theta_ddot[0]
-                x_ddot = x_ddot[0]
+                self._m_p * self._l**2 + self._I
+                - (self._m_p * self._l) ** 2 * np.cos(theta) ** 2 / (self._m_p + self._m_c)
+            ) * (
+                M_t - self._m_p * self._l * (
+                    np.cos(theta) / (self._m_p + self._m_c)
+                    * (F_t + self._m_p * self._l * np.sin(theta) * theta_dot**2)
+                    + PyDiffGame.g * np.sin(theta)
+                )
+            )
+            x_ddot = 1 / (self._m_p + self._m_c) * (
+                F_t + self._m_p * self._l * (
+                    np.sin(theta) * theta_dot**2 - np.cos(theta) * theta_ddot
+                )
+            )
 
-            non_linear_x = np.array([x_dot, theta_dot, x_ddot, theta_ddot],
-                                    dtype=float)
+            return np.array([_x_dot, theta_dot, x_ddot, theta_ddot], dtype=float)
 
-            return non_linear_x
+        pendulum_state = solve_ivp(
+            fun=nonlinear_state_space,
+            t_span=[0.0, game.T_f],
+            y0=game.x_0,
+            t_eval=game.forward_time,
+            rtol=1e-6,
+        )
 
-        pendulum_state = sp.integrate.solve_ivp(fun=nonlinear_state_space,
-                                                t_span=[0.0, game.T_f],
-                                                y0=game.x_0,
-                                                t_eval=game.forward_time,
-                                                rtol=game.epsilon)
-
-        Y = pendulum_state.y
-
-        if plot:
-            game.plot_state_variables(state_variables=Y.T,
-                                      linear_system=False)
-
-        return Y
-
-    def __run_animation(self,
-                        i: int) -> (matplotlib.lines.Line2D, matplotlib.patches.Rectangle):
-        game = self._games[i]
-        game._x_non_linear = self.__simulate_non_linear_system(i=i,
-                                                               plot=True)
-        x_t, theta_t, x_dot_t, theta_dot_t = game._x_non_linear
-
-        pendulumArm = matplotlib.lines.Line2D(xdata=self.__origin,
-                                              ydata=self.__origin,
-                                              color='r')
-        cart = matplotlib.patches.Rectangle(xy=self.__origin,
-                                            width=0.5,
-                                            height=0.15,
-                                            color='b')
-
-        fig = plt.figure()
-        x_max = max(abs(max(x_t)), abs(min(x_t)))
-        square_side = 1.1 * min(max(self.__p_L, x_max), 3 * self.__p_L)
-
-        ax = fig.add_subplot(111,
-                             aspect='equal',
-                             xlim=(-square_side, square_side),
-                             ylim=(-square_side, square_side),
-                             title=f"Inverted Pendulum {'LQR' if game.is_LQR() else 'Game'} Simulation")
-
-        def init() -> (matplotlib.lines.Line2D, matplotlib.patches.Rectangle):
-            ax.add_patch(cart)
-            ax.add_line(pendulumArm)
-
-            return pendulumArm, cart
-
-        def animate(i: int) -> (matplotlib.lines.Line2D, matplotlib.patches.Rectangle):
-            x_i, theta_i = x_t[i], theta_t[i]
-            pendulum_x_coordinates = [x_i, x_i + self.__p_L * np.sin(theta_i)]
-            pendulum_y_coordinates = [0, - self.__p_L * np.cos(theta_i)]
-            pendulumArm.set_xdata(x=pendulum_x_coordinates)
-            pendulumArm.set_ydata(y=pendulum_y_coordinates)
-
-            cart_x_y = [x_i - cart.get_width() / 2, - cart.get_height()]
-            cart.set_xy(xy=cart_x_y)
-
-            return pendulumArm, cart
-
-        ax.grid()
-        t0 = time()
-        animate(0)
-        t1 = time()
-
-        frames = game.L
-        interval = game.T_f - (t1 - t0)
-
-        anim = matplotlib.animationFuncAnimation(fig=fig,
-                                                 func=animate,
-                                                 init_func=init,
-                                                 frames=frames,
-                                                 interval=interval,
-                                                 blit=True)
-        plt.show()
+        return pendulum_state.y
 
 
-def multiprocess_worker_function(x_T: float,
-                                 theta_0: float,
-                                 m_c: float,
-                                 m_p: float,
-                                 p_L: float,
-                                 q: float,
-                                 epsilon_x: float,
-                                 epsilon_P: float) -> int:
-    x_T = np.array([x_T,  # x
-                    theta_0,  # theta
-                    0,  # x_dot
-                    0]  # theta_dot
-                   )
-    x_0 = np.zeros_like(x_T)
+def multiprocess_worker_function(
+    x_T: float,
+    theta_0: float,
+    m_c: float,
+    m_p: float,
+    p_L: float,
+    q: float,
+    epsilon_x: float,
+    epsilon_P: float,
+) -> int:
+    """Worker for a parameter sweep: returns 1 if the LQR cost is the largest."""
 
-    inverted_pendulum_comparison = \
-        InvertedPendulumComparison(m_c=m_c,
-                                   m_p=m_p,
-                                   p_L=p_L,
-                                   q=q,
-                                   x_0=x_0,
-                                   x_T=x_T,
-                                   epsilon_x=epsilon_x,
-                                   epsilon_P=epsilon_P)  # game class
-    is_max_lqr = \
-        inverted_pendulum_comparison(plot_state_spaces=False,
-                                     run_animations=False
-                                     )
+    x_T_vec = np.array([x_T, theta_0, 0.0, 0.0])
+    x_0 = np.zeros_like(x_T_vec)
 
-    # inverted_pendulum_comparison.plot_two_state_spaces(non_linear=True)
-    return int(is_max_lqr)
+    comparison = InvertedPendulumComparison(
+        m_c=m_c,
+        m_p=m_p,
+        p_L=p_L,
+        q=q,
+        x_0=x_0,
+        x_T=x_T_vec,
+        L=300,
+        epsilon_x=epsilon_x,
+        epsilon_P=epsilon_P,
+    )
+    comparison.run(plot_state_spaces=False)
+    lqr_cost, game_cost = comparison.costs()
+    return int(lqr_cost >= game_cost)
 
 
-if __name__ == '__main__':
-    x_Ts = [10 ** p for p in [2]]
-    theta_Ts = [np.pi / 2 + np.pi / n for n in [10]]
-    m_cs = [10 ** p for p in [1, 2]]
-    m_ps = [10 ** p for p in [0, 1, 2]]
-    p_Ls = [10 ** p for p in [0, 1]]
-    qs = [10 ** p for p in [-2, -1, 0, 1]]
-    epsilon_xs = [10 ** (-7)]
-    epsilon_Ps = [10 ** (-3)]
-    params = [x_Ts, theta_Ts, m_cs, m_ps, p_Ls, qs, epsilon_xs, epsilon_Ps]
+def main(*, plot: bool = True, save_figure: bool = False) -> None:
+    """Solve a single inverted-pendulum comparison and print the costs."""
 
-    PyDiffGameLQRComparison.run_multiprocess(multiprocess_worker_function=multiprocess_worker_function,
-                                             values=params)
+    m_c, m_p, p_L, q, r = 10.0, 1.0, 1.0, 1.0, 1.0
+    x_T = np.array([5.0, 0.0, 0.0, 0.0])
+    x_0 = np.array([0.0, np.pi / 18, 0.0, 0.0])
+
+    comparison = InvertedPendulumComparison(
+        m_c=m_c, m_p=m_p, p_L=p_L, q=q, r=r, x_0=x_0, x_T=x_T, L=300
+    )
+    comparison.run(plot_state_spaces=plot, save_figure=save_figure)
+
+    lqr_cost, game_cost = comparison.costs()
+    print(f"LQR cost   = {lqr_cost:.4g}")
+    print(f"Game cost  = {game_cost:.4g}")
+    print(f"All games controllable: {comparison.are_all_controllable()}")
+    print(f"LQR  closed loop stable: {comparison[0].is_closed_loop_stable()}")
+    print(f"Game closed loop stable: {comparison[1].is_closed_loop_stable()}")
+    if plot:
+        show()
+
+
+if __name__ == "__main__":
+    main(plot=False)
