@@ -25,27 +25,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
         with:
-          python-version: ${{ matrix.python-version }}
-          allow-prereleases: true
+          enable-cache: true
 
-      - name: Install the package with dev extras
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Sync the environment (locked)
+        run: uv sync --extra dev --python ${{ matrix.python-version }} --frozen
 
       - name: Lint with ruff
-        run: ruff check src/PyDiffGame tests --exclude src/PyDiffGame/examples
+        run: uv run ruff check src/PyDiffGame tests --exclude src/PyDiffGame/examples
 
       - name: Check formatting with ruff
-        run: ruff format --check src/PyDiffGame tests
+        run: uv run ruff format --check src/PyDiffGame tests
 
       - name: Type-check with mypy
-        run: mypy src/PyDiffGame --exclude 'examples'
+        run: uv run mypy src/PyDiffGame --exclude 'examples'
 
       - name: Run the test suite
         env:
           MPLBACKEND: Agg
-        run: pytest tests/ -q
+        run: uv run pytest -q
