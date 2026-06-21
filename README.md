@@ -7,11 +7,12 @@
 </p>
 
 <p align="center">
-<a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
-<a href="https://github.com/krichelj/PyDiffGame/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/krichelj/PyDiffGame/actions/workflows/tests.yml/badge.svg"></a>
-<a href="https://github.com/krichelj/PyDiffGame/actions/workflows/python-publish.yml"><img alt="Upload Python Package" src="https://github.com/krichelj/PyDiffGame/actions/workflows/python-publish.yml/badge.svg"></a>
+<a href="https://github.com/krichelj/PyDiffGame/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/krichelj/PyDiffGame/actions/workflows/tests.yml/badge.svg?branch=master"></a>
 <a href="https://pypi.org/project/PyDiffGame/"><img alt="PyPI" src="https://img.shields.io/pypi/v/PyDiffGame.svg"></a>
 <a href="https://www.python.org/"><img alt="Python" src="https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue.svg"></a>
+<a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
+<a href="https://github.com/astral-sh/ruff"><img alt="Ruff" src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json"></a>
+<a href="https://mypy-lang.org/"><img alt="Checked with mypy" src="https://img.shields.io/badge/mypy-checked-2a6db2.svg"></a>
 <a href="https://docs.astral.sh/uv/"><img alt="uv" src="https://img.shields.io/badge/managed%20with-uv-261230.svg"></a>
 </p>
 
