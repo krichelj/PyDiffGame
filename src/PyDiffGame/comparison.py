@@ -65,7 +65,7 @@ class PyDiffGameLQRComparison:
     def are_all_controllable(self) -> bool:
         return all(game.is_controllable() for game in self._games)
 
-    def solve(self) -> "PyDiffGameLQRComparison":
+    def solve(self) -> PyDiffGameLQRComparison:
         for game in self._games:
             game.solve()
         return self
@@ -76,7 +76,7 @@ class PyDiffGameLQRComparison:
         plot_state_spaces: bool = True,
         save_figure: bool = False,
         figure_filename: str | Callable[[PyDiffGame], str] = PyDiffGame.default_figures_filename,
-    ) -> "PyDiffGameLQRComparison":
+    ) -> PyDiffGameLQRComparison:
         """Solve, simulate and (optionally) plot every game in the comparison."""
 
         for game in self._games:
@@ -88,7 +88,7 @@ class PyDiffGameLQRComparison:
             )
         return self
 
-    def __call__(self, **kwargs) -> "PyDiffGameLQRComparison":
+    def __call__(self, **kwargs) -> PyDiffGameLQRComparison:
         return self.run(**kwargs)
 
     def costs(self, objective: Objective | None = None) -> list[float]:

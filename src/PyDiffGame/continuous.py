@@ -50,7 +50,7 @@ class ContinuousPyDiffGame(PyDiffGame):
     # ------------------------------------------------------------------ #
     # Solve
     # ------------------------------------------------------------------ #
-    def solve(self) -> "ContinuousPyDiffGame":
+    def solve(self) -> ContinuousPyDiffGame:
         if self._infinite_horizon:
             self._solve_infinite_horizon()
         else:
@@ -143,7 +143,7 @@ class ContinuousPyDiffGame(PyDiffGame):
     # ------------------------------------------------------------------ #
     # Simulate
     # ------------------------------------------------------------------ #
-    def simulate(self) -> "ContinuousPyDiffGame":
+    def simulate(self) -> ContinuousPyDiffGame:
         self._require_solved()
         if self._x_0 is None:
             raise RuntimeError("simulate() requires x_0")

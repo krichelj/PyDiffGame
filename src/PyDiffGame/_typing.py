@@ -6,11 +6,8 @@ plain assignments (rather than :pep:`695` ``type`` statements) so the package
 keeps importing on Python 3.11, while still reading cleanly on 3.14.
 """
 
-from __future__ import annotations
-
 from collections.abc import Sequence
 from os import PathLike
-from typing import Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -19,9 +16,9 @@ from numpy.typing import NDArray
 FloatArray = NDArray[np.float64]
 
 #: Anything that can be coerced into a float array (lists, tuples, scalars...).
-ArrayLike = Union[FloatArray, Sequence[float], Sequence[Sequence[float]], float, int]
+ArrayLike = FloatArray | Sequence[float] | Sequence[Sequence[float]] | float | int
 
 #: A filesystem path, accepted either as ``str`` or :class:`os.PathLike`.
-PathInput = Union[str, "PathLike[str]"]
+PathInput = str | PathLike[str]
 
 __all__ = ["FloatArray", "ArrayLike", "PathInput"]
