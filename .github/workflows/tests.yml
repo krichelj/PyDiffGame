@@ -39,6 +39,9 @@ jobs:
       - name: Lint with ruff
         run: ruff check src/PyDiffGame tests --exclude src/PyDiffGame/examples
 
+      - name: Type-check with mypy
+        run: mypy src/PyDiffGame --exclude 'examples'
+
       - name: Run the test suite
         env:
           MPLBACKEND: Agg

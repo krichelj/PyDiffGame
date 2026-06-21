@@ -12,7 +12,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from pathlib import Path
-from typing import ClassVar, Final
+from typing import Any, Final
 
 import numpy as np
 
@@ -67,20 +67,20 @@ class PyDiffGame(ABC):
         Emit verbose diagnostics while solving.
     """
 
-    T_f_default: Final[ClassVar[float]] = 20.0
-    epsilon_x_default: Final[ClassVar[float]] = 1e-7
-    epsilon_P_default: Final[ClassVar[float]] = 1e-7
-    L_default: Final[ClassVar[int]] = 1000
-    eta_default: Final[ClassVar[int]] = 5
-    eigenvalue_tolerance: Final[ClassVar[float]] = 1e-7
+    T_f_default: Final[float] = 20.0
+    epsilon_x_default: Final[float] = 1e-7
+    epsilon_P_default: Final[float] = 1e-7
+    L_default: Final[int] = 1000
+    eta_default: Final[int] = 5
+    eigenvalue_tolerance: Final[float] = 1e-7
     #: Standard gravitational acceleration, handy for the mechanical examples.
-    g: Final[ClassVar[float]] = 9.81
+    g: Final[float] = 9.81
 
-    max_x_iterations: Final[ClassVar[int]] = 100
-    max_P_iterations: Final[ClassVar[int]] = 100
+    max_x_iterations: Final[int] = 100
+    max_P_iterations: Final[int] = 100
 
-    default_figures_path: Final[ClassVar[Path]] = Path.cwd() / "figures"
-    default_figures_filename: Final[ClassVar[str]] = "image"
+    default_figures_path: Final[Path] = Path.cwd() / "figures"
+    default_figures_filename: Final[str] = "image"
 
     def __init__(
         self,
@@ -140,13 +140,15 @@ class PyDiffGame(ABC):
             np.asarray(P_f_i, dtype=np.float64) for P_f_i in P_f
         ]
 
-        # Solver outputs, populated by ``solve`` / ``simulate``.
-        self._P: list[FloatArray] | FloatArray = []
-        self._K: list[FloatArray] | FloatArray = []
+        # Solver outputs, populated by ``solve`` / ``simulate``.  ``_P`` / ``_K``
+        # are intentionally dynamic: a list of constant matrices for the
+        # infinite-horizon case, a time-indexed array for the finite-horizon one.
+        self._P: Any = []
+        self._K: Any = []
         self._A_cl: FloatArray = np.empty_like(self._A)
         self._x: FloatArray | None = None
         self._solved = False
-        self._fig = None
+        self._fig: Any = None
 
         self._validate()
 
@@ -175,15 +177,16 @@ class PyDiffGame(ABC):
 
         self._M = np.concatenate(decomposition, axis=0)
         try:
-            self._M_inv = np.linalg.inv(self._M)
+            M_inv = np.linalg.inv(self._M)
         except np.linalg.LinAlgError:
-            self._M_inv = np.linalg.pinv(self._M)
+            M_inv = np.linalg.pinv(self._M)
+        self._M_inv = M_inv
 
         Bs_resolved: list[FloatArray] = []
         column = 0
         for M_i in decomposition:
             m_i = M_i.shape[0]
-            Bs_resolved.append(self._B @ self._M_inv[:, column : column + m_i])
+            Bs_resolved.append(self._B @ M_inv[:, column : column + m_i])
             column += m_i
         return Bs_resolved
 
