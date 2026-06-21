@@ -98,13 +98,13 @@ class Objective:
 def LQRObjective(Q: ArrayLike, R: ArrayLike) -> Objective:
     """Convenience constructor for a plain LQR objective (no decomposition)."""
 
-    return Objective(Q=Q, R=R, M=None)
+    return Objective(Q=_as_matrix(Q), R=_as_matrix(R), M=None)
 
 
 def GameObjective(Q: ArrayLike, R: ArrayLike, M: ArrayLike) -> Objective:
     """Convenience constructor for a game player's objective with decomposition ``M``."""
 
-    return Objective(Q=Q, R=R, M=M)
+    return Objective(Q=_as_matrix(Q), R=_as_matrix(R), M=_as_matrix(M))
 
 
 __all__ = ["Objective", "LQRObjective", "GameObjective"]

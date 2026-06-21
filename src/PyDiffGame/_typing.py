@@ -8,12 +8,13 @@ keeps importing on Python 3.11, while still reading cleanly on 3.14.
 
 from collections.abc import Sequence
 from os import PathLike
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 
 #: A real-valued, floating point numpy array (vector or matrix).
-FloatArray = NDArray[np.float64]
+FloatArray = NDArray[np.floating[Any]]
 
 #: Anything that can be coerced into a float array (lists, tuples, scalars...).
 ArrayLike = FloatArray | Sequence[float] | Sequence[Sequence[float]] | float | int
