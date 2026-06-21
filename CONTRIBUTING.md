@@ -41,22 +41,26 @@ they pass locally.
 
 ## Releasing
 
-Publishing a new version to PyPI and creating the matching GitHub Release is a
-single automated step:
+Publishing a new version is a single automated step — just run the publish
+workflow: **Actions -> Upload Python Package -> Run workflow** (on `master`).
 
-1. Bump `version` in `pyproject.toml` (e.g. `2.0.0` -> `2.1.0`) and merge it to
+The run automatically:
+
+1. **Increments the version** with `tools/bump_version.py`, which rolls each
+   component over at 9 (`2.0.9 -> 2.1.0`, `2.9.9 -> 3.0.0`), updating both
+   `pyproject.toml` and `src/PyDiffGame/__init__.py`, and commits the bump to
    `master`.
-2. Run the publish workflow: **Actions -> Upload Python Package -> Run workflow**
-   (on `master`).
+2. Builds the distributions with `uv build`.
+3. Uploads them to PyPI via
+   [Trusted Publishing](https://docs.pypi.org/trusted-publishers/) (OIDC — no
+   tokens or secrets).
+4. Creates a `v<version>` GitHub Release with auto-generated notes and the built
+   wheels/sdist attached.
 
-That run builds the distributions with `uv build`, uploads them to PyPI via
-[Trusted Publishing](https://docs.pypi.org/trusted-publishers/) (OIDC — no
-tokens or secrets), and then creates a `v<version>` GitHub Release with
-auto-generated notes and the built wheels/sdist attached.
-
-The workflow is idempotent: re-running it for a version already on PyPI skips
-the upload (`skip-existing`) and just refreshes the release assets, so it is
-safe to re-run.
+You normally never edit the version by hand. To bump it locally (e.g. to test),
+run `uv run python tools/bump_version.py` (`--dry-run` to preview, `--current`
+to print the current version). The PyPI upload is idempotent (`skip-existing`),
+so re-running the workflow is safe.
 
 Thank you for your contribution!
 

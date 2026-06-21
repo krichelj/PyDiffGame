@@ -1,5 +1,5 @@
 <p align="center">
-    <img alt="PyDiffGame logo" src="images/logo.png" width="420"/>
+    <img alt="PyDiffGame logo" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/logo.png" width="420"/>
 </p>
 
 <p align="center">
@@ -68,22 +68,32 @@ accounting on a common yardstick, and ready-made plotting.
 
 # Installation
 
-Install the latest release from PyPI:
+PyDiffGame is published on [PyPI](https://pypi.org/project/PyDiffGame/) and is
+managed with [**uv**](https://docs.astral.sh/uv/). Add it to your project:
 
 ```bash
-pip install PyDiffGame
+uv add PyDiffGame
 ```
 
 To run the bundled examples (which additionally need
 [`python-control`](https://python-control.readthedocs.io/)):
 
 ```bash
-pip install "PyDiffGame[examples]"
+uv add "PyDiffGame[examples]"
 ```
 
-To work on the package itself, this project is managed with
-[**uv**](https://docs.astral.sh/uv/). Clone it and sync the locked development
-environment:
+<details>
+<summary><b>Prefer pip?</b> It works as a fallback.</summary>
+
+```bash
+pip install PyDiffGame
+pip install "PyDiffGame[examples]"   # with the examples extra
+```
+
+</details>
+
+To work on the package itself, clone it and sync the locked development
+environment with uv:
 
 ```bash
 git clone https://github.com/krichelj/PyDiffGame.git
@@ -92,7 +102,10 @@ uv sync --extra dev          # creates .venv with the exact locked dependencies
 uv run pre-commit install    # enable the formatting / lint / type-check hooks
 ```
 
-Then run anything through `uv run` (`uv run pytest`, `uv run python -m PyDiffGame.examples.MassesWithSpringsComparison`, …).
+Then run anything through `uv run` (`uv run pytest`,
+`uv run python -m PyDiffGame.examples.MassesWithSpringsComparison`, …). Pip users
+can instead `pip install -e ".[dev]"`, though uv is recommended for the exact
+locked environment.
 
 # Quick start
 
@@ -183,7 +196,7 @@ To show the package in action we compare a differential game against an LQR on a
 masses connected by springs — a textbook coupled, oscillatory system:
 
 <p align="center">
-    <img alt="Two masses connected by springs between two walls" src="images/readme/masses_schematic.png" width="760"/>
+    <img alt="Two masses connected by springs between two walls" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/readme/masses_schematic.png" width="760"/>
 </p>
 
 The physical input space is decomposed along the **modal** directions of $M^{-1}K$, so each
@@ -245,11 +258,11 @@ monolithic optimum **to numerical precision**: the two state trajectories coinci
 (they differ by ~10⁻⁷) and the costs are equal:
 
 <p align="center">
-    <img alt="State trajectories: the decomposed game reproduces the monolithic LQR" src="images/readme/masses_game_vs_lqr.png" width="860"/>
+    <img alt="State trajectories: the decomposed game reproduces the monolithic LQR" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/readme/masses_game_vs_lqr.png" width="860"/>
 </p>
 
 <p align="center">
-    <img alt="Cost comparison: the modal game recovers the LQR optimum" src="images/readme/masses_cost.png" width="440"/>
+    <img alt="Cost comparison: the modal game recovers the LQR optimum" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/readme/masses_cost.png" width="440"/>
 </p>
 
 For this modally-decoupled system the decomposition is **lossless** — and it buys
@@ -257,7 +270,7 @@ For this modally-decoupled system the decomposition is **lossless** — and it b
 player, without re-tuning one monolithic cost matrix.
 
 > The figures above are regenerated from the live solver by
-> [`tools/generate_readme_figures.py`](tools/generate_readme_figures.py)
+> [`tools/generate_readme_figures.py`](https://github.com/krichelj/PyDiffGame/blob/master/tools/generate_readme_figures.py)
 > (`uv run python tools/generate_readme_figures.py`), so they always match the current code.
 
 # More examples
@@ -288,7 +301,7 @@ uv run mypy        src/PyDiffGame            # type-check
 ```
 
 Continuous integration runs the formatter check, linter, type checker and full suite on
-Python 3.11–3.14. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+Python 3.11–3.14. See [CONTRIBUTING.md](https://github.com/krichelj/PyDiffGame/blob/master/CONTRIBUTING.md) for details.
 
 # Citing
 
@@ -304,7 +317,7 @@ If you use this work, please cite our paper:
     doi={10.1109/MED51440.2021.9480269}}
 ```
 
-Further details can be found in the [citation document](CITATIONS.bib).
+Further details can be found in the [citation document](https://github.com/krichelj/PyDiffGame/blob/master/CITATIONS.bib).
 
 # Acknowledgments
 
@@ -316,7 +329,7 @@ and Bar-Ilan Universities, Israel.
 
 <p align="center">
 <a href="https://istrc.net.technion.ac.il/">
-<img src="images/Logo_ISTRC_Green_English.png" height="80" alt="ISTRC"/>
+<img src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/Logo_ISTRC_Green_English.png" height="80" alt="ISTRC"/>
 </a>
 &emsp;
 <a href="https://in.bgu.ac.il/en/Pages/default.aspx">
