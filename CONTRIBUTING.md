@@ -14,27 +14,30 @@ Please ensure your pull request adheres to the following guidelines:
 
 ## Development setup
 
-PyDiffGame requires **Python >= 3.11**. Install the package from source with the
-development extras, then enable the pre-commit hooks so the code-quality tools
-run automatically on every commit:
+PyDiffGame requires **Python >= 3.11** and uses [uv](https://docs.astral.sh/uv/)
+for environment and dependency management. Install uv, sync the locked
+development environment, and enable the pre-commit hooks so the code-quality
+tools run automatically on every commit:
 
 ```bash
-pip install -e ".[dev]"
-pre-commit install
+# install uv: https://docs.astral.sh/uv/getting-started/installation/
+uv sync --extra dev
+uv run pre-commit install
 ```
 
-The tooling can also be run by hand:
+`uv sync` creates the virtual environment and installs the exact, locked
+dependencies. Run the tooling through `uv run`:
 
 ```bash
-ruff format src/PyDiffGame tests     # auto-format (black-compatible)
-ruff check src/PyDiffGame tests      # lint
-mypy src/PyDiffGame                  # type-check
-pytest                               # test suite
+uv run ruff format src/PyDiffGame tests   # auto-format (black-compatible)
+uv run ruff check src/PyDiffGame tests    # lint
+uv run mypy src/PyDiffGame                # type-check
+uv run pytest                             # test suite
 ```
 
 Continuous integration runs the formatter check, the linter, the type checker
-and the full suite across Python 3.11–3.14, so please make sure they pass
-locally.
+and the full suite (all via uv) across Python 3.11–3.14, so please make sure
+they pass locally.
 
 Thank you for your contribution!
 
