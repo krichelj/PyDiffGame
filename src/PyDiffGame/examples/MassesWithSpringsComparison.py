@@ -62,9 +62,7 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
         modal_to_state = np.kron(np.eye(2), M)
         game_objectives = []
         for i, (q_i, M_i) in enumerate(zip(q_per_mode, Ms)):
-            modal_weight = np.diag(
-                [0.0] * i + [q_i] + [0.0] * (N - 1) + [q_i] + [0.0] * (N - i - 1)
-            )
+            modal_weight = np.diag([0.0] * i + [q_i] + [0.0] * (N - 1) + [q_i] + [0.0] * (N - i - 1))
             Q_i = modal_to_state.T @ modal_weight @ modal_to_state
             game_objectives.append(GameObjective(Q=Q_i, R=r, M=M_i))
 
@@ -101,9 +99,7 @@ def main(N: int = 2, *, plot: bool = True, save_figure: bool = False) -> None:
     x_0 = np.array([10.0 * i for i in range(1, N + 1)] + [0.0] * N)
     x_T = x_0 * 10.0
 
-    comparison = MassesWithSpringsComparison(
-        N=N, m=m, k=k, q=q, r=r, x_0=x_0, x_T=x_T, T_f=25.0, L=300
-    )
+    comparison = MassesWithSpringsComparison(N=N, m=m, k=k, q=q, r=r, x_0=x_0, x_T=x_T, T_f=25.0, L=300)
     comparison.run(plot_state_spaces=plot, save_figure=save_figure)
 
     lqr_cost, game_cost = comparison.costs()

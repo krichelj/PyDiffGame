@@ -50,6 +50,7 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.6",
     "mypy>=1.10",
+    "pre-commit>=3.7",
     "control>=0.10",
 ]
 
@@ -80,6 +81,11 @@ ignore = ["E741", "B905"]
 [tool.ruff.lint.per-file-ignores]
 "src/PyDiffGame/examples/*" = ["E501"]
 "tests/*" = ["F401", "F811"]
+
+[tool.ruff.format]
+# Black-compatible formatting (ruff format is a drop-in for black), plus
+# formatting of code blocks inside docstrings.
+docstring-code-format = true
 
 [tool.mypy]
 python_version = "3.11"

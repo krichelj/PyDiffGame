@@ -20,10 +20,7 @@ def test_zero_order_hold_discretization_matches_van_loan():
 
 
 def test_discrete_game_residual_and_stability():
-    A = np.array([[1.0, 0.05, 0.0, 0.0],
-                  [0.0, 1.0, 0.0, 0.0],
-                  [0.0, 0.0, 1.0, 0.05],
-                  [0.0, 0.0, 0.0, 1.0]])
+    A = np.array([[1.0, 0.05, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.05], [0.0, 0.0, 0.0, 1.0]])
     B = np.eye(4)[:, [1, 3]]
     objectives = [
         GameObjective(Q=np.diag([1.0, 0.1, 0.0, 0.0]), R=1.0, M=np.array([[1.0, 0.0]])),
@@ -40,8 +37,14 @@ def test_discrete_finite_horizon_recursion_converges_to_dare():
     B = np.array([[0.0], [0.1]])
     Q, R = np.eye(2), np.array([[1.0]])
     game = DiscreteLQR(
-        A=A, B=B, Q=Q, R=R, is_input_discrete=True,
-        T_f=50.0, L=400, P_f=[np.zeros((2, 2))],
+        A=A,
+        B=B,
+        Q=Q,
+        R=R,
+        is_input_discrete=True,
+        T_f=50.0,
+        L=400,
+        P_f=[np.zeros((2, 2))],
     ).solve()
     P_at_t0 = np.asarray(game.P)[0, 0]  # finite horizon -> (L, N, n, n)
     np.testing.assert_allclose(P_at_t0, solve_discrete_are(A, B, Q, R), atol=1e-6)

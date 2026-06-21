@@ -23,31 +23,37 @@ from PyDiffGame.plotting import show
 #
 
 # System parameters
-m = 4       # mass of aircraft
+m = 4  # mass of aircraft
 J = 0.0475  # inertia around pitch axis
-r = 0.25    # distance to center of force
-g = 9.8     # gravitational constant
-c = 0.05    # damping factor (estimated)
+r = 0.25  # distance to center of force
+g = 9.8  # gravitational constant
+c = 0.05  # damping factor (estimated)
 
 # State space dynamics
 xe = [0, 0, 0, 0, 0, 0]  # equilibrium point of interest
 ue = [0, m * g]  # (note these are lists, not matrices)
 
 A = np.array(
-    [[0, 0, 0, 1, 0, 0],
-     [0, 0, 0, 0, 1, 0],
-     [0, 0, 0, 0, 0, 1],
-     [0, 0, (-ue[0]*np.sin(xe[2]) - ue[1]*np.cos(xe[2]))/m, -c/m, 0, 0],
-     [0, 0, (ue[0]*np.cos(xe[2]) - ue[1]*np.sin(xe[2]))/m, 0, -c/m, 0],
-     [0, 0, 0, 0, 0, 0]]
+    [
+        [0, 0, 0, 1, 0, 0],
+        [0, 0, 0, 0, 1, 0],
+        [0, 0, 0, 0, 0, 1],
+        [0, 0, (-ue[0] * np.sin(xe[2]) - ue[1] * np.cos(xe[2])) / m, -c / m, 0, 0],
+        [0, 0, (ue[0] * np.cos(xe[2]) - ue[1] * np.sin(xe[2])) / m, 0, -c / m, 0],
+        [0, 0, 0, 0, 0, 0],
+    ]
 )
 
 # Input matrix
 B = np.array(
-    [[0, 0], [0, 0], [0, 0],
-     [np.cos(xe[2])/m, -np.sin(xe[2])/m],
-     [np.sin(xe[2])/m, np.cos(xe[2])/m],
-     [r/J, 0]]
+    [
+        [0, 0],
+        [0, 0],
+        [0, 0],
+        [np.cos(xe[2]) / m, -np.sin(xe[2]) / m],
+        [np.sin(xe[2]) / m, np.cos(xe[2]) / m],
+        [r / J, 0],
+    ]
 )
 
 # Output matrix
@@ -119,39 +125,34 @@ def main() -> None:
     # Note: python-control requires we do this 1 input at a time.
 
     # Step response for the first input
-    H1ax = ct.ss(Ax - Bx @ K1a[np.ix_([0], lat)],
-                 Bx @ K1a[np.ix_([0], lat)] @ xd[lat, :], Cx, Dx)
+    H1ax = ct.ss(Ax - Bx @ K1a[np.ix_([0], lat)], Bx @ K1a[np.ix_([0], lat)] @ xd[lat, :], Cx, Dx)
     Tx, Yx = ct.step_response(H1ax, T=np.linspace(0, 10, 100))
 
     # Step response for the second input
-    H1ay = ct.ss(Ay - By @ K1a[np.ix_([1], alt)],
-                 By @ K1a[np.ix_([1], alt)] @ yd[alt, :], Cy, Dy)
+    H1ay = ct.ss(Ay - By @ K1a[np.ix_([1], alt)], By @ K1a[np.ix_([1], alt)] @ yd[alt, :], Cy, Dy)
     Ty, Yy = ct.step_response(H1ay, T=np.linspace(0, 10, 100))
 
     plt.subplot(221)
     plt.title("Identity weights")
-    plt.plot(Tx.T, Yx.T, '-', Ty.T, Yy.T, '--')
-    plt.plot([0, 10], [1, 1], 'k-')
+    plt.plot(Tx.T, Yx.T, "-", Ty.T, Yy.T, "--")
+    plt.plot([0, 10], [1, 1], "k-")
 
     plt.axis([0, 10, -0.1, 1.4])
-    plt.ylabel('position')
-    plt.legend(('x', 'y'), loc='lower right')
+    plt.ylabel("position")
+    plt.legend(("x", "y"), loc="lower right")
 
     # Look at different input weightings
     Qu1a = np.diag([1, 1])
     K1a, _X, _E = ct.lqr(A, B, Qx1, Qu1a)
-    H1ax = ct.ss(Ax - Bx @ K1a[np.ix_([0], lat)],
-                 Bx @ K1a[np.ix_([0], lat)] @ xd[lat, :], Cx, Dx)
+    H1ax = ct.ss(Ax - Bx @ K1a[np.ix_([0], lat)], Bx @ K1a[np.ix_([0], lat)] @ xd[lat, :], Cx, Dx)
 
-    Qu1b = (40 ** 2)*np.diag([1, 1])
+    Qu1b = (40**2) * np.diag([1, 1])
     K1b, _X, _E = ct.lqr(A, B, Qx1, Qu1b)
-    H1bx = ct.ss(Ax - Bx @ K1b[np.ix_([0], lat)],
-                 Bx @ K1b[np.ix_([0], lat)] @ xd[lat, :], Cx, Dx)
+    H1bx = ct.ss(Ax - Bx @ K1b[np.ix_([0], lat)], Bx @ K1b[np.ix_([0], lat)] @ xd[lat, :], Cx, Dx)
 
-    Qu1c = (200 ** 2)*np.diag([1, 1])
+    Qu1c = (200**2) * np.diag([1, 1])
     K1c, _X, _E = ct.lqr(A, B, Qx1, Qu1c)
-    H1cx = ct.ss(Ax - Bx @ K1c[np.ix_([0], lat)],
-                 Bx @ K1c[np.ix_([0], lat)] @ xd[lat, :], Cx, Dx)
+    H1cx = ct.ss(Ax - Bx @ K1c[np.ix_([0], lat)], Bx @ K1c[np.ix_([0], lat)] @ xd[lat, :], Cx, Dx)
 
     T1, Y1 = ct.step_response(H1ax, T=np.linspace(0, 10, 100))
     T2, Y2 = ct.step_response(H1bx, T=np.linspace(0, 10, 100))
@@ -159,33 +160,31 @@ def main() -> None:
 
     plt.subplot(222)
     plt.title("Effect of input weights")
-    plt.plot(T1.T, Y1.T, 'b-')
-    plt.plot(T2.T, Y2.T, 'b-')
-    plt.plot(T3.T, Y3.T, 'b-')
-    plt.plot([0, 10], [1, 1], 'k-')
+    plt.plot(T1.T, Y1.T, "b-")
+    plt.plot(T2.T, Y2.T, "b-")
+    plt.plot(T3.T, Y3.T, "b-")
+    plt.plot([0, 10], [1, 1], "k-")
 
     plt.axis([0, 10, -0.1, 1.4])
 
-    plt.text(5.3, 0.4, r'$\rho$')
+    plt.text(5.3, 0.4, r"$\rho$")
 
     # Output weighting - change Qx to use outputs
     Qx2 = C.T @ C
     Qu2 = 0.1 * np.diag([1, 1])
     K2, _X, _E = ct.lqr(A, B, Qx2, Qu2)
 
-    H2x = ct.ss(Ax - Bx @ K2[np.ix_([0], lat)],
-                Bx @ K2[np.ix_([0], lat)] @ xd[lat, :], Cx, Dx)
-    H2y = ct.ss(Ay - By @ K2[np.ix_([1], alt)],
-                By @ K2[np.ix_([1], alt)] @ yd[alt, :], Cy, Dy)
+    H2x = ct.ss(Ax - Bx @ K2[np.ix_([0], lat)], Bx @ K2[np.ix_([0], lat)] @ xd[lat, :], Cx, Dx)
+    H2y = ct.ss(Ay - By @ K2[np.ix_([1], alt)], By @ K2[np.ix_([1], alt)] @ yd[alt, :], Cy, Dy)
 
     plt.subplot(223)
     plt.title("Output weighting")
     T2x, Y2x = ct.step_response(H2x, T=np.linspace(0, 10, 100))
     T2y, Y2y = ct.step_response(H2y, T=np.linspace(0, 10, 100))
     plt.plot(T2x.T, Y2x.T, T2y.T, Y2y.T)
-    plt.xlabel('time')
-    plt.ylabel('position')
-    plt.legend(('x', 'y'), loc='lower right')
+    plt.xlabel("time")
+    plt.ylabel("position")
+    plt.legend(("x", "y"), loc="lower right")
 
     #
     # Physically motivated weighting
@@ -195,21 +194,19 @@ def main() -> None:
     # due to loss in efficiency.
     #
 
-    Qx3 = np.diag([100, 10, 2*np.pi/5, 0, 0, 0])
-    Qu3 = 0.1*np.diag([1, 10])
+    Qx3 = np.diag([100, 10, 2 * np.pi / 5, 0, 0, 0])
+    Qu3 = 0.1 * np.diag([1, 10])
     K3, _X, _E = ct.lqr(A, B, Qx3, Qu3)
 
-    H3x = ct.ss(Ax - Bx @ K3[np.ix_([0], lat)],
-                Bx @ K3[np.ix_([0], lat)] @ xd[lat, :], Cx, Dx)
-    H3y = ct.ss(Ay - By @ K3[np.ix_([1], alt)],
-                By @ K3[np.ix_([1], alt)] @ yd[alt, :], Cy, Dy)
+    H3x = ct.ss(Ax - Bx @ K3[np.ix_([0], lat)], Bx @ K3[np.ix_([0], lat)] @ xd[lat, :], Cx, Dx)
+    H3y = ct.ss(Ay - By @ K3[np.ix_([1], alt)], By @ K3[np.ix_([1], alt)] @ yd[alt, :], Cy, Dy)
     plt.subplot(224)
     T3x, Y3x = ct.step_response(H3x, T=np.linspace(0, 10, 100))
     T3y, Y3y = ct.step_response(H3y, T=np.linspace(0, 10, 100))
     plt.plot(T3x.T, Y3x.T, T3y.T, Y3y.T)
     plt.title("Physically motivated weights")
-    plt.xlabel('time')
-    plt.legend(('x', 'y'), loc='lower right')
+    plt.xlabel("time")
+    plt.legend(("x", "y"), loc="lower right")
     plt.tight_layout()
 
     show()

@@ -42,23 +42,13 @@ class PVTOLComparison(PyDiffGameLQRComparison):
 
         A_11 = np.zeros((3, 3))
         A_12 = np.eye(3)
-        A_21 = np.array([[0, 0, -PyDiffGame.g],
-                         [0, 0, 0],
-                         [0, 0, 0]])
+        A_21 = np.array([[0, 0, -PyDiffGame.g], [0, 0, 0], [0, 0, 0]])
         A_22 = np.diag([-c / m, -c / m, 0])
 
-        A = np.block([[A_11, A_12],
-                      [A_21, A_22]])
+        A = np.block([[A_11, A_12], [A_21, A_22]])
 
         # Input matrix
-        B = np.array(
-            [[0, 0],
-             [0, 0],
-             [0, 0],
-             [1 / m, 0],
-             [0, 1 / m],
-             [r / J, 0]]
-        )
+        B = np.array([[0, 0], [0, 0], [0, 0], [1 / m, 0], [0, 1 / m], [r / J, 0]])
 
         psi = 1
 
@@ -80,18 +70,13 @@ class PVTOLComparison(PyDiffGameLQRComparison):
         Rs = [r_x, r_y, r_theta]
 
         variables = ["x", "y", r"\theta"]
-        state_variables_names = [rf"{v}(t)" for v in variables] + [
-            rf"\dot{{{v}}}(t)" for v in variables
-        ]
+        state_variables_names = [rf"{v}(t)" for v in variables] + [rf"\dot{{{v}}}(t)" for v in variables]
 
         Q_lqr = sum(Qs)
         R_lqr = np.diag([r_x + r_theta, r_y])
 
         lqr_objective = [LQRObjective(Q=Q_lqr, R=R_lqr)]
-        game_objectives = [
-            GameObjective(Q=Q_i, R=R_i, M=M_i)
-            for Q_i, R_i, M_i in zip(Qs, Rs, Ms)
-        ]
+        game_objectives = [GameObjective(Q=Q_i, R=R_i, M=M_i) for Q_i, R_i, M_i in zip(Qs, Rs, Ms)]
 
         super().__init__(
             A=A,

@@ -55,33 +55,21 @@ class InvertedPendulumComparison(PyDiffGameLQRComparison):
         linearized_D = m_c * m_p * self._l**2 + self._I * (m_c + m_p)
         a32 = m_p * PyDiffGame.g * self._l**2 / linearized_D
         a42 = m_p * PyDiffGame.g * self._l * (m_c + m_p) / linearized_D
-        A = np.array([[0, 0, 1, 0],
-                      [0, 0, 0, 1],
-                      [0, a32, 0, 0],
-                      [0, a42, 0, 0]], dtype=float)
+        A = np.array([[0, 0, 1, 0], [0, 0, 0, 1], [0, a32, 0, 0], [0, a42, 0, 0]], dtype=float)
 
         b21 = (m_p * self._l**2 + self._I) / linearized_D
         b31 = m_p * self._l / linearized_D
         b22 = b31
         b32 = (m_c + m_p) / linearized_D
-        B = np.array([[0, 0],
-                      [0, 0],
-                      [b21, b22],
-                      [b31, b32]], dtype=float)
+        B = np.array([[0, 0], [0, 0], [b21, b22], [b31, b32]], dtype=float)
 
         # Each physical-input row becomes one player's decomposition matrix.
         M1 = B[2, :].reshape(1, 2)
         M2 = B[3, :].reshape(1, 2)
         Ms = [M1, M2]
 
-        Q_x = q * np.array([[1, 0, 2, 0],
-                            [0, 0, 0, 0],
-                            [2, 0, 4, 0],
-                            [0, 0, 0, 0]], dtype=float)
-        Q_theta = q * np.array([[0, 0, 0, 0],
-                                [0, 1, 0, 2],
-                                [0, 0, 0, 0],
-                                [0, 2, 0, 4]], dtype=float)
+        Q_x = q * np.array([[1, 0, 2, 0], [0, 0, 0, 0], [2, 0, 4, 0], [0, 0, 0, 0]], dtype=float)
+        Q_theta = q * np.array([[0, 0, 0, 0], [0, 1, 0, 2], [0, 0, 0, 0], [0, 2, 0, 4]], dtype=float)
         Q_lqr = Q_x + Q_theta
         Qs = [Q_x, Q_theta]
 
@@ -98,9 +86,7 @@ class InvertedPendulumComparison(PyDiffGameLQRComparison):
         ]
 
         lqr_objective = [LQRObjective(Q=Q_lqr, R=R_lqr)]
-        game_objectives = [
-            GameObjective(Q=Q_i, R=R_i, M=M_i) for Q_i, R_i, M_i in zip(Qs, Rs, Ms)
-        ]
+        game_objectives = [GameObjective(Q=Q_i, R=R_i, M=M_i) for Q_i, R_i, M_i in zip(Qs, Rs, Ms)]
         games_objectives = [lqr_objective, game_objectives]
 
         super().__init__(
@@ -138,28 +124,39 @@ class InvertedPendulumComparison(PyDiffGameLQRComparison):
                 F_t, M_t = (-K[0] @ x_tilde).ravel()
             else:
                 K_x, K_theta = K
-                v = np.array([
-                    float((-K_x @ x_tilde).item()),
-                    float((-K_theta @ x_tilde).item()),
-                ])
+                v = np.array(
+                    [
+                        float((-K_x @ x_tilde).item()),
+                        float((-K_theta @ x_tilde).item()),
+                    ]
+                )
                 F_t, M_t = (game.M_inv @ v).ravel()
 
             _x, theta, _x_dot, theta_dot = x_t
 
-            theta_ddot = 1 / (
-                self._m_p * self._l**2 + self._I
-                - (self._m_p * self._l) ** 2 * np.cos(theta) ** 2 / (self._m_p + self._m_c)
-            ) * (
-                M_t - self._m_p * self._l * (
-                    np.cos(theta) / (self._m_p + self._m_c)
-                    * (F_t + self._m_p * self._l * np.sin(theta) * theta_dot**2)
-                    + PyDiffGame.g * np.sin(theta)
+            theta_ddot = (
+                1
+                / (
+                    self._m_p * self._l**2
+                    + self._I
+                    - (self._m_p * self._l) ** 2 * np.cos(theta) ** 2 / (self._m_p + self._m_c)
+                )
+                * (
+                    M_t
+                    - self._m_p
+                    * self._l
+                    * (
+                        np.cos(theta)
+                        / (self._m_p + self._m_c)
+                        * (F_t + self._m_p * self._l * np.sin(theta) * theta_dot**2)
+                        + PyDiffGame.g * np.sin(theta)
+                    )
                 )
             )
-            x_ddot = 1 / (self._m_p + self._m_c) * (
-                F_t + self._m_p * self._l * (
-                    np.sin(theta) * theta_dot**2 - np.cos(theta) * theta_ddot
-                )
+            x_ddot = (
+                1
+                / (self._m_p + self._m_c)
+                * (F_t + self._m_p * self._l * (np.sin(theta) * theta_dot**2 - np.cos(theta) * theta_ddot))
             )
 
             return np.array([_x_dot, theta_dot, x_ddot, theta_ddot], dtype=float)
@@ -213,9 +210,7 @@ def main(*, plot: bool = True, save_figure: bool = False) -> None:
     x_T = np.array([5.0, 0.0, 0.0, 0.0])
     x_0 = np.array([0.0, np.pi / 18, 0.0, 0.0])
 
-    comparison = InvertedPendulumComparison(
-        m_c=m_c, m_p=m_p, p_L=p_L, q=q, r=r, x_0=x_0, x_T=x_T, L=300
-    )
+    comparison = InvertedPendulumComparison(m_c=m_c, m_p=m_p, p_L=p_L, q=q, r=r, x_0=x_0, x_T=x_T, L=300)
     comparison.run(plot_state_spaces=plot, save_figure=save_figure)
 
     lqr_cost, game_cost = comparison.costs()

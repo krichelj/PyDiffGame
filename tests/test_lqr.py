@@ -59,9 +59,7 @@ def test_finite_horizon_dre_converges_to_care_independently(continuous_system):
     require that P(t=0) converges to scipy's algebraic solution.
     """
     A, B, Q, R = continuous_system
-    game = ContinuousLQR(
-        A=A, B=B, Q=Q, R=R, T_f=30.0, L=600, P_f=[np.zeros_like(A)]
-    ).solve()
+    game = ContinuousLQR(A=A, B=B, Q=Q, R=R, T_f=30.0, L=600, P_f=[np.zeros_like(A)]).solve()
     P_at_t0 = np.asarray(game.P)[0, 0]  # finite horizon storage: (L, N, n, n)
     care = solve_continuous_are(A, B, Q, R)
     error = np.max(np.abs(P_at_t0 - care))

@@ -8,12 +8,7 @@ from PyDiffGame import ContinuousPyDiffGame, GameObjective, LQRObjective
 
 @pytest.fixture
 def two_player_game():
-    A = np.array(
-        [[0.0, 1.0, 0.0, 0.0],
-         [0.0, 0.0, 0.0, 0.0],
-         [0.0, 0.0, 0.0, 1.0],
-         [0.0, 0.0, 0.0, 0.0]]
-    )
+    A = np.array([[0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 0.0]])
     B = np.eye(4)[:, [1, 3]]
     objectives = [
         GameObjective(Q=np.diag([1.0, 0.1, 0.0, 0.0]), R=1.0, M=np.array([[1.0, 0.0]])),

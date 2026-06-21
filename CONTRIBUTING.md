@@ -15,17 +15,26 @@ Please ensure your pull request adheres to the following guidelines:
 ## Development setup
 
 PyDiffGame requires **Python >= 3.11**. Install the package from source with the
-development extras, then run the linter and the test suite before opening a pull
-request:
+development extras, then enable the pre-commit hooks so the code-quality tools
+run automatically on every commit:
 
 ```bash
 pip install -e ".[dev]"
-ruff check src/PyDiffGame tests
-pytest
+pre-commit install
 ```
 
-Continuous integration runs the same checks across Python 3.11–3.14, so please
-make sure both pass locally.
+The tooling can also be run by hand:
+
+```bash
+ruff format src/PyDiffGame tests     # auto-format (black-compatible)
+ruff check src/PyDiffGame tests      # lint
+mypy src/PyDiffGame                  # type-check
+pytest                               # test suite
+```
+
+Continuous integration runs the formatter check, the linter, the type checker
+and the full suite across Python 3.11–3.14, so please make sure they pass
+locally.
 
 Thank you for your contribution!
 

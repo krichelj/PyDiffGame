@@ -84,9 +84,7 @@ class Objective:
             raise ValueError("R must be positive definite")
 
         if self.M is not None and self.M.shape[0] != m_i:
-            raise ValueError(
-                f"M must have m_i = {m_i} rows to match R, got {self.M.shape[0]}"
-            )
+            raise ValueError(f"M must have m_i = {m_i} rows to match R, got {self.M.shape[0]}")
 
     @property
     def m_i(self) -> int:
