@@ -11,8 +11,10 @@ gains are :math:`K_i = R_{ii}^{-1} B_i^\top P_i`, and the closed loop is
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
-from scipy.integrate import solve_ivp
+from scipy.integrate import ODEintWarning, odeint, solve_ivp
 from scipy.linalg import solve_continuous_are
 
 from PyDiffGame._typing import FloatArray
@@ -70,32 +72,50 @@ class ContinuousPyDiffGame(PyDiffGame):
         self._A_cl = self._closed_loop(self._K)
 
     def _converge_to_algebraic_solution(self) -> list[FloatArray]:
-        """Integrate the coupled DREs backwards over repeated horizons until steady state."""
+        """Integrate the coupled DREs backwards over repeated horizons until steady state.
 
+        Robust against games with no stabilising Nash equilibrium: each backward
+        integration uses ``odeint`` with a hard step-count cap (``mxstep``) so a
+        single stiff solve can never hang, and an exceeded cap, a non-finite norm
+        or a failure to converge within ``max_P_iterations`` all raise a clear
+        error pointing the user at the finite-horizon formulation.
+        """
+
+        no_equilibrium = (
+            "the coupled algebraic Riccati iteration did not reach a stabilising Nash "
+            "equilibrium ({reason}); this infinite-horizon game may not have one - "
+            "try a finite horizon by passing T_f."
+        )
         Ps = list(self._P_f)
         norms: list[float] = []
         for _ in range(self.max_P_iterations):
-            solution = solve_ivp(
-                fun=self._dP_dt,
-                t_span=(self._T_f, 0.0),
-                y0=np.concatenate([P.ravel() for P in Ps]),
-                method="LSODA",
-                t_eval=[0.0],
-                rtol=1e-8,
-                atol=1e-10,
-            )
-            Ps = self._unflatten(solution.y[:, -1])
+            y0 = np.concatenate([P.ravel() for P in Ps])
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("error", category=ODEintWarning)
+                    ys = odeint(
+                        self._dP_dt,
+                        y0,
+                        [self._T_f, 0.0],
+                        tfirst=True,
+                        rtol=1e-8,
+                        atol=1e-10,
+                        mxstep=10000,
+                    )
+            except ODEintWarning as exc:
+                raise RuntimeError(
+                    no_equilibrium.format(reason="backward integration did not converge")
+                ) from exc
+            Ps = self._unflatten(ys[-1])
             norm = sum(float(np.linalg.norm(P)) for P in Ps)
             if not np.isfinite(norm):
-                raise RuntimeError(
-                    "coupled algebraic Riccati iteration diverged (non-finite norm); "
-                    "this infinite-horizon game may have no stabilising Nash equilibrium - "
-                    "try a finite horizon by passing T_f."
-                )
+                raise RuntimeError(no_equilibrium.format(reason="non-finite Riccati norm"))
             norms.append(norm)
             if self._converged(norms):
-                break
-        return Ps
+                return Ps
+        raise RuntimeError(
+            no_equilibrium.format(reason=f"no convergence in {self.max_P_iterations} iterations")
+        )
 
     def _solve_finite_horizon(self) -> None:
         backward_time = np.linspace(self._T_f, 0.0, self._L)
