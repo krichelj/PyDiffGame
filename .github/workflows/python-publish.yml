@@ -1,13 +1,14 @@
-# Publishes the package to PyPI and creates the matching GitHub Release.
+# Publishes the package to PyPI and creates the matching GitHub Release,
+# auto-incrementing the version each run.
 #
-# Flow: bump `version` in pyproject.toml, then run this workflow
-# (Actions -> Upload Python Package -> Run workflow). It builds the dists,
-# uploads them to PyPI via Trusted Publishing, and creates a GitHub Release
-# tagged v<version> with auto-generated notes and the dists attached.
+# Flow (just run it — Actions -> Upload Python Package -> Run workflow):
+#   1. bump-version  : increment the version (carry-at-9 via tools/bump_version.py),
+#                      commit it back to master.
+#   2. release-build : build the dists from the bumped master.
+#   3. pypi-publish  : upload to PyPI via Trusted Publishing (OIDC, no tokens).
+#   4. github-release: create the v<version> GitHub Release with notes + dists.
 #
-# It is idempotent: re-running for an already-published version skips the PyPI
-# upload (skip-existing) and updates the existing release's assets, so it is
-# safe to run against the current version to backfill a release.
+# Versions roll over at 9: 2.0.9 -> 2.1.0, 2.9.9 -> 3.0.0.
 
 name: Upload Python Package
 
@@ -18,11 +19,39 @@ permissions:
   contents: read
 
 jobs:
-  release-build:
+  bump-version:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: master
+
+      - name: Increment the version (carry-at-9)
+        id: bump
+        run: |
+          new="$(python3 tools/bump_version.py)"
+          echo "version=$new" >> "$GITHUB_OUTPUT"
+          echo "Bumped to $new"
+
+      - name: Commit and push the bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml src/PyDiffGame/__init__.py
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.version }} [skip ci]"
+          git push origin HEAD:master
+
+  release-build:
+    needs: bump-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: master  # the bumped commit
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -37,9 +66,9 @@ jobs:
           path: dist/
 
   pypi-publish:
-    runs-on: ubuntu-latest
     needs:
       - release-build
+    runs-on: ubuntu-latest
     permissions:
       # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
@@ -66,15 +95,18 @@ jobs:
           skip-existing: true
 
   github-release:
-    runs-on: ubuntu-latest
     needs:
+      - bump-version
       - pypi-publish
+    runs-on: ubuntu-latest
     permissions:
       # Needed to create the release and its tag.
       contents: write
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: master
 
       - name: Retrieve release distributions
         uses: actions/download-artifact@v5
@@ -85,9 +117,9 @@ jobs:
       - name: Create or update the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.bump-version.outputs.version }}
         run: |
-          version="$(grep -m1 '^version' pyproject.toml | sed -E 's/version *= *"([^"]+)".*/\1/')"
-          tag="v${version}"
+          tag="v${VERSION}"
           echo "Releasing ${tag}"
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "Release ${tag} already exists - refreshing its assets."
@@ -96,5 +128,5 @@ jobs:
             gh release create "$tag" dist/* \
               --title "$tag" \
               --generate-notes \
-              --target "$GITHUB_SHA"
+              --target master
           fi
