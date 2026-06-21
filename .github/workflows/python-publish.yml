@@ -11,6 +11,7 @@ name: Upload Python Package
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -64,3 +65,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
+          # Authenticate with a PyPI API token stored as the repository secret
+          # PYPI_API_TOKEN. (Leave this secret unset to fall back to OIDC
+          # Trusted Publishing instead.)
+          password: ${{ secrets.PYPI_API_TOKEN }}
