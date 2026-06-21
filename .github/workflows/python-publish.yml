@@ -1,16 +1,17 @@
-# This workflow will upload a Python Package to PyPI when a release is created
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#publishing-to-package-registries
-
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+# Publishes the package to PyPI and creates the matching GitHub Release.
+#
+# Flow: bump `version` in pyproject.toml, then run this workflow
+# (Actions -> Upload Python Package -> Run workflow). It builds the dists,
+# uploads them to PyPI via Trusted Publishing, and creates a GitHub Release
+# tagged v<version> with auto-generated notes and the dists attached.
+#
+# It is idempotent: re-running for an already-published version skips the PyPI
+# upload (skip-existing) and updates the existing release's assets, so it is
+# safe to run against the current version to backfill a release.
 
 name: Upload Python Package
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -43,16 +44,9 @@ jobs:
       # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
 
-    # Dedicated environments with protections for publishing are strongly recommended.
-    # For more information, see: https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment#deployment-protection-rules
     environment:
       name: pypi
-      # OPTIONAL: uncomment and update to include your PyPI project URL in the deployment status:
       url: https://pypi.org/project/PyDiffGame/
-      #
-      # ALTERNATIVE: if your GitHub Release name is the PyPI project version string
-      # ALTERNATIVE: exactly, uncomment the following line instead:
-      # url: https://pypi.org/project/YOURPROJECT/${{ github.event.release.name }}
 
     steps:
       - name: Retrieve release distributions
@@ -62,10 +56,45 @@ jobs:
           path: dist/
 
       # Authentication is via PyPI Trusted Publishing (OIDC) — no token needed.
-      # Configure the trusted publisher once on PyPI (see below) with:
-      #   owner: krichelj  repo: PyDiffGame
-      #   workflow: python-publish.yml  environment: pypi
+      # Trusted publisher on PyPI: owner krichelj, repo PyDiffGame,
+      # workflow python-publish.yml, environment pypi.
       - name: Publish release distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
+          # Don't fail if this version is already on PyPI (idempotent re-runs).
+          skip-existing: true
+
+  github-release:
+    runs-on: ubuntu-latest
+    needs:
+      - pypi-publish
+    permissions:
+      # Needed to create the release and its tag.
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Retrieve release distributions
+        uses: actions/download-artifact@v5
+        with:
+          name: release-dists
+          path: dist/
+
+      - name: Create or update the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(grep -m1 '^version' pyproject.toml | sed -E 's/version *= *"([^"]+)".*/\1/')"
+          tag="v${version}"
+          echo "Releasing ${tag}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release ${tag} already exists - refreshing its assets."
+            gh release upload "$tag" dist/* --clobber
+          else
+            gh release create "$tag" dist/* \
+              --title "$tag" \
+              --generate-notes \
+              --target "$GITHUB_SHA"
+          fi
