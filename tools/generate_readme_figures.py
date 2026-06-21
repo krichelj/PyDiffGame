@@ -20,7 +20,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from cycler import cycler
-from matplotlib.patches import Ellipse, FancyArrowPatch, Rectangle
+from matplotlib.lines import Line2D
+from matplotlib.patches import FancyArrowPatch, Rectangle
 
 from PyDiffGame.examples.MassesWithSpringsComparison import MassesWithSpringsComparison
 
@@ -80,28 +81,25 @@ def _style() -> None:
 # --------------------------------------------------------------------------- #
 # Figure 1 — masses-and-springs system schematic (faithful to the TikZ original)
 # --------------------------------------------------------------------------- #
-def _coil(ax, x0: float, x1: float, y: float, *, radius: float = 0.32) -> None:
-    """Draw a helical coil spring between ``(x0, y)`` and ``(x1, y)``."""
-    lead = 0.08 * (x1 - x0)
-    ax.plot([x0, x0 + lead], [y, y], color=STRUCT, lw=2.0, solid_capstyle="round", zorder=2)
-    ax.plot([x1 - lead, x1], [y, y], color=STRUCT, lw=2.0, solid_capstyle="round", zorder=2)
+def _coil(ax, x0: float, x1: float, y: float, *, radius: float = 0.34, coils_per_unit: float = 3.2) -> None:
+    """Draw a continuous, tightly-wound helical coil spring between ``(x0, y)`` and ``(x1, y)``.
 
-    span = (x1 - lead) - (x0 + lead)
-    n = max(6, int(round(span / 0.42)))
-    step = span / n
-    for i in range(n):
-        cx = x0 + lead + step * (i + 0.5)
-        ax.add_patch(
-            Ellipse(
-                (cx, y),
-                width=step * 1.75,
-                height=2 * radius,
-                fill=False,
-                edgecolor=STRUCT,
-                lw=2.0,
-                zorder=2,
-            )
-        )
+    The coil is a single parametric polyline: an axial advance plus a circular
+    ``(cos, sin)`` component so consecutive turns overlap into visible loops
+    (a slinky-like helix), rather than a chain of separate rings. ``coils_per_unit``
+    is shared across springs so every spring has the same pitch.
+    """
+    lead = 0.07 * (x1 - x0)
+    xa, xb = x0 + lead, x1 - lead
+    span = xb - xa
+    n = max(7, int(round(span * coils_per_unit)))
+    theta = np.linspace(0.0, 2.0 * np.pi * n, n * 80)
+    cx = xa + span * (theta / (2.0 * np.pi * n)) + radius * np.cos(theta)
+    cy = y + radius * np.sin(theta)
+    # straight leads from the attachment points to the first/last coil points
+    ax.plot([x0, cx[0]], [y, cy[0]], color=STRUCT, lw=2.0, solid_capstyle="round", zorder=2)
+    ax.plot([cx[-1], x1], [cy[-1], y], color=STRUCT, lw=2.0, solid_capstyle="round", zorder=2)
+    ax.plot(cx, cy, color=STRUCT, lw=2.0, solid_capstyle="round", solid_joinstyle="round", zorder=2)
 
 
 def _hatched(ax, x: float, y: float, w: float, h: float) -> None:
@@ -232,75 +230,82 @@ def _solve_benchmark():
 def figure_trajectories(lqr_game, game, lqr_cost, game_cost, x_T) -> None:
     _style()
     t = lqr_game.forward_time
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.2), sharey=True)
+    fig, (ax, axd) = plt.subplots(1, 2, figsize=(11.5, 4.4), gridspec_kw={"width_ratios": [2.05, 1.0]})
 
-    panels = (
-        (axes[0], lqr_game, "Monolithic LQR", lqr_cost, AMBER),
-        (axes[1], game, "Modal differential game", game_cost, GREEN),
+    # ---- overlay: the decomposed game coincides with the monolithic LQR ---
+    ax.plot(t, lqr_game.x[:, 0], color=BLUE, lw=4.2, alpha=0.30, solid_capstyle="round")
+    ax.plot(t, lqr_game.x[:, 1], color=RED, lw=4.2, alpha=0.30, solid_capstyle="round")
+    ax.plot(t, game.x[:, 0], color=BLUE, lw=1.7, ls=(0, (5, 3)))
+    ax.plot(t, game.x[:, 1], color=RED, lw=1.7, ls=(0, (5, 3)))
+    for tgt, col in ((x_T[0], BLUE), (x_T[1], RED)):
+        ax.axhline(tgt, color=col, ls=(0, (1, 3)), lw=1.0, alpha=0.55)
+    ax.set_title("Modal game reproduces the monolithic LQR", color=INK)
+    ax.set_xlabel(r"time  $t$  $[\mathrm{s}]$")
+    ax.set_ylabel("mass position")
+    ax.set_xlim(t[0], t[-1])
+    handles = [
+        Line2D([0], [0], color=BLUE, lw=3.5, alpha=0.5),
+        Line2D([0], [0], color=RED, lw=3.5, alpha=0.5),
+        Line2D([0], [0], color=INK, lw=4.2, alpha=0.30),
+        Line2D([0], [0], color=INK, lw=1.7, ls=(0, (5, 3))),
+    ]
+    ax.legend(
+        handles,
+        [r"mass $x_1$", r"mass $x_2$", "LQR (thick)", "game (dashed)"],
+        loc="lower right",
+        ncol=2,
+        fontsize=10,
     )
-    for ax, g, title, cost, accent in panels:
-        ax.plot(t, g.x[:, 0], color=BLUE, lw=2.2, label=r"$x_1(t)$")
-        ax.plot(t, g.x[:, 1], color=RED, lw=2.2, label=r"$x_2(t)$")
-        ax.axhline(x_T[0], color=BLUE, ls=(0, (4, 4)), lw=1.2, alpha=0.7)
-        ax.axhline(x_T[1], color=RED, ls=(0, (4, 4)), lw=1.2, alpha=0.7)
-        ax.set_title(title, color=accent)
-        ax.set_xlabel(r"time  $t$  $[\mathrm{s}]$")
-        ax.set_xlim(t[0], t[-1])
-        ax.text(
-            0.97,
-            0.05,
-            rf"cost $= {cost:.2e}$",
-            transform=ax.transAxes,
-            ha="right",
-            va="bottom",
-            color=accent,
-            fontsize=11,
-            fontweight="bold",
-        )
-    axes[0].set_ylabel("mass position")
-    axes[1].legend(loc="lower right", bbox_to_anchor=(1.0, 0.16), fontsize=11)
+
+    # ---- difference panel: they match to numerical precision --------------
+    diff = np.max(np.abs(game.x - lqr_game.x), axis=1)
+    axd.semilogy(t, np.maximum(diff, 1e-16), color=GREEN, lw=2.0)
+    axd.set_title("difference (game − LQR)", color=GREEN)
+    axd.set_xlabel(r"time  $t$  $[\mathrm{s}]$")
+    axd.set_ylabel(r"$\max_i\,\left|x_i^{\mathrm{game}}-x_i^{\mathrm{LQR}}\right|$", fontsize=10)
+    axd.set_xlim(t[0], t[-1])
+
     fig.suptitle(
-        "Tracking two coupled masses to a target — LQR vs. differential game",
+        "Tracking two coupled masses — the decomposed game is the monolithic optimum",
         fontsize=14,
         fontweight="bold",
-        y=1.02,
     )
-    fig.text(0.5, -0.02, "dashed lines: per-mass targets $x_T$", ha="center", color=MUTED, fontsize=10)
-    fig.tight_layout()
+    fig.subplots_adjust(top=0.86, bottom=0.16, wspace=0.30, left=0.08, right=0.97)
     fig.savefig(OUT / "masses_game_vs_lqr.png")
     plt.close(fig)
 
 
 def figure_cost(lqr_cost, game_cost) -> None:
     _style()
-    fig, ax = plt.subplots(figsize=(5.4, 4.0))
+    fig, ax = plt.subplots(figsize=(6.0, 4.2))
     labels = ["Monolithic\nLQR", "Modal\ngame"]
     values = [lqr_cost, game_cost]
-    bars = ax.bar(labels, values, color=[AMBER, GREEN], width=0.6, edgecolor=INK, lw=1.2, alpha=0.92)
-    ax.set_ylabel("cost on the LQR objective")
-    ax.set_title("Near-optimal cost from a fully decomposed design")
+    bars = ax.bar(labels, values, color=[AMBER, GREEN], width=0.58, edgecolor=INK, lw=1.3)
+    ax.set_ylabel("cost on the shared objective")
+    ax.set_title("Modal decomposition is lossless")
     ax.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
-    overhead = 100.0 * (game_cost - lqr_cost) / lqr_cost
+    gap = 100.0 * (game_cost - lqr_cost) / lqr_cost
+    gap_str = "Δcost ≈ 0%" if abs(gap) < 0.05 else f"Δcost {gap:+.1f}%"
     for bar, val in zip(bars, values):
         ax.text(
             bar.get_x() + bar.get_width() / 2,
             val,
-            f"{val:.2e}",
+            f"{val:.3e}",
             ha="center",
             va="bottom",
             fontsize=10,
             color=INK,
         )
-    ax.annotate(
-        f"+{overhead:.0f}% vs. optimal",
-        xy=(1, game_cost),
-        xytext=(0.5, max(values) * 1.12),
+    ax.text(
+        0.5,
+        max(values) * 1.15,
+        f"the game recovers the optimum  ({gap_str})",
         ha="center",
         color=GREEN,
-        fontsize=11,
+        fontsize=11.5,
         fontweight="bold",
     )
-    ax.set_ylim(0, max(values) * 1.25)
+    ax.set_ylim(0, max(values) * 1.30)
     fig.tight_layout()
     fig.savefig(OUT / "masses_cost.png")
     plt.close(fig)

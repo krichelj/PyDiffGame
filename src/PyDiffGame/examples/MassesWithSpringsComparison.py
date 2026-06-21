@@ -66,10 +66,15 @@ class MassesWithSpringsComparison(PyDiffGameLQRComparison):
             Q_i = modal_to_state.T @ modal_weight @ modal_to_state
             game_objectives.append(GameObjective(Q=Q_i, R=r, M=M_i))
 
-        Q_lqr = (q if isinstance(q, (int, float)) else 1.0) * np.eye(2 * N)
-        if not isinstance(q, (int, float)):
-            Q_lqr = np.diag(list(q) + list(q))
-        lqr_objective = [LQRObjective(Q=Q_lqr, R=0.25 * r * I_N)]
+        # The LQR baseline optimizes *exactly* the aggregate of the game's
+        # objectives, so it is the genuine monolithic optimum for a fair
+        # comparison: sum_i Q_i, and the matching physical input weight r * I
+        # (the per-player modal weight r maps to r * I in physical input space
+        # because the modal transform M is orthogonal). The game, being a
+        # decomposed design, can only match or exceed this optimal cost.
+        modal_weight_total = np.diag(q_per_mode + q_per_mode)
+        Q_lqr = modal_to_state.T @ modal_weight_total @ modal_to_state
+        lqr_objective = [LQRObjective(Q=Q_lqr, R=r * I_N)]
 
         state_variables_names = [f"x_{{{i}}}" for i in range(1, N + 1)] + [
             rf"\dot{{x}}_{{{i}}}" for i in range(1, N + 1)
