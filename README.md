@@ -296,8 +296,8 @@ This research was also supported by The '_Israeli Smart Transportation Research 
 <p align="center">
 <a href="https://star-history.com/#krichelj/PyDiffGame&Date">
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=krichelj/PyDiffGame&type=Date&theme=dark"/>
-  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=krichelj/PyDiffGame&type=Date"/>
+  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=krichelj/PyDiffGame&type=Date"/>
+  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=krichelj/PyDiffGame&type=Date&theme=dark"/>
   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=krichelj/PyDiffGame&type=Date" width="600"/>
 </picture>
 </a>
