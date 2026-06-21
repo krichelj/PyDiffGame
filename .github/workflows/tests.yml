@@ -39,6 +39,9 @@ jobs:
       - name: Lint with ruff
         run: ruff check src/PyDiffGame tests --exclude src/PyDiffGame/examples
 
+      - name: Check formatting with ruff
+        run: ruff format --check src/PyDiffGame tests
+
       - name: Type-check with mypy
         run: mypy src/PyDiffGame --exclude 'examples'
 

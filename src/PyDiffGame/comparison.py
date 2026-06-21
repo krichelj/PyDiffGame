@@ -51,12 +51,9 @@ class PyDiffGameLQRComparison:
     ) -> None:
         game_class = ContinuousPyDiffGame if continuous else DiscretePyDiffGame
         self._games: list[PyDiffGame] = [
-            game_class(A, list(objectives), B=B, **game_kwargs)
-            for objectives in games_objectives
+            game_class(A, list(objectives), B=B, **game_kwargs) for objectives in games_objectives
         ]
-        self._lqr_objective: Objective | None = next(
-            (game[0] for game in self._games if game.is_lqr), None
-        )
+        self._lqr_objective: Objective | None = next((game[0] for game in self._games if game.is_lqr), None)
 
     @property
     def games(self) -> list[PyDiffGame]:

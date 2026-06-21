@@ -9,9 +9,11 @@ from PyDiffGame import ContinuousLQR, GameObjective, LQRObjective, PyDiffGameLQR
 def test_regulated_state_converges_to_origin():
     A = np.array([[0.0, 1.0], [0.0, 0.0]])
     B = np.array([[0.0], [1.0]])
-    lqr = ContinuousLQR(
-        A=A, B=B, Q=np.eye(2), R=1.0, x_0=np.array([5.0, 0.0]), T_f=20.0, L=400
-    ).solve().simulate()
+    lqr = (
+        ContinuousLQR(A=A, B=B, Q=np.eye(2), R=1.0, x_0=np.array([5.0, 0.0]), T_f=20.0, L=400)
+        .solve()
+        .simulate()
+    )
     assert np.allclose(lqr.x[-1], 0.0, atol=1e-2)
     assert lqr.x.shape == (400, 2)
 
@@ -20,9 +22,11 @@ def test_tracking_state_converges_to_target():
     A = np.array([[0.0, 1.0], [0.0, 0.0]])
     B = np.array([[0.0], [1.0]])
     x_T = np.array([3.0, 0.0])
-    lqr = ContinuousLQR(
-        A=A, B=B, Q=np.eye(2), R=1.0, x_0=np.zeros(2), x_T=x_T, T_f=20.0, L=400
-    ).solve().simulate()
+    lqr = (
+        ContinuousLQR(A=A, B=B, Q=np.eye(2), R=1.0, x_0=np.zeros(2), x_T=x_T, T_f=20.0, L=400)
+        .solve()
+        .simulate()
+    )
     assert np.allclose(lqr.x[-1], x_T, atol=1e-2)
 
 
@@ -38,12 +42,7 @@ def test_cost_is_positive_and_requires_simulation():
 
 
 def test_comparison_runs_and_reports_costs():
-    A = np.array(
-        [[0.0, 1.0, 0.0, 0.0],
-         [0.0, 0.0, 0.0, 0.0],
-         [0.0, 0.0, 0.0, 1.0],
-         [0.0, 0.0, 0.0, 0.0]]
-    )
+    A = np.array([[0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 0.0]])
     B = np.eye(4)[:, [1, 3]]
     x_0 = np.array([10.0, 0.0, 20.0, 0.0])
     M1, M2 = np.array([[1.0, 0.0]]), np.array([[0.0, 1.0]])

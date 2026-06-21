@@ -125,9 +125,7 @@ class PyDiffGame(ABC):
         self._epsilon_P = float(epsilon_P)
         self._delta = self._T_f / self._L
 
-        self._state_variables_names = (
-            None if state_variables_names is None else list(state_variables_names)
-        )
+        self._state_variables_names = None if state_variables_names is None else list(state_variables_names)
         self._show_legend = bool(show_legend)
         self._debug = bool(debug)
 
@@ -136,9 +134,11 @@ class PyDiffGame(ABC):
         # Per-player feedback gains S_i = B_i R_ii^{-1} B_i^T.
         self._S = [B_i @ np.linalg.solve(R_i, B_i.T) for B_i, R_i in zip(self._Bs, self._Rs)]
 
-        self._P_f = self._uncoupled_are_solutions() if P_f is None else [
-            np.asarray(P_f_i, dtype=np.float64) for P_f_i in P_f
-        ]
+        self._P_f = (
+            self._uncoupled_are_solutions()
+            if P_f is None
+            else [np.asarray(P_f_i, dtype=np.float64) for P_f_i in P_f]
+        )
 
         # Solver outputs, populated by ``solve`` / ``simulate``.  ``_P`` / ``_K``
         # are intentionally dynamic: a list of constant matrices for the

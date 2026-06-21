@@ -65,8 +65,7 @@ class ContinuousPyDiffGame(PyDiffGame):
         else:
             self._P = self._converge_to_algebraic_solution()
 
-        self._K = [np.linalg.solve(R_i, B_i.T) @ P_i
-                   for R_i, B_i, P_i in zip(self._Rs, self._Bs, self._P)]
+        self._K = [np.linalg.solve(R_i, B_i.T) @ P_i for R_i, B_i, P_i in zip(self._Rs, self._Bs, self._P)]
         self._K_aggregate = self._aggregate_gain(self._K)
         self._A_cl = self._closed_loop(self._K)
 
@@ -105,9 +104,7 @@ class ContinuousPyDiffGame(PyDiffGame):
         )
         # Reorder so index 0 corresponds to t = 0 (forward time).
         Ps_t = solution.y[:, ::-1]
-        self._P = np.stack(
-            [self._unflatten(Ps_t[:, l]) for l in range(self._L)]
-        )  # (L, N, n, n)
+        self._P = np.stack([self._unflatten(Ps_t[:, l]) for l in range(self._L)])  # (L, N, n, n)
 
         gains_t, aggregate_t = [], []
         for l in range(self._L):
@@ -187,8 +184,9 @@ class ContinuousPyDiffGame(PyDiffGame):
         self._require_solved()
         Ps = self._P if isinstance(self._P, list) else [self._P[0, i] for i in range(self._N)]
         A_cl = self._closed_loop(self._K if isinstance(self._K, list) else self._K[0])
-        return [A_cl.T @ P_i + P_i @ A_cl + Q_i + P_i @ S_i @ P_i
-                for P_i, S_i, Q_i in zip(Ps, self._S, self._Qs)]
+        return [
+            A_cl.T @ P_i + P_i @ A_cl + Q_i + P_i @ S_i @ P_i for P_i, S_i, Q_i in zip(Ps, self._S, self._Qs)
+        ]
 
 
 __all__ = ["ContinuousPyDiffGame"]
