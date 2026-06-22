@@ -35,6 +35,8 @@ from PyDiffGame.lqr import ContinuousLQR, DiscreteLQR
 from PyDiffGame.objective import GameObjective, LQRObjective, Objective
 
 __version__ = "2.0.2"
+__author__ = "Joshua Shay Kricheli"
+__url__ = "https://github.com/krichelj/PyDiffGame"
 
 __all__ = [
     "PyDiffGame",
@@ -47,4 +49,6 @@ __all__ = [
     "GameObjective",
     "PyDiffGameLQRComparison",
     "__version__",
+    "__author__",
+    "__url__",
 ]
