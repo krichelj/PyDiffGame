@@ -34,7 +34,7 @@ from PyDiffGame.discrete import DiscretePyDiffGame
 from PyDiffGame.lqr import ContinuousLQR, DiscreteLQR
 from PyDiffGame.objective import GameObjective, LQRObjective, Objective
 
-__version__ = "2.0.2"
+__version__ = "2.0.3"
 __author__ = "Joshua Shay Kricheli"
 __url__ = "https://github.com/krichelj/PyDiffGame"
 
