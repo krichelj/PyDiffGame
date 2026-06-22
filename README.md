@@ -1,7 +1,7 @@
 <p align="center">
     <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/logo_dark.gif">
-        <img alt="PyDiffGame logo" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/logo.gif" width="420"/>
+        <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/krichelj/PyDiffGame/claude/animated-logo/images/logo_dark.gif">
+        <img alt="PyDiffGame logo" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/claude/animated-logo/images/logo.gif" width="420"/>
     </picture>
 </p>
 
