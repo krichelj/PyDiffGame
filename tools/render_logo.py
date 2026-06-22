@@ -184,10 +184,10 @@ def render(
     *,
     mark_top: tuple[int, int, int] = (255, 95, 105),
     mark_bottom: tuple[int, int, int] = (170, 10, 25),
-    text_top: tuple[int, int, int] = (75, 75, 82),
-    text_bottom: tuple[int, int, int] = (5, 5, 12),
+    text_top: tuple[int, int, int] = (8, 8, 12),
+    text_bottom: tuple[int, int, int] = (0, 0, 5),
     mark_fill_alpha: int = 230,
-    text_fill_alpha: int = 245,
+    text_fill_alpha: int = 252,
     mark_glow_alpha: int = 140,
     text_glow_alpha: int = 80,
     mark_glow_radius: float = 5.5,
@@ -195,7 +195,7 @@ def render(
     highlight_alpha: int = 235,
     stroke_alpha: int = 200,
     mark_gloss_alpha: int = 90,
-    text_gloss_alpha: int = 150,
+    text_gloss_alpha: int = 70,
     gloss_height: float = 0.5,
     gloss_feather: float = 3.5,
     background: str = "transparent",
@@ -254,10 +254,10 @@ def _parse() -> argparse.Namespace:
     p.add_argument("--background", choices=["transparent", "dark", "light"], default="transparent")
     p.add_argument("--mark-top", nargs=3, type=int, default=[255, 95, 105])
     p.add_argument("--mark-bottom", nargs=3, type=int, default=[170, 10, 25])
-    p.add_argument("--text-top", nargs=3, type=int, default=[75, 75, 82])
-    p.add_argument("--text-bottom", nargs=3, type=int, default=[5, 5, 12])
+    p.add_argument("--text-top", nargs=3, type=int, default=[8, 8, 12])
+    p.add_argument("--text-bottom", nargs=3, type=int, default=[0, 0, 5])
     p.add_argument("--mark-fill-alpha", type=int, default=230)
-    p.add_argument("--text-fill-alpha", type=int, default=245)
+    p.add_argument("--text-fill-alpha", type=int, default=252)
     p.add_argument("--mark-glow-alpha", type=int, default=140)
     p.add_argument("--text-glow-alpha", type=int, default=80)
     p.add_argument("--mark-glow-radius", type=float, default=5.5)
@@ -265,7 +265,7 @@ def _parse() -> argparse.Namespace:
     p.add_argument("--highlight-alpha", type=int, default=235)
     p.add_argument("--stroke-alpha", type=int, default=200)
     p.add_argument("--mark-gloss-alpha", type=int, default=90)
-    p.add_argument("--text-gloss-alpha", type=int, default=150)
+    p.add_argument("--text-gloss-alpha", type=int, default=70)
     p.add_argument("--gloss-height", type=float, default=0.5)
     p.add_argument("--gloss-feather", type=float, default=3.5)
     return p.parse_args()
