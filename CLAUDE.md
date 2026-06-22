@@ -16,11 +16,21 @@
   do not bump it in ordinary PRs — the release run does it.
 
 ## Releasing
-- `Actions -> Upload Python Package -> Run workflow` (on `master`). The workflow
-  auto-increments the version, commits it to `master`, builds with `uv build`,
-  publishes to PyPI via Trusted Publishing (OIDC, no tokens), and creates the matching
-  `v<version>` GitHub Release with notes and the built dists attached. It is idempotent
-  (`skip-existing`).
+- **Continuous deployment, gated on source changes.** Every commit to `master`
+  that touches `src/PyDiffGame/**` or `pyproject.toml` automatically triggers
+  the publish workflow. Docs / tests / tooling / CI changes do **not** trigger
+  a release on their own; mixed commits do.
+- The workflow auto-increments the version (`tools/bump_version.py`), commits
+  the bump to `master` as `chore: bump version to X.Y.Z [skip ci]`, builds with
+  `uv build`, publishes to PyPI via Trusted Publishing (OIDC, no tokens), and
+  creates the matching `v<version>` GitHub Release with notes and the built
+  dists attached. It is idempotent (`skip-existing`).
+- Manual on-demand publish stays available via
+  `Actions -> Upload Python Package -> Run workflow` (`workflow_dispatch`).
+- Three independent guards prevent the bump commit from re-triggering the
+  workflow (an infinite loop): `[skip ci]` in the message (which GitHub Actions
+  natively honors), an explicit job-level `if:` filtering out
+  `github-actions[bot]`, and `paths:` filter scoping to source files.
 
 ## Docs
 - `README.md` is the single canonical readme and is also the PyPI long-description

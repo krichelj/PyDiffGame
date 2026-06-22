@@ -41,15 +41,25 @@ they pass locally.
 
 ## Releasing
 
-Publishing a new version is a single automated step — just run the publish
-workflow: **Actions -> Upload Python Package -> Run workflow** (on `master`).
+The project is on **continuous deployment for source changes**: every commit
+to `master` that touches source files automatically cuts a new release.
 
-The run automatically:
+A commit triggers a release when it changes any of:
+
+- `src/PyDiffGame/**` — the package itself
+- `pyproject.toml` — packaging metadata, dependencies, classifiers
+
+Docs (`*.md`, `docs/**`), tests (`tests/**`), tooling (`tools/**`, `.github/**`,
+`.pre-commit-config.yaml`), images and the lock file do **not** trigger a
+release on their own. A mixed commit (e.g. `src/foo.py` + `README.md`) does
+trigger one — the path filter matches if any changed file matches.
+
+When a release-triggering commit lands on `master`, the publish workflow:
 
 1. **Increments the version** with `tools/bump_version.py`, which rolls each
-   component over at 9 (`2.0.9 -> 2.1.0`, `2.9.9 -> 3.0.0`), updating both
-   `pyproject.toml` and `src/PyDiffGame/__init__.py`, and commits the bump to
-   `master`.
+   component over at 9 (`2.0.9 -> 2.1.0`, `2.9.9 -> 3.0.0`), updates both
+   `pyproject.toml` and `src/PyDiffGame/__init__.py`, and commits the bump back
+   to `master` as `chore: bump version to X.Y.Z [skip ci]`.
 2. Builds the distributions with `uv build`.
 3. Uploads them to PyPI via
    [Trusted Publishing](https://docs.pypi.org/trusted-publishers/) (OIDC — no
@@ -57,10 +67,25 @@ The run automatically:
 4. Creates a `v<version>` GitHub Release with auto-generated notes and the built
    wheels/sdist attached.
 
+The workflow can also be triggered manually from **Actions -> Upload Python
+Package -> Run workflow** if you ever need to re-run it.
+
 You normally never edit the version by hand. To bump it locally (e.g. to test),
 run `uv run python tools/bump_version.py` (`--dry-run` to preview, `--current`
 to print the current version). The PyPI upload is idempotent (`skip-existing`),
 so re-running the workflow is safe.
+
+### What stops an infinite loop?
+
+The publish workflow itself commits the version bump back to `master`. Three
+independent guards stop that commit from re-triggering the workflow:
+
+1. The bump commit message contains `[skip ci]`, which GitHub Actions natively
+   honors by **not creating a workflow run at all** for that push.
+2. The `bump-version` job has an explicit `if:` that skips when the actor is
+   `github-actions[bot]` or the head-commit message contains `[skip ci]`.
+3. `bump_version.py` is the single source of truth for the version, so a
+   tampered bump commit still wouldn't double-bump.
 
 Thank you for your contribution!
 
