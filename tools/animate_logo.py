@@ -89,6 +89,7 @@ def _render_frame(
     text_gloss_alpha: int,
     text_band_width: float,
     background: str,
+    include_glow: bool,
 ) -> Image.Image:
     w, h = src.size
     if background == "dark":
@@ -99,27 +100,31 @@ def _render_frame(
         canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
 
     s = STYLE
-    # Mark
-    mark_glow = _outer_glow(mark_mask, s["mark_bottom"], s["mark_glow_radius"], s["mark_glow_alpha"])
+    # Mark.  Outer glow is skipped for transparent output because GIF only
+    # supports binary alpha — a soft glow gets clamped to a hard-edged
+    # coloured halo and ruins the seamless background.
     mark_fill = _gradient_fill(mark_mask, s["mark_top"], s["mark_bottom"], s["mark_fill_alpha"])
     mark_gloss = _sweep_gloss(mark_mask, mark_peak_y, mark_band_width, mark_gloss_alpha, s["gloss_feather"])
     mark_stroke = _stroke(mark_mask, s["mark_bottom"], s["stroke_alpha"], width=1)
     mark_hi = _inner_highlight(mark_mask, offset=3, alpha=s["highlight_alpha"])
 
-    canvas.alpha_composite(mark_glow)
+    if include_glow:
+        mark_glow = _outer_glow(mark_mask, s["mark_bottom"], s["mark_glow_radius"], s["mark_glow_alpha"])
+        canvas.alpha_composite(mark_glow)
     canvas.alpha_composite(mark_fill)
     canvas.alpha_composite(mark_gloss)
     canvas.alpha_composite(mark_stroke)
     canvas.alpha_composite(mark_hi)
 
     # Wordmark
-    text_glow = _outer_glow(text_mask, s["text_bottom"], s["text_glow_radius"], s["text_glow_alpha"])
     text_fill = _gradient_fill(text_mask, s["text_top"], s["text_bottom"], s["text_fill_alpha"])
     text_gloss = _sweep_gloss(text_mask, text_peak_y, text_band_width, text_gloss_alpha, s["gloss_feather"])
     text_stroke = _stroke(text_mask, s["text_bottom"], max(s["stroke_alpha"] - 40, 0), width=1)
     text_hi = _inner_highlight(text_mask, offset=2, alpha=int(s["highlight_alpha"] * 0.75))
 
-    canvas.alpha_composite(text_glow)
+    if include_glow:
+        text_glow = _outer_glow(text_mask, s["text_bottom"], s["text_glow_radius"], s["text_glow_alpha"])
+        canvas.alpha_composite(text_glow)
     canvas.alpha_composite(text_fill)
     canvas.alpha_composite(text_gloss)
     canvas.alpha_composite(text_stroke)
@@ -154,7 +159,15 @@ def render_animation(
     sweep_band_frac_text: float = 0.7,
     sweep_band_frac_mark: float = 0.55,
     quantize_colors: int = 128,
+    include_glow: bool | None = None,
+    alpha_threshold: int = 128,
 ) -> Path:
+    # By default the outer glow is included for solid backgrounds but
+    # dropped for transparent output — GIF's binary alpha would render
+    # the glow as a hard coloured halo, which defeats the point of using
+    # a transparent variant in the first place.
+    if include_glow is None:
+        include_glow = background != "transparent"
     src = Image.open(SRC).convert("RGBA")
     mark_mask, text_mask = _split_mark_and_text(src)
 
@@ -196,6 +209,7 @@ def render_animation(
             text_gloss_alpha=text_gloss_alpha,
             text_band_width=text_band_w,
             background=background,
+            include_glow=include_glow,
         )
         images.append(frame)
         durations.append(frame_ms)
@@ -210,29 +224,91 @@ def render_animation(
         images.append(settled_frame)
         durations.append(frame_ms)
 
+    # All frames must share one palette so that the GIF's single global
+    # transparency index points at the same colour in every frame.  We
+    # build the master palette from the first frame and remap the rest.
+    master = _to_palette(images[0], background, quantize_colors, alpha_threshold)
+    palette_frames = [master]
+    for img in images[1:]:
+        palette_frames.append(_remap_to_master(img, master, background, alpha_threshold))
+
     save_kwargs = dict(
         save_all=True,
-        append_images=[_to_palette(img, background, quantize_colors) for img in images[1:]],
+        append_images=palette_frames[1:],
         duration=durations,
         loop=0,
-        optimize=True,
+        optimize=False,  # leave the shared palette intact
         disposal=2,
     )
     if background == "transparent":
-        save_kwargs["transparency"] = 0
-        save_kwargs["disposal"] = 2
+        idx = _sentinel_palette_index(master)
+        save_kwargs["transparency"] = idx
+        save_kwargs["background"] = idx
 
-    _to_palette(images[0], background, quantize_colors).save(out_path, **save_kwargs)
+    palette_frames[0].save(out_path, **save_kwargs)
     return out_path
 
 
-def _to_palette(img: Image.Image, background: str, colors: int) -> Image.Image:
-    # PIL only allows Fast Octree (and libimagequant) on RGBA inputs, so the
-    # transparent variant must use it; RGB backgrounds can use the higher
-    # quality median-cut quantiser.
+def _remap_to_master(
+    img: Image.Image, master: Image.Image, background: str, alpha_threshold: int
+) -> Image.Image:
+    """Re-quantise a frame so it uses ``master``'s palette exactly."""
     if background == "transparent":
-        return img.quantize(colors=colors, method=Image.Quantize.FASTOCTREE)
-    return img.convert("RGB").quantize(colors=colors, method=Image.Quantize.MEDIANCUT)
+        arr = np.asarray(img, dtype=np.uint8)
+        opaque = arr[..., 3] >= alpha_threshold
+        rgb = arr[..., :3].copy()
+        rgb[~opaque] = _TRANSPARENT_SENTINEL
+        rgb_img = Image.fromarray(rgb, "RGB")
+    else:
+        rgb_img = img.convert("RGB")
+    return rgb_img.quantize(palette=master, dither=Image.Dither.NONE)
+
+
+# Sentinel colour used to mark transparent pixels while quantising.  Hot pink
+# is nowhere in the logo's red/black palette, so the quantiser is guaranteed
+# to give it its own palette entry instead of collapsing it into a real
+# colour.  After quantisation we look up the entry it landed in and mark
+# that index as the GIF's transparency colour.
+_TRANSPARENT_SENTINEL = (255, 0, 255)
+
+
+def _to_palette(img: Image.Image, background: str, colors: int, alpha_threshold: int) -> Image.Image:
+    if background != "transparent":
+        return img.convert("RGB").quantize(colors=colors, method=Image.Quantize.MEDIANCUT)
+
+    # GIF only supports binary alpha.  Compose onto a hot-pink sentinel
+    # background so that:
+    #   1. Every pixel ends up opaque RGB (so MEDIANCUT can be used — far
+    #      better quality than FASTOCTREE, which is the only quantiser PIL
+    #      allows on RGBA inputs).
+    #   2. The transparent area collapses to a single palette entry that
+    #      we can reliably mark as the GIF's transparency colour at save
+    #      time, instead of guessing which of many half-transparent edge
+    #      colours the FASTOCTREE quantiser might keep.
+    arr = np.asarray(img, dtype=np.uint8)
+    opaque = arr[..., 3] >= alpha_threshold
+    rgb = arr[..., :3].copy()
+    rgb[~opaque] = _TRANSPARENT_SENTINEL
+    rgb_img = Image.fromarray(rgb, "RGB")
+    # Reserve one slot for the sentinel by quantising to ``colors - 1`` real
+    # colours; the sentinel becomes the +1.
+    return rgb_img.quantize(colors=max(colors - 1, 2), method=Image.Quantize.MEDIANCUT)
+
+
+def _sentinel_palette_index(pal_img: Image.Image) -> int:
+    """Find the palette entry closest to the transparency sentinel."""
+    pal = pal_img.getpalette() or []
+    best_idx, best_d = 0, 1 << 30
+    for i in range(len(pal) // 3):
+        r, g, b = pal[i * 3], pal[i * 3 + 1], pal[i * 3 + 2]
+        d = (
+            (r - _TRANSPARENT_SENTINEL[0]) ** 2
+            + (g - _TRANSPARENT_SENTINEL[1]) ** 2
+            + (b - _TRANSPARENT_SENTINEL[2]) ** 2
+        )
+        if d < best_d:
+            best_d, best_idx = d, i
+    return best_idx
 
 
 def _parse() -> argparse.Namespace:
@@ -249,6 +325,13 @@ def _parse() -> argparse.Namespace:
     p.add_argument("--sweep-band-frac-text", type=float, default=0.7)
     p.add_argument("--sweep-band-frac-mark", type=float, default=0.55)
     p.add_argument("--quantize-colors", type=int, default=128)
+    p.add_argument("--alpha-threshold", type=int, default=128,
+                   help="Binary-alpha cutoff for transparent GIFs (0-255). Lower keeps more soft edges.")
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--glow", dest="include_glow", action="store_true", default=None,
+                   help="Force outer glow on. Default: on for solid backgrounds, off for transparent.")
+    g.add_argument("--no-glow", dest="include_glow", action="store_false",
+                   help="Force outer glow off. Default for transparent backgrounds.")
     return p.parse_args()
 
 
@@ -267,5 +350,7 @@ if __name__ == "__main__":
         sweep_band_frac_text=a.sweep_band_frac_text,
         sweep_band_frac_mark=a.sweep_band_frac_mark,
         quantize_colors=a.quantize_colors,
+        include_glow=a.include_glow,
+        alpha_threshold=a.alpha_threshold,
     )
     print(f"wrote {out}")
