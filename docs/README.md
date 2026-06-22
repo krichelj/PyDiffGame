@@ -1,5 +1,5 @@
 <p align="center">
-    <img alt="PyDiffGame logo" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/logo.png" width="420"/>
+    <img alt="PyDiffGame logo" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/claude/youthful-hypatia-kpbss0/images/logo.png" width="420"/>
 </p>
 
 <p align="center">
