@@ -1,5 +1,8 @@
 <p align="center">
-    <img alt="PyDiffGame logo" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/logo.png" width="420"/>
+    <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/logo_dark.gif">
+        <img alt="PyDiffGame logo" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/images/logo.gif" width="420"/>
+    </picture>
 </p>
 
 <p align="center">
