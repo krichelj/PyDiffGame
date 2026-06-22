@@ -1,9 +1,28 @@
 # Publishes the package to PyPI and creates the matching GitHub Release,
-# auto-incrementing the version each run.
+# auto-incrementing the version when source files change on master.
 #
-# Flow (just run it — Actions -> Upload Python Package -> Run workflow):
+# Triggers:
+#   - push to master that touches SOURCE files (the package or its packaging
+#     metadata) — docs / tests / tooling / CI changes do not cut a release.
+#   - workflow_dispatch: manual trigger remains available for on-demand re-runs
+#     (use this if you ever need to publish despite no source-file changes).
+#
+# Loop prevention: the workflow itself commits a "chore: bump version" commit
+# back to master. Three independent guards stop that commit from re-triggering
+# the workflow:
+#   1. GitHub Actions natively skips push events whose head commit message
+#      contains "[skip ci]" (which the bump commit always does).
+#   2. The bump-version job is guarded with an explicit `if:` so it only runs
+#      for human commits / manual dispatch, never for github-actions[bot].
+#   3. The bump commit message itself contains "[skip ci]" so even if (1) and
+#      (2) ever break, the message still signals "do not republish".
+#
+# Concurrency: serialize runs so two pushes close together don't race on the
+# bump commit's git push.
+#
+# Flow per run:
 #   1. bump-version  : increment the version (carry-at-9 via tools/bump_version.py),
-#                      commit it back to master.
+#                      commit it back to master with [skip ci].
 #   2. release-build : build the dists from the bumped master.
 #   3. pypi-publish  : upload to PyPI via Trusted Publishing (OIDC, no tokens).
 #   4. github-release: create the v<version> GitHub Release with notes + dists.
@@ -13,14 +32,36 @@
 name: Upload Python Package
 
 on:
+  push:
+    branches: [master]
+    # Only publish when source files change. Docs/tests/tooling commits do not
+    # cut a release; mixed commits do (the filter matches if ANY changed file
+    # matches).
+    paths:
+      - 'src/PyDiffGame/**'
+      - 'pyproject.toml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: publish-master
+  cancel-in-progress: false
+
 jobs:
   bump-version:
     runs-on: ubuntu-latest
+    # Defense-in-depth loop guard: only release for human commits or manual
+    # dispatch — never for the workflow's own [skip ci] bump commit.
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.actor != 'github-actions[bot]' &&
+          !contains(github.event.head_commit.message, '[skip ci]')
+        )
+      }}
     permissions:
       contents: write
     outputs:

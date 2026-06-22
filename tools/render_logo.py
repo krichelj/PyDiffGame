@@ -17,8 +17,7 @@ import argparse
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter
-
+from PIL import Image, ImageChops, ImageEnhance, ImageFilter
 
 ROOT = Path(__file__).resolve().parent.parent
 # Source is the immutable original (red mark + black wordmark) committed
