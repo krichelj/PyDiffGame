@@ -200,6 +200,68 @@ def quadrotor_planar() -> RobustProblem:
     )
 
 
+def two_mass_flexible() -> RobustProblem:
+    """9. Non-collocated flexible two-mass structure (Wie-Bernstein benchmark).
+
+    Two carts joined by a lightly-damped spring; the force acts on mass 1 but the
+    controlled output is mass 2 (non-collocated) -- the canonical hard case for
+    robust control, with a sharp lightly-damped resonance.
+    """
+    m1, m2, k, c = 1.0, 1.0, 1.0, 0.05
+    A = np.array(
+        [
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+            [-k / m1, k / m1, -c / m1, c / m1],
+            [k / m2, -k / m2, c / m2, -c / m2],
+        ]
+    )
+    B = np.array([[0.0], [0.0], [1.0 / m1], [0.0]])  # force on mass 1
+    B_w = np.array([[0.0], [0.0], [0.0], [1.0 / m2]])  # disturbance force on mass 2
+    return RobustProblem(
+        name="flexible two-mass",
+        A=A,
+        B=B,
+        B_w=B_w,
+        Q=np.diag([0.0, 1.0, 0.0, 0.0]),  # weight the non-collocated output x2
+        R=np.array([[0.01]]),
+        x_0=np.zeros(4),
+        T_f=60.0,
+        output_idx=1,
+        output_name="mass-2 position",
+    )
+
+
+def pvtol() -> RobustProblem:
+    """10. Planar VTOL aircraft (6 states), linearised at hover; disturbance = side wind.
+
+    States [x, y, theta, xdot, ydot, thetadot]; inputs [thrust, torque]; the
+    horizontal position is controlled only through the tilt angle (underactuated).
+    Astrom-Murray parameters: m=4, J=0.0475, g=9.81.
+    """
+    m, J, g = 4.0, 0.0475, 9.81
+    A = np.zeros((6, 6))
+    A[0, 3] = A[1, 4] = A[2, 5] = 1.0
+    A[3, 2] = -g  # horizontal accel from tilt
+    B = np.zeros((6, 2))
+    B[4, 0] = 1.0 / m  # thrust -> vertical accel
+    B[5, 1] = 1.0 / J  # torque -> angular accel
+    B_w = np.zeros((6, 1))
+    B_w[3, 0] = 1.0 / m  # side wind -> horizontal accel
+    return RobustProblem(
+        name="PVTOL aircraft",
+        A=A,
+        B=B,
+        B_w=B_w,
+        Q=np.diag([5.0, 5.0, 1.0, 0.0, 0.0, 0.0]),
+        R=np.diag([0.1, 0.1]),
+        x_0=np.zeros(6),
+        T_f=14.0,
+        output_idx=0,
+        output_name="horizontal position",
+    )
+
+
 CATALOG = [
     cart,
     mass_spring_damper,
@@ -209,4 +271,6 @@ CATALOG = [
     inverted_pendulum,
     aircraft_short_period,
     quadrotor_planar,
+    two_mass_flexible,
+    pvtol,
 ]
