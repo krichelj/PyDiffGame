@@ -303,11 +303,13 @@ cannot do — via the Hamiltonian/Schur method, auto-finds the optimal robustnes
 [13-system benchmark](https://github.com/krichelj/PyDiffGame/tree/master/benchmarks)
 (carts, vehicles, aircraft, drones, flexible structures) it reduces the worst-case
 disturbance gain on every system, **practically significantly on 10/13** — most where the
-LQR leaves a sharp resonant peak — each at a documented nominal-cost price:
+LQR leaves a sharp resonant peak — each at a documented nominal-cost price.
 
-<p align="center">
-    <img alt="H-infinity game vs LQR under worst-case disturbance (inverted pendulum)" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/benchmarks/results/robust_inverted_pendulum.gif" width="860"/>
-</p>
+Each system's animated comparison (the worst-case time response plus the `σmax(ω)`
+curves whose peak *is* the worst-case gain) lives in
+[`benchmarks/results/`](https://github.com/krichelj/PyDiffGame/tree/master/benchmarks/results);
+the [**robustness showcase**](https://github.com/krichelj/PyDiffGame/blob/master/benchmarks/README.md)
+walks through them (inverted pendulum, active suspension, seismic building, …).
 
 # Examples — a walkthrough
 

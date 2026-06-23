@@ -68,6 +68,16 @@ auto-generated table, and `results/robust_<system>.gif` for each animation
 (left: time response to the worst-case disturbance; right: the `σmax(ω)` curves
 whose peak *is* `‖G_zw‖∞`).
 
+<p align="center">
+    <img alt="H-infinity game vs LQR under worst-case disturbance (inverted pendulum)" src="results/robust_inverted_pendulum.gif" width="820"/>
+</p>
+
+*Inverted pendulum: the LQR leaves a sharp resonant peak (`σmax ≈ 1.92`) that the
+H∞ game flattens to `≈ 1.25` (−35% worst-case gain), roughly halving the
+pendulum-angle response to the worst-case disturbance — at a documented nominal-cost
+price. The honest high-frequency trade-off (H∞ slightly higher past the peak) is
+visible too.*
+
 Headline (honest): all 13 systems show a *relative* worst-case-gain reduction,
 but only the ones with a **non-negligible absolute gain** matter in practice —
 **10/13 are practically significant** (inverted pendulum +35%, PVTOL/quadrotor
