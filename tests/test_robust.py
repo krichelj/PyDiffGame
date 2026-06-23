@@ -65,6 +65,34 @@ def test_infeasible_gamma_raises(cart):
         ContinuousHInfinityControl(A, B, B_w, Q, R, gamma=gstar * 0.5).solve()
 
 
+def test_gamma_star_admissibility_is_monotone():
+    """gamma* must sit on a clean admissible/inadmissible boundary (no boundary jitter).
+
+    Regression for the Hamiltonian imaginary-axis instability: just above gamma*
+    must be admissible and just below must not, with the validated predicate.
+    """
+    A = np.array([[0.0, 1.0], [-1.0, -0.2]])  # lightly damped mass-spring-damper
+    B = np.array([[0.0], [1.0]])
+    B_w = np.array([[0.0], [1.0]])
+    Q = np.diag([1.0, 0.0])
+    R = np.array([[0.1]])
+    design = ContinuousHInfinityControl(A, B, B_w, Q, R)
+    gstar = design.optimal_gamma()
+    assert design._is_admissible(gstar * 1.05)
+    assert not design._is_admissible(gstar * 0.95)
+
+
+def test_gamma_star_does_not_floor_for_small_gamma():
+    """A heavily-damped, weakly-disturbed plant has a tiny gamma* that must not floor."""
+    A = np.array([[-5.0, 1.0], [0.0, -6.0]])  # well-damped, stable
+    B = np.array([[0.0], [1.0]])
+    B_w = np.array([[1e-3], [0.0]])  # very weak disturbance -> tiny gamma*
+    Q = np.diag([1.0, 0.0])
+    R = np.array([[1.0]])
+    gstar = ContinuousHInfinityControl(A, B, B_w, Q, R).optimal_gamma()
+    assert gstar < 1e-3  # must report the true tiny optimum, not a 1e-3 floor
+
+
 def test_unstable_plant_is_stabilised(cart):
     """An open-loop-unstable plant is stabilised robustly (inverted-pendulum-like)."""
     A = np.array([[0.0, 1.0], [5.0, 0.0]])  # unstable (eigenvalues +/- sqrt(5))
