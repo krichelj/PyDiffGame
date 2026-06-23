@@ -117,32 +117,64 @@ class ContinuousHInfinityControl:
         P = np.real(lower @ np.linalg.inv(upper))
         return 0.5 * (P + P.T)
 
-    def _is_admissible(self, gamma: float) -> bool:
+    def _stabilizing_solution(self, gamma: float) -> tuple[FloatArray | None, bool]:
+        """Solve the GARE at ``gamma`` and validate a stabilising PSD solution.
+
+        Robust admissibility predicate: rather than trust the (boundary-brittle)
+        stable-subspace dimension count alone, ``gamma`` is admissible only if the
+        recovered ``P`` is symmetric PSD *and* the closed loop ``A - B K`` is
+        strictly Hurwitz with a small margin. This makes admissibility monotone
+        through :math:`\\gamma^\\star` and immune to the imaginary-axis eigenvalue
+        jitter of the Hamiltonian at the boundary.
+        """
         try:
             P = self._solve_gare(gamma)
         except ValueError:
-            return False
-        return bool(np.all(np.linalg.eigvalsh(P) > -1e-8))
+            return None, False
+        if float(np.min(np.linalg.eigvalsh(P))) < -1e-7:
+            return P, False
+        K = np.linalg.inv(self._R) @ self._B.T @ P
+        spectral_abscissa = float(np.max(np.linalg.eigvals(self._A - self._B @ K).real))
+        return P, spectral_abscissa < -1e-7
 
-    def optimal_gamma(self, *, lo: float = 1e-3, hi: float = 1e6, iterations: int = 80) -> float:
-        r"""Smallest :math:`\gamma` admitting a stabilising solution (:math:`\gamma^\star`), by bisection."""
+    def _is_admissible(self, gamma: float) -> bool:
+        return self._stabilizing_solution(gamma)[1]
+
+    def optimal_gamma(self, *, iterations: int = 100) -> float:
+        r"""Smallest :math:`\gamma` admitting a stabilising solution (:math:`\gamma^\star`).
+
+        Brackets :math:`\gamma^\star` from *both* sides adaptively — doubling the
+        upper bound up until admissible and halving the lower bound down until
+        inadmissible — so it never silently floors out on systems whose
+        :math:`\gamma^\star` is tiny, then bisects on the validated admissibility
+        predicate (:meth:`_stabilizing_solution`), which is monotone through the
+        boundary.
+        """
         if self._gamma_star is not None:
             return self._gamma_star
-        upper = hi
-        for _ in range(40):
+        upper = 1.0
+        for _ in range(60):
             if self._is_admissible(upper):
                 break
-            upper *= 2
+            upper *= 2.0
         else:
-            raise RuntimeError("could not bracket a feasible gamma")
-        lower = lo
+            raise RuntimeError("could not bracket a feasible upper gamma")
+        lower = upper
+        for _ in range(60):
+            lower *= 0.5
+            if not self._is_admissible(lower):
+                break
+        else:
+            # admissible all the way down: gamma* is effectively zero
+            self._gamma_star = float(lower)
+            return self._gamma_star
         for _ in range(iterations):
             mid = np.sqrt(lower * upper)
             if self._is_admissible(mid):
                 upper = mid
             else:
                 lower = mid
-            if upper / lower < 1.0 + 1e-5:
+            if upper / lower < 1.0 + 1e-6:
                 break
         self._gamma_star = float(upper)
         return self._gamma_star
@@ -226,7 +258,8 @@ def worst_case_l2_gain(
     A, B, K = _as_matrix(A), _as_matrix(B), _as_matrix(K)
     Q, R, B_w = _as_matrix(Q), _as_matrix(R), _as_matrix(B_w)
     A_cl = A - B @ K
-    if np.max(np.linalg.eigvals(A_cl).real) >= 0:
+    eigenvalues = np.linalg.eigvals(A_cl)
+    if np.max(eigenvalues.real) >= 0:
         return float("inf"), float("nan")
     C = np.vstack([_symmetric_sqrt(Q), -_symmetric_sqrt(R) @ K])
     eye = np.eye(A_cl.shape[0])
@@ -235,7 +268,10 @@ def worst_case_l2_gain(
         transfer = C @ np.linalg.solve(1j * omega * eye - A_cl, B_w)
         return float(np.linalg.svd(transfer, compute_uv=False)[0])
 
-    grid = np.concatenate([[0.0], np.logspace(-4, 5, n_grid)])
+    # Upper frequency derived from the fastest closed-loop mode so the sweep can
+    # never miss a high-frequency peak (with a generous safety factor and floor).
+    top = max(1.0e5, 50.0 * float(np.max(np.abs(eigenvalues))))
+    grid = np.concatenate([[0.0], np.logspace(-4, np.log10(top), n_grid)])
     values = np.array([sigma_max(w) for w in grid])
     peak = int(np.argmax(values))
     lo = grid[max(peak - 1, 0)]
