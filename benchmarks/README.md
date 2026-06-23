@@ -68,11 +68,12 @@ auto-generated table, and `results/robust_<system>.gif` for each animation
 (left: time response to the worst-case disturbance; right: the `σmax(ω)` curves
 whose peak *is* `‖G_zw‖∞`).
 
-Headline (honest): all 10 systems show a *relative* worst-case-gain reduction,
+Headline (honest): all 13 systems show a *relative* worst-case-gain reduction,
 but only the ones with a **non-negligible absolute gain** matter in practice —
-**7/10 are practically significant** (inverted pendulum +35%, PVTOL/quadrotor
-+26%, flexible two-mass / cart / DC motor ~+22%, ...), exactly the lightly-damped
-and unstable plants where the LQR leaves a sharp resonant peak. The two cars
+**10/13 are practically significant** (inverted pendulum +35%, PVTOL/quadrotor
++26%, seismic building +24%, flexible two-mass / cart / DC motor ~+22%, gantry
+crane / active suspension / aircraft ~+15%, ...), exactly the lightly-damped and
+unstable plants where the LQR leaves a sharp resonant peak. The two cars
 (cruise, bicycle) have an absolute worst-case gain of ~0 — the disturbance is
 already rejected by *any* reasonable controller — so their real relative
 reductions are **not practically meaningful**, and we say so rather than headline

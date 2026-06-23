@@ -262,6 +262,102 @@ def pvtol() -> RobustProblem:
     )
 
 
+def quarter_car_suspension() -> RobustProblem:
+    """11. Quarter-car active suspension; disturbance = road profile (the canonical case).
+
+    Sprung body m_s on a suspension (k_s, c_s) over an unsprung wheel m_u on the
+    tire (k_t); an active actuator applies a force between body and wheel. The
+    lightly-damped wheel-hop mode (~9 Hz) makes road disturbance rejection a
+    textbook H-infinity problem. States [z_s-z_u, z_s_dot, z_u-z_r, z_u_dot];
+    disturbance = road vertical velocity z_r_dot.
+    """
+    m_s, m_u, k_s, c_s, k_t = 300.0, 60.0, 16000.0, 1000.0, 190000.0
+    A = np.array(
+        [
+            [0.0, 1.0, 0.0, -1.0],
+            [-k_s / m_s, -c_s / m_s, 0.0, c_s / m_s],
+            [0.0, 0.0, 0.0, 1.0],
+            [k_s / m_u, c_s / m_u, -k_t / m_u, -c_s / m_u],
+        ]
+    )
+    B = np.array([[0.0], [1.0 / m_s], [0.0], [-1.0 / m_u]])
+    B_w = np.array([[0.0], [0.0], [-1.0], [0.0]])  # road velocity enters the tire deflection rate
+    return RobustProblem(
+        name="active suspension",
+        A=A,
+        B=B,
+        B_w=B_w,
+        Q=np.diag([1.0e3, 1.0e2, 0.0, 0.0]),  # suspension travel + body velocity (ride comfort)
+        R=np.array([[1.0e-6]]),
+        x_0=np.zeros(4),
+        T_f=4.0,
+        output_idx=1,
+        output_name="body velocity",
+    )
+
+
+def seismic_building() -> RobustProblem:
+    """12. Two-storey shear building with active control; disturbance = ground acceleration.
+
+    Active structural control: a 2-DOF lightly-damped shear frame (floor mass m,
+    inter-storey stiffness k, damping c), an actuator force on floor 1, and a
+    seismic ground-acceleration disturbance on both floors. The lightly-damped
+    structural modes are a classic robust-control target.
+    """
+    m, k, c = 1.0, 100.0, 0.5
+    M_inv = np.eye(2) / m
+    K = np.array([[2 * k, -k], [-k, k]])
+    C = np.array([[2 * c, -c], [-c, c]])
+    A = np.block([[np.zeros((2, 2)), np.eye(2)], [-M_inv @ K, -M_inv @ C]])
+    B = np.vstack([np.zeros((2, 1)), M_inv @ np.array([[1.0], [0.0]])])
+    B_w = np.vstack([np.zeros((2, 1)), -np.ones((2, 1))])  # ground acceleration on both floors
+    return RobustProblem(
+        name="seismic building",
+        A=A,
+        B=B,
+        B_w=B_w,
+        Q=np.diag([40.0, 40.0, 0.0, 0.0]),  # floor displacements (drift)
+        R=np.array([[1.0e-3]]),
+        x_0=np.zeros(4),
+        T_f=20.0,
+        output_idx=1,
+        output_name="top-floor displacement",
+    )
+
+
+def gantry_crane() -> RobustProblem:
+    """13. Overhead gantry crane (trolley + suspended payload); disturbance = wind on payload.
+
+    Trolley mass M_t carries a payload m_p on a cable of length l; the trolley
+    force is the input and the payload sway is undamped (marginally stable),
+    making sway suppression under a wind disturbance a robust-control problem.
+    States [trolley pos, sway angle, trolley vel, sway rate].
+    """
+    M_t, m_p, length, g = 1.0, 0.5, 1.0, 9.81
+    A = np.array(
+        [
+            [0.0, 0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0, 1.0],
+            [0.0, -m_p * g / M_t, 0.0, 0.0],
+            [0.0, -(M_t + m_p) * g / (M_t * length), 0.0, 0.0],
+        ]
+    )
+    B = np.array([[0.0], [0.0], [1.0 / M_t], [-1.0 / (M_t * length)]])
+    B_w = np.array([[0.0], [0.0], [0.0], [1.0 / (m_p * length)]])  # wind force on the payload
+    return RobustProblem(
+        name="gantry crane",
+        A=A,
+        B=B,
+        B_w=B_w,
+        Q=np.diag([1.0, 10.0, 0.0, 0.0]),
+        R=np.array([[0.1]]),
+        x_0=np.zeros(4),
+        T_f=12.0,
+        output_idx=1,
+        output_name="payload sway",
+    )
+
+
 CATALOG = [
     cart,
     mass_spring_damper,
@@ -273,4 +369,7 @@ CATALOG = [
     quadrotor_planar,
     two_mass_flexible,
     pvtol,
+    quarter_car_suspension,
+    seismic_building,
+    gantry_crane,
 ]
