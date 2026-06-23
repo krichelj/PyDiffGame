@@ -1,0 +1,31 @@
+{
+  "problem": "car cruise control",
+  "gamma_star": 0.01000052703379123,
+  "gamma_used": 0.0130006851439286,
+  "hinf_norm": {
+    "LQR": 0.010673848715957687,
+    "Hinf_game": 0.010054591595372567,
+    "reduction_pct": 5.801629169235967
+  },
+  "K_lqr": [
+    [
+      60.31753823739806,
+      0.02971721275183147
+    ]
+  ],
+  "K_hinf": [
+    [
+      76.10428544407164,
+      0.03776730508141642
+    ]
+  ],
+  "peak_freq": {
+    "LQR": 0.0,
+    "Hinf_game": 0.0
+  },
+  "gif": "/home/user/PyDiffGame/benchmarks/results/robust_car_cruise_control.gif",
+  "time_domain_peak": {
+    "LQR": 0.00019673706074152663,
+    "Hinf_game": 0.00018116114066463843
+  }
+}

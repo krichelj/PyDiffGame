@@ -1,0 +1,31 @@
+{
+  "problem": "mass-spring-damper",
+  "gamma_star": 0.30559452475334176,
+  "gamma_used": 0.3972728821793443,
+  "hinf_norm": {
+    "LQR": 0.45643386057217983,
+    "Hinf_game": 0.36946425633347085,
+    "reduction_pct": 19.054152584053462
+  },
+  "K_lqr": [
+    [
+      2.316624790355397,
+      1.9617700110582479
+    ]
+  ],
+  "K_hinf": [
+    [
+      3.1649515890136257,
+      3.646315037794631
+    ]
+  ],
+  "peak_freq": {
+    "LQR": 1.3797291445129893,
+    "Hinf_game": 1.2798176749118602
+  },
+  "gif": "/home/user/PyDiffGame/benchmarks/results/robust_mass-spring-damper.gif",
+  "time_domain_peak": {
+    "LQR": 0.3029906984122417,
+    "Hinf_game": 0.1811757924924514
+  }
+}

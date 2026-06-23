@@ -1,0 +1,31 @@
+{
+  "problem": "car lateral (bicycle)",
+  "gamma_star": 0.01000052703379123,
+  "gamma_used": 0.0130006851439286,
+  "hinf_norm": {
+    "LQR": 0.00010425211086465873,
+    "Hinf_game": 0.00010425095560649839,
+    "reduction_pct": 0.0011081388671678755
+  },
+  "K_lqr": [
+    [
+      -0.2803691422408092,
+      1.909212434507313
+    ]
+  ],
+  "K_hinf": [
+    [
+      -0.28038569877953146,
+      1.9092387642159503
+    ]
+  ],
+  "peak_freq": {
+    "LQR": 0.0,
+    "Hinf_game": 1.0003334444814939e-07
+  },
+  "gif": "/home/user/PyDiffGame/benchmarks/results/robust_car_lateral_(bicycle).gif",
+  "time_domain_peak": {
+    "LQR": 1.2256652256362305e-06,
+    "Hinf_game": 1.2256508636935098e-06
+  }
+}

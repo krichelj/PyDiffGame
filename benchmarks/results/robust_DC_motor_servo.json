@@ -1,0 +1,33 @@
+{
+  "problem": "DC motor servo",
+  "gamma_star": 10.98003280599659,
+  "gamma_used": 14.274042647795568,
+  "hinf_norm": {
+    "LQR": 17.296058975135242,
+    "Hinf_game": 13.448165342309094,
+    "reduction_pct": 22.247227754934617
+  },
+  "K_lqr": [
+    [
+      9.999999999999995,
+      0.9915365607136212,
+      0.4112181123814849
+    ]
+  ],
+  "K_hinf": [
+    [
+      21.287213019780232,
+      2.114971755956409,
+      0.9141117148493031
+    ]
+  ],
+  "peak_freq": {
+    "LQR": 0.0,
+    "Hinf_game": 0.0
+  },
+  "gif": "/home/user/PyDiffGame/benchmarks/results/robust_DC_motor_servo.gif",
+  "time_domain_peak": {
+    "LQR": 0.06835672989529255,
+    "Hinf_game": 0.04731667116396453
+  }
+}
