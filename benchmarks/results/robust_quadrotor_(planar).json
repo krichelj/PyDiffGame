@@ -7,6 +7,10 @@
     "Hinf_game": 0.31682294989426296,
     "reduction_pct": 25.466966093726175
   },
+  "time_domain_peak": {
+    "LQR": 0.08284551153384107,
+    "Hinf_game": 0.06048283006427068
+  },
   "K_lqr": [
     [
       -9.999999999999975,
@@ -26,10 +30,5 @@
   "peak_freq": {
     "LQR": 3.4868308983409215,
     "Hinf_game": 3.9576714062692564
-  },
-  "gif": "/home/user/PyDiffGame/benchmarks/results/robust_quadrotor_(planar).gif",
-  "time_domain_peak": {
-    "LQR": 0.08284551153384107,
-    "Hinf_game": 0.06048283006427068
   }
 }

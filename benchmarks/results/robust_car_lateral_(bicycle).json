@@ -7,6 +7,10 @@
     "Hinf_game": 7.755478629149957e-05,
     "reduction_pct": 25.608425912658905
   },
+  "time_domain_peak": {
+    "LQR": 1.2256652256362305e-06,
+    "Hinf_game": 8.71798676283827e-07
+  },
   "K_lqr": [
     [
       -0.2803691422408092,
@@ -22,10 +26,5 @@
   "peak_freq": {
     "LQR": 0.0,
     "Hinf_game": 0.0
-  },
-  "gif": "/home/user/PyDiffGame/benchmarks/results/robust_car_lateral_(bicycle).gif",
-  "time_domain_peak": {
-    "LQR": 1.2256652256362305e-06,
-    "Hinf_game": 8.71798676283827e-07
   }
 }

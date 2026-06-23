@@ -7,6 +7,10 @@
     "Hinf_game": 1.2142747898188275,
     "reduction_pct": 21.84997238191235
   },
+  "time_domain_peak": {
+    "LQR": 0.9238778409746432,
+    "Hinf_game": 0.4943695568134366
+  },
   "K_lqr": [
     [
       0.9999999999999991,
@@ -22,10 +26,5 @@
   "peak_freq": {
     "LQR": 0.6435973629344551,
     "Hinf_game": 0.5758099547136429
-  },
-  "gif": "/home/user/PyDiffGame/benchmarks/results/robust_cart_(double_integrator).gif",
-  "time_domain_peak": {
-    "LQR": 0.9238778409746432,
-    "Hinf_game": 0.4943695568134366
   }
 }

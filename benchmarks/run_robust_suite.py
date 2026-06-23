@@ -7,6 +7,8 @@ how much, and at what nominal cost.
 
 from __future__ import annotations
 
+import sys
+
 import numpy as np
 from scipy.linalg import solve_continuous_lyapunov
 
@@ -25,11 +27,12 @@ def _nominal_lq_cost(A, B, K, Q, R, x0=None) -> float:
 
 def main() -> None:
     RESULTS.mkdir(parents=True, exist_ok=True)
+    render = "--no-gif" not in sys.argv  # --no-gif regenerates the report fast (no animations)
     rows = []
     for factory in CATALOG:
         problem = factory()
         try:
-            rep = run(problem, render_gif=True)
+            rep = run(problem, render_gif=render)
         except Exception as exc:  # noqa: BLE001 - record failures honestly
             print(f"  !! {problem.name}: FAILED ({type(exc).__name__}: {exc})")
             rows.append((problem.name, None))
@@ -52,10 +55,13 @@ def main() -> None:
         "to the weighted performance output (lower = more robust). `gamma = 1.3 * gamma*`.",
         "Nominal LQ cost is the disturbance-free regulation cost (the price of robustness).",
         "",
-        "| system | ‖G‖∞ LQR | ‖G‖∞ H∞ | worst-case ↓ | time-peak ↓ | nominal cost ↑ | verdict |",
+        "Practical significance is judged by the *absolute* LQR gain `‖G‖∞`: a relative",
+        "reduction only matters when the disturbance is not already negligibly rejected.",
+        "",
+        "| system | ‖G‖∞ LQR | ‖G‖∞ H∞ | worst-case ↓ | time-peak ↓ | nominal cost ↑ | significant? |",
         "| --- | ---: | ---: | ---: | ---: | ---: | :---: |",
     ]
-    n_boost = 0
+    n_boost = n_significant = 0
     for name, rep in rows:
         if rep is None:
             lines.append(f"| {name} | — | — | — | — | — | FAILED |")
@@ -67,21 +73,33 @@ def main() -> None:
         tpl, tph = tp.get("LQR", float("nan")), tp.get("Hinf_game", float("nan"))
         tpr = 100.0 * (tpl - tph) / tpl if tpl else float("nan")
         pen = rep["nominal_cost"]["penalty_pct"]
-        verdict = "✅ boost" if red > 1.0 else ("➖ tie" if abs(red) <= 1.0 else "❌ worse")
+        # A boost is *practically* significant only if the absolute worst-case gain is
+        # non-negligible (otherwise any controller already rejects the disturbance).
+        if gl >= 0.1:
+            significant = "✅ yes"
+        elif gl >= 0.02:
+            significant = "🟡 marginal"
+        else:
+            significant = "➖ gain≈0"
         if red > 1.0:
             n_boost += 1
+        if red > 1.0 and gl >= 0.1:
+            n_significant += 1
         lines.append(
-            f"| {name} | {gl:.3f} | {gh:.3f} | **{red:+.1f}%** | {tpr:+.1f}% | {pen:+.1f}% | {verdict} |"
+            f"| {name} | {gl:.4g} | {gh:.4g} | **{red:+.1f}%** | {tpr:+.1f}% | {pen:+.1f}% | {significant} |"
         )
     n_ok = sum(1 for _, r in rows if r is not None)
     lines += [
         "",
-        f"**{n_boost}/{n_ok}** systems show a worst-case robustness boost.",
+        f"**{n_boost}/{n_ok}** systems show a relative worst-case-gain reduction; of these, "
+        f"**{n_significant}** are *practically* significant (non-negligible absolute gain).",
         "",
-        "Honest reading: H-infinity (a controller-vs-disturbance differential game) reduces the",
-        "worst-case disturbance gain — most on lightly-damped / resonant systems — at the cost of",
-        "some nominal performance. Where the boost is small, the plant is already well-damped and",
-        "there is little worst-case gain to recover.",
+        "Honest reading: robust (H-infinity) control — a controller-vs-disturbance differential",
+        "game — reduces the worst-case disturbance gain on every system here, most on the",
+        "lightly-damped / unstable plants (inverted pendulum, DC motor, flexible structure, ...)",
+        "where the LQR leaves a sharp resonant peak, and always at a documented nominal-cost price.",
+        "On the well-damped cars (cruise, bicycle) the absolute gain is already ~0, so the relative",
+        "reduction, while real, is not practically meaningful — the disturbance is already rejected.",
     ]
     report_path = RESULTS / "ROBUSTNESS_REPORT.md"
     report_path.write_text("\n".join(lines) + "\n")

@@ -7,6 +7,10 @@
     "Hinf_game": 0.6417267425889257,
     "reduction_pct": 22.488849627922065
   },
+  "time_domain_peak": {
+    "LQR": 0.7942388722854705,
+    "Hinf_game": 0.5991781933567996
+  },
   "K_lqr": [
     [
       6.93028373151755,
@@ -26,10 +30,5 @@
   "peak_freq": {
     "LQR": 1.7129792957413699,
     "Hinf_game": 1.8404999475284334
-  },
-  "gif": "/home/user/PyDiffGame/benchmarks/results/robust_flexible_two-mass.gif",
-  "time_domain_peak": {
-    "LQR": 0.7942388722854705,
-    "Hinf_game": 0.5991781933567996
   }
 }

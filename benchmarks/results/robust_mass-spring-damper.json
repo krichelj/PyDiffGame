@@ -7,6 +7,10 @@
     "Hinf_game": 0.37457196313063557,
     "reduction_pct": 17.93510615951516
   },
+  "time_domain_peak": {
+    "LQR": 0.3029922437839502,
+    "Hinf_game": 0.18821187316205712
+  },
   "K_lqr": [
     [
       2.316624790355397,
@@ -22,10 +26,5 @@
   "peak_freq": {
     "LQR": 1.379729283218972,
     "Hinf_game": 1.2907228216016464
-  },
-  "gif": "/home/user/PyDiffGame/benchmarks/results/robust_mass-spring-damper.gif",
-  "time_domain_peak": {
-    "LQR": 0.3029922437839502,
-    "Hinf_game": 0.18821187316205712
   }
 }

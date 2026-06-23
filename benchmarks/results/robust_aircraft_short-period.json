@@ -7,6 +7,10 @@
     "Hinf_game": 1.170171330134972,
     "reduction_pct": 14.873788654855534
   },
+  "time_domain_peak": {
+    "LQR": 0.0041898789260997145,
+    "Hinf_game": 0.003072391218185871
+  },
   "K_lqr": [
     [
       -1.9192485657297682,
@@ -22,10 +26,5 @@
   "peak_freq": {
     "LQR": 0.0,
     "Hinf_game": 0.0
-  },
-  "gif": "/home/user/PyDiffGame/benchmarks/results/robust_aircraft_short-period.gif",
-  "time_domain_peak": {
-    "LQR": 0.0041898789260997145,
-    "Hinf_game": 0.003072391218185871
   }
 }
