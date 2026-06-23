@@ -1,0 +1,54 @@
+{
+  "problem": "2 masses on springs",
+  "controllers": {
+    "LQR (python-control)": {
+      "meta": {
+        "kind": "lqr"
+      },
+      "nominal": {
+        "cost": 53866109.43124902,
+        "settling_time": 8.983983983983984,
+        "overshoot_pct": 10.842223077359705,
+        "control_energy": 10734161.403450651,
+        "control_peak": 3030.1353159678183,
+        "ss_error": 0.004418137368338387
+      },
+      "robustness": {
+        "worst_case_impulse_cost": 54523424.876084,
+        "monte_carlo": {
+          "mean": 53929209.32499897,
+          "p95": 54445047.054883316,
+          "max": 54911407.307344824
+        }
+      }
+    },
+    "PyDiffGame (Nash)": {
+      "meta": {
+        "kind": "game",
+        "are_residual": 4.268372322258074e-10,
+        "stable": true
+      },
+      "nominal": {
+        "cost": 53866109.43149202,
+        "settling_time": 8.983983983983984,
+        "overshoot_pct": 10.842223077630011,
+        "control_energy": 10734161.40351203,
+        "control_peak": 3030.1353159678047,
+        "ss_error": 0.004418137370545048
+      },
+      "robustness": {
+        "worst_case_impulse_cost": 54523424.875888176,
+        "monte_carlo": {
+          "mean": 53929209.325097166,
+          "p95": 54445047.05516008,
+          "max": 54911407.308440365
+        }
+      }
+    }
+  },
+  "verdict": {
+    "best_nominal_cost": "LQR (python-control)",
+    "relative_spread": 4.511198019207605e-12
+  },
+  "gif": "/home/user/PyDiffGame/benchmarks/results/masses_pdg_vs_lqr.gif"
+}

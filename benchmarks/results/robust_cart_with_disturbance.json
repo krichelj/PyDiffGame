@@ -1,0 +1,31 @@
+{
+  "problem": "cart with disturbance",
+  "gamma_star": 1.0000032938798213,
+  "gamma_used": 1.3000042820437678,
+  "hinf_norm": {
+    "LQR": 1.5537739740299292,
+    "Hinf_game": 1.2142764958590724,
+    "reduction_pct": 21.849862582671715
+  },
+  "K_lqr": [
+    [
+      0.9999999999999991,
+      1.4142135623730945
+    ]
+  ],
+  "K_hinf": [
+    [
+      1.5650086192272636,
+      2.7687905145133254
+    ]
+  ],
+  "peak_freq": {
+    "LQR": 0.6435945673556862,
+    "Hinf_game": 0.5758117599242504
+  },
+  "gif": "/home/user/PyDiffGame/benchmarks/results/robust_cart_with_disturbance.gif",
+  "time_domain_peak": {
+    "LQR": 0.92387891157316,
+    "Hinf_game": 0.49436554155621176
+  }
+}
