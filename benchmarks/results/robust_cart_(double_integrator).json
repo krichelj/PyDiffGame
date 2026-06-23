@@ -1,11 +1,11 @@
 {
   "problem": "cart (double integrator)",
-  "gamma_star": 1.0000351352774621,
-  "gamma_used": 1.3000456758607009,
+  "gamma_star": 1.0000006610368821,
+  "gamma_used": 1.3000008593479468,
   "hinf_norm": {
-    "LQR": 1.5537739740299292,
-    "Hinf_game": 1.2142971275860268,
-    "reduction_pct": 21.848534736582177
+    "LQR": 1.5537739740194108,
+    "Hinf_game": 1.2142747898188275,
+    "reduction_pct": 21.84997238191235
   },
   "K_lqr": [
     [
@@ -15,17 +15,17 @@
   ],
   "K_hinf": [
     [
-      1.5649364086983049,
-      2.7685988859955697
+      1.5650145907949367,
+      2.768806361744609
     ]
   ],
   "peak_freq": {
-    "LQR": 0.6435945673556862,
-    "Hinf_game": 0.5758210316029738
+    "LQR": 0.6435973629344551,
+    "Hinf_game": 0.5758099547136429
   },
   "gif": "/home/user/PyDiffGame/benchmarks/results/robust_cart_(double_integrator).gif",
   "time_domain_peak": {
-    "LQR": 0.92387891157316,
-    "Hinf_game": 0.4943951064871477
+    "LQR": 0.9238778409746432,
+    "Hinf_game": 0.4943695568134366
   }
 }

@@ -1,11 +1,11 @@
 {
   "problem": "aircraft short-period",
-  "gamma_star": 0.9833631465397321,
-  "gamma_used": 1.2783720905016518,
+  "gamma_star": 0.983325139907662,
+  "gamma_used": 1.2783226818799607,
   "hinf_norm": {
     "LQR": 1.3746310468235325,
-    "Hinf_game": 1.1701899359697037,
-    "reduction_pct": 14.872435140050628
+    "Hinf_game": 1.170171330134972,
+    "reduction_pct": 14.873788654855534
   },
   "K_lqr": [
     [
@@ -15,8 +15,8 @@
   ],
   "K_hinf": [
     [
-      -3.8027084567468252,
-      -1.3064035203014672
+      -3.803027840769567,
+      -1.306438797198067
     ]
   ],
   "peak_freq": {
@@ -26,6 +26,6 @@
   "gif": "/home/user/PyDiffGame/benchmarks/results/robust_aircraft_short-period.gif",
   "time_domain_peak": {
     "LQR": 0.0041898789260997145,
-    "Hinf_game": 0.0030725089237523336
+    "Hinf_game": 0.003072391218185871
   }
 }
