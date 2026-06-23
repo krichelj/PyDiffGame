@@ -47,7 +47,21 @@ and report, on the same closed loop:
   gives up (always `>= 0`, since the LQR is the nominal optimum; this is the
   *price* of robustness, reported honestly alongside the gain).
 
-## Results
+## Nominal regime (two honest outcomes)
+
+On the shared cost a game never beats the centralized LQR; it either ties it or
+pays a small price. Both happen, and both are shown:
+
+- **Lossless tie** — `run_masses.py`: with the *modal* decomposition the
+  objectives decouple, so PyDiffGame's Nash game reproduces the LQR to ~5e-12 on
+  every metric (`results/masses_pdg_vs_lqr.gif`).
+- **Price of anarchy** — `run_anarchy.py`: two carts with *competing*
+  per-cart objectives and one actuator each. The decentralized Nash equilibrium
+  costs **+0.33%** on the joint objective vs the centralized LQR — while using
+  *less* control energy and overshoot (`results/coupled_carts_anarchy.gif`). The
+  tiny price buys decentralization and compositionality.
+
+## Results (robustness)
 
 See [`results/ROBUSTNESS_REPORT.md`](results/ROBUSTNESS_REPORT.md) for the full
 auto-generated table, and `results/robust_<system>.gif` for each animation
