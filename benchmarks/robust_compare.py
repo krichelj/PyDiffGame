@@ -99,7 +99,7 @@ def run(problem: RobustProblem, *, render_gif: bool = True) -> dict:
 
     if render_gif:
         # worst-case sinusoid at the LQR's most vulnerable frequency
-        t = np.linspace(0.0, problem.T_f, 1200)
+        t = np.linspace(0.0, problem.T_f, 700)
         omega = max(f_lqr, 1e-3)
 
         def w_sig(ti):
@@ -112,7 +112,7 @@ def run(problem: RobustProblem, *, render_gif: bool = True) -> dict:
         _style()
         fig, (ax_t, ax_f) = plt.subplots(1, 2, figsize=(11.5, 4.4))
         # right: formal sigma_max(omega) curves (static)
-        omegas = np.logspace(-2, 2, 600)
+        omegas = np.logspace(-2, 2, 250)
         ax_f.semilogx(
             omegas, _sigma_curve(A, B, K_lqr, Q, R, B_w, omegas), color="#d97706", lw=2.2, label="LQR"
         )
@@ -144,7 +144,7 @@ def run(problem: RobustProblem, *, render_gif: bool = True) -> dict:
         )
         ax_t.legend(loc="upper right", fontsize=10)
 
-        stride = 6
+        stride = 9
         frames = range(1, len(t), stride)
 
         def update(fi):

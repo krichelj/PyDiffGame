@@ -27,6 +27,11 @@ def min_gamma(A, B, Q, R, B_w, **_ignored) -> float:
     return ContinuousHInfinityControl(A, B, B_w, Q, R).optimal_gamma()
 
 
-def closed_loop_hinf_norm(A, B, K, Q, R, B_w):
-    """Worst-case L2 gain ||G_zw||inf of an arbitrary state-feedback gain ``K``."""
-    return worst_case_l2_gain(A, B, K, Q, R, B_w)
+def closed_loop_hinf_norm(A, B, K, Q, R, B_w, *, n_grid: int = 2500):
+    """Worst-case L2 gain ||G_zw||inf of an arbitrary state-feedback gain ``K``.
+
+    ``n_grid=2500`` is dense enough to catch the lightly-damped resonant peaks in
+    this catalogue (verified against the 6000-point default) while keeping the
+    suite fast.
+    """
+    return worst_case_l2_gain(A, B, K, Q, R, B_w, n_grid=n_grid)
