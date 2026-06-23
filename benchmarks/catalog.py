@@ -338,7 +338,7 @@ def gantry_crane() -> RobustProblem:
         [
             [0.0, 0.0, 1.0, 0.0],
             [0.0, 0.0, 0.0, 1.0],
-            [0.0, -m_p * g / M_t, 0.0, 0.0],
+            [0.0, m_p * g / M_t, 0.0, 0.0],  # trolley accel from sway: +m_p g / M_t (Lagrangian)
             [0.0, -(M_t + m_p) * g / (M_t * length), 0.0, 0.0],
         ]
     )
