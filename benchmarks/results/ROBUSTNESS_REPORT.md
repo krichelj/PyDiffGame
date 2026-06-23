@@ -19,8 +19,11 @@ reduction only matters when the disturbance is not already negligibly rejected.
 | quadrotor (planar) | 0.4251 | 0.3168 | **+25.5%** | +27.0% | +6.6% | ✅ yes |
 | flexible two-mass | 0.8279 | 0.6417 | **+22.5%** | +24.6% | +32.0% | ✅ yes |
 | PVTOL aircraft | 0.07087 | 0.05201 | **+26.6%** | +33.9% | +1.6% | 🟡 marginal |
+| active suspension | 13.97 | 11.98 | **+14.2%** | -2.4% | +9.5% | ✅ yes |
+| seismic building | 0.1687 | 0.1283 | **+24.0%** | +36.2% | +11.3% | ✅ yes |
+| gantry crane | 0.9406 | 0.8007 | **+14.9%** | +30.9% | +4.9% | ✅ yes |
 
-**10/10** systems show a relative worst-case-gain reduction; of these, **7** are *practically* significant (non-negligible absolute gain).
+**13/13** systems show a relative worst-case-gain reduction; of these, **10** are *practically* significant (non-negligible absolute gain).
 
 Honest reading: robust (H-infinity) control — a controller-vs-disturbance differential
 game — reduces the worst-case disturbance gain on every system here, most on the
