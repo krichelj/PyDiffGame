@@ -33,6 +33,7 @@ from PyDiffGame.continuous import ContinuousPyDiffGame
 from PyDiffGame.discrete import DiscretePyDiffGame
 from PyDiffGame.lqr import ContinuousLQR, DiscreteLQR
 from PyDiffGame.objective import GameObjective, LQRObjective, Objective
+from PyDiffGame.robust import ContinuousHInfinityControl
 
 __version__ = "2.0.3"
 __author__ = "Joshua Shay Kricheli"
@@ -44,6 +45,7 @@ __all__ = [
     "DiscretePyDiffGame",
     "ContinuousLQR",
     "DiscreteLQR",
+    "ContinuousHInfinityControl",
     "Objective",
     "LQRObjective",
     "GameObjective",
