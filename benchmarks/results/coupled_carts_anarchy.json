@@ -1,0 +1,54 @@
+{
+  "problem": "coupled carts (price of anarchy)",
+  "controllers": {
+    "LQR (python-control)": {
+      "meta": {
+        "kind": "lqr"
+      },
+      "nominal": {
+        "cost": 82.15268026916496,
+        "settling_time": 1.8018018018018018,
+        "overshoot_pct": 10.620439431023724,
+        "control_energy": 17.698791720888273,
+        "control_peak": 6.770329614269014,
+        "ss_error": 4.4503442529972567e-10
+      },
+      "robustness": {
+        "worst_case_impulse_cost": 154.66430481449788,
+        "monte_carlo": {
+          "mean": 186.02351398863297,
+          "p95": 367.5084614915668,
+          "max": 469.05042359445855
+        }
+      }
+    },
+    "PyDiffGame (Nash)": {
+      "meta": {
+        "kind": "game",
+        "are_residual": 4.771705164330342e-08,
+        "stable": true
+      },
+      "nominal": {
+        "cost": 82.4215265916616,
+        "settling_time": 1.8618618618618619,
+        "overshoot_pct": 8.602450142560498,
+        "control_energy": 16.42397907561271,
+        "control_peak": 6.394133908281013,
+        "ss_error": 2.1112322651162522e-10
+      },
+      "robustness": {
+        "worst_case_impulse_cost": 157.96082169018823,
+        "monte_carlo": {
+          "mean": 188.21981419502265,
+          "p95": 370.9091113233333,
+          "max": 468.35058338259194
+        }
+      }
+    }
+  },
+  "verdict": {
+    "best_nominal_cost": "LQR (python-control)",
+    "relative_spread": 0.0032725204048826106
+  },
+  "gif": "/home/user/PyDiffGame/benchmarks/results/coupled_carts_anarchy.gif"
+}
