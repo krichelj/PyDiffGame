@@ -24,7 +24,8 @@
 * [Quick start](#quick-start)
 * [Input parameters](#input-parameters)
 * [Tutorial: masses on springs](#tutorial-masses-on-springs)
-* [More examples](#more-examples)
+* [Robust control: H∞ as a game](#robust-control-h-as-a-game)
+* [Examples — a walkthrough](#examples--a-walkthrough)
 * [Testing and development](#testing-and-development)
 * [Citing](#citing)
 * [Acknowledgments](#acknowledgments)
@@ -273,17 +274,67 @@ player, without re-tuning one monolithic cost matrix.
 > [`tools/generate_readme_figures.py`](https://github.com/krichelj/PyDiffGame/blob/master/tools/generate_readme_figures.py)
 > (`uv run python tools/generate_readme_figures.py`), so they always match the current code.
 
-# More examples
+# Robust control: H∞ as a game
 
-The [`src/PyDiffGame/examples`](https://github.com/krichelj/PyDiffGame/tree/master/src/PyDiffGame/examples)
-directory contains further worked comparisons:
+A game ties the centralized LQR on a shared cost — it cannot beat it. The place a
+differential game **provably wins** is *robustness*: classical **H∞** state feedback **is**
+the saddle point of a two-player zero-sum game in which the controller minimises and an
+adversarial disturbance maximises. PyDiffGame ships it as `ContinuousHInfinityControl`,
+completing the family next to the LQR and the N-player Nash game:
 
-| Example | System |
-| --- | --- |
-| [`MassesWithSpringsComparison.py`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/examples/MassesWithSpringsComparison.py) | Chain of masses coupled by springs (the tutorial above) |
-| [`InvertedPendulumComparison.py`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/examples/InvertedPendulumComparison.py) | Inverted pendulum on a cart |
-| [`PVTOL.py`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/examples/PVTOL.py) · [`PVTOLComparison.py`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/examples/PVTOLComparison.py) | Planar vertical take-off & landing aircraft |
-| [`QuadRotorControl.py`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/examples/QuadRotorControl.py) | Quadrotor attitude / position control |
+```python
+import numpy as np
+from PyDiffGame import ContinuousHInfinityControl
+
+A   = np.array([[0.0, 1.0], [0.0, 0.0]])   # a cart: position, velocity
+B   = np.array([[0.0], [1.0]])             # control force
+B_w = np.array([[0.0], [1.0]])             # disturbance force
+Q, R = np.diag([1.0, 0.0]), np.array([[1.0]])
+
+robust = ContinuousHInfinityControl(A, B, B_w, Q, R).solve()   # picks gamma = 1.3 * gamma*
+print(robust.K)                      # robust feedback gain, u = -K x
+print(robust.worst_case_gain()[0])   # closed-loop ||G_zw||inf — provably below the LQR's
+```
+
+It solves the **game** algebraic Riccati equation whose quadratic term
+`B R⁻¹ Bᵀ − γ⁻² B_w B_wᵀ` is *indefinite* — exactly what an ordinary LQR Riccati solver
+cannot do — via the Hamiltonian/Schur method, auto-finds the optimal robustness level
+`γ*`, and reports the formal worst-case L2 gain. Across a
+[13-system benchmark](https://github.com/krichelj/PyDiffGame/tree/master/benchmarks)
+(carts, vehicles, aircraft, drones, flexible structures) it reduces the worst-case
+disturbance gain on every system, **practically significantly on 10/13** — most where the
+LQR leaves a sharp resonant peak — each at a documented nominal-cost price:
+
+<p align="center">
+    <img alt="H-infinity game vs LQR under worst-case disturbance (inverted pendulum)" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/benchmarks/results/robust_inverted_pendulum.gif" width="860"/>
+</p>
+
+# Examples — a walkthrough
+
+The package ships four worked **LQR-vs-game comparisons** under
+[`src/PyDiffGame/examples`](https://github.com/krichelj/PyDiffGame/tree/master/src/PyDiffGame/examples);
+each builds a system, designs an LQR and a decomposed game on it, runs both and reports the
+costs. Run any of them with `uv run python -m PyDiffGame.examples.<name>`:
+
+| Example | System | What it shows |
+| --- | --- | --- |
+| [`MassesWithSpringsComparison`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/examples/MassesWithSpringsComparison.py) | Chain of masses coupled by springs | The **lossless** modal decomposition (the tutorial above): the game reproduces the monolithic LQR optimum |
+| [`InvertedPendulumComparison`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/examples/InvertedPendulumComparison.py) | Inverted pendulum on a cart | An **unstable, underactuated** plant; the nonlinear closed loop can be simulated from the designed gains |
+| [`PVTOLComparison`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/examples/PVTOLComparison.py) · [`PVTOL`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/examples/PVTOL.py) | Planar vertical take-off & landing aircraft | A 6-state aircraft with input decomposition across players |
+| [`QuadRotorControl`](https://github.com/krichelj/PyDiffGame/blob/master/src/PyDiffGame/examples/QuadRotorControl.py) | Quadrotor attitude / position control | A larger nonlinear vehicle with a cascaded design |
+
+For the **full study** — PyDiffGame vs [python-control](https://python-control.readthedocs.io/)
+across 13 systems on both the *nominal* cost (lossless tie / price of anarchy) and the
+*robustness* metric, with rendered GIFs, a metrics report and an adversarial review of the
+methodology — see
+[`benchmarks/`](https://github.com/krichelj/PyDiffGame/tree/master/benchmarks) and its
+[README](https://github.com/krichelj/PyDiffGame/blob/master/benchmarks/README.md):
+
+```bash
+uv run --extra dev python -m benchmarks.run_masses          # nominal: game == LQR (lossless)
+uv run --extra dev python -m benchmarks.run_anarchy         # nominal: the price of anarchy
+uv run --extra dev python -m benchmarks.run_robust_suite    # the 13-system robustness suite + report
+```
 
 # Testing and development
 
