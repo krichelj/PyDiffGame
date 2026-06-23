@@ -81,34 +81,38 @@ def run(problem: RobustProblem, *, render_gif: bool = True) -> dict:
     g_hinf, f_hinf = closed_loop_hinf_norm(A, B, K_hinf, Q, R, B_w)
     reduction = 100.0 * (g_lqr - g_hinf) / g_lqr
 
+    # Time response to the single worst-case sinusoid (at the LQR's peak frequency).
+    # Computed always (cheap) so the report has the time-domain peak even without a GIF.
+    t = np.linspace(0.0, problem.T_f, 700)
+    omega = max(f_lqr, 1e-3)
+
+    def w_sig(ti):
+        return np.sin(omega * ti)
+
+    x_lqr = _simulate(A, B, K_lqr, B_w, problem.x_0, t, w_sig)
+    x_hinf = _simulate(A, B, K_hinf, B_w, problem.x_0, t, w_sig)
+    oi = problem.output_idx
+    peak_lqr = float(np.abs(x_lqr[:, oi]).max())
+    peak_hinf = float(np.abs(x_hinf[:, oi]).max())
+
     report = {
         "problem": problem.name,
         "gamma_star": gstar,
         "gamma_used": gstar * problem.gamma_factor,
         "hinf_norm": {"LQR": g_lqr, "Hinf_game": g_hinf, "reduction_pct": reduction},
+        "time_domain_peak": {"LQR": peak_lqr, "Hinf_game": peak_hinf},
         "K_lqr": K_lqr.tolist(),
         "K_hinf": K_hinf.tolist(),
         "peak_freq": {"LQR": f_lqr, "Hinf_game": f_hinf},
     }
 
     print(f"\n=== {problem.name} — robustness (H-infinity game vs LQR) ===")
-    print(f"  gamma* = {gstar:.4f},  gamma used = {gstar * problem.gamma_factor:.4f}")
-    print(f"  ||G_zw||inf   LQR = {g_lqr:.4f}   H-inf = {g_hinf:.4f}   ({reduction:+.1f}%)")
+    print(f"  gamma* = {gstar:.4g},  gamma used = {gstar * problem.gamma_factor:.4g}")
+    print(f"  ||G_zw||inf   LQR = {g_lqr:.4g}   H-inf = {g_hinf:.4g}   ({reduction:+.1f}%)")
     verdict = "BOOST" if reduction > 1.0 else ("tie" if abs(reduction) <= 1.0 else "WORSE")
     print(f"  VERDICT: worst-case L2 gain {verdict} for the H-infinity game.")
 
     if render_gif:
-        # worst-case sinusoid at the LQR's most vulnerable frequency
-        t = np.linspace(0.0, problem.T_f, 700)
-        omega = max(f_lqr, 1e-3)
-
-        def w_sig(ti):
-            return np.sin(omega * ti)
-
-        x_lqr = _simulate(A, B, K_lqr, B_w, problem.x_0, t, w_sig)
-        x_hinf = _simulate(A, B, K_hinf, B_w, problem.x_0, t, w_sig)
-        oi = problem.output_idx
-
         _style()
         fig, (ax_t, ax_f) = plt.subplots(1, 2, figsize=(11.5, 4.4))
         # right: formal sigma_max(omega) curves (static)
@@ -158,14 +162,7 @@ def run(problem: RobustProblem, *, render_gif: bool = True) -> dict:
         ani.save(out, writer=animation.PillowWriter(fps=25))
         plt.close(fig)
         report["gif"] = out
-        report["time_domain_peak"] = {
-            "LQR": float(np.abs(x_lqr[:, oi]).max()),
-            "Hinf_game": float(np.abs(x_hinf[:, oi]).max()),
-        }
-        print(
-            f"  time-domain peak |{problem.output_name}|:  LQR={report['time_domain_peak']['LQR']:.3f}"
-            f"  H-inf={report['time_domain_peak']['Hinf_game']:.3f}"
-        )
+        print(f"  time-domain peak |{problem.output_name}|:  LQR={peak_lqr:.3g}  H-inf={peak_hinf:.3g}")
         print(f"  GIF: {out}")
 
     (RESULTS / f"robust_{problem.name.replace(' ', '_')}.json").write_text(

@@ -54,13 +54,17 @@ auto-generated table, and `results/robust_<system>.gif` for each animation
 (left: time response to the worst-case disturbance; right: the `σmax(ω)` curves
 whose peak *is* `‖G_zw‖∞`).
 
-Headline: the H-infinity differential game reduces the worst-case L2 gain on the
-lightly-damped and unstable systems (inverted pendulum, PVTOL, quadrotor,
-flexible two-mass, DC motor, ...), most where the LQR has a sharp resonant peak
-to flatten, and **ties** on the already-well-damped car lateral model — for
-which we explored speed, understeer/oversteer (including open-loop-unstable) and
-multiple disturbance channels and still found no worst-case gain to recover, and
-report that null result rather than manufacture a win.
+Headline (honest): all 10 systems show a *relative* worst-case-gain reduction,
+but only the ones with a **non-negligible absolute gain** matter in practice —
+**7/10 are practically significant** (inverted pendulum +35%, PVTOL/quadrotor
++26%, flexible two-mass / cart / DC motor ~+22%, ...), exactly the lightly-damped
+and unstable plants where the LQR leaves a sharp resonant peak. The two cars
+(cruise, bicycle) have an absolute worst-case gain of ~0 — the disturbance is
+already rejected by *any* reasonable controller — so their real relative
+reductions are **not practically meaningful**, and we say so rather than headline
+a "10/10 win". (The bicycle's earlier apparent "tie" turned out to be a `γ*`
+numerical artifact, caught by the methodology review and fixed; the corrected
+result is a real-but-immaterial relative reduction.)
 
 ## Reproduce
 

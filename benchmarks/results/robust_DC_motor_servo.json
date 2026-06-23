@@ -7,6 +7,10 @@
     "Hinf_game": 13.44815793988621,
     "reduction_pct": 22.247270553255873
   },
+  "time_domain_peak": {
+    "LQR": 0.06835672989529255,
+    "Hinf_game": 0.04731661998635981
+  },
   "K_lqr": [
     [
       9.999999999999995,
@@ -24,10 +28,5 @@
   "peak_freq": {
     "LQR": 0.0,
     "Hinf_game": 0.0
-  },
-  "gif": "/home/user/PyDiffGame/benchmarks/results/robust_DC_motor_servo.gif",
-  "time_domain_peak": {
-    "LQR": 0.06835672989529255,
-    "Hinf_game": 0.04731661998635981
   }
 }

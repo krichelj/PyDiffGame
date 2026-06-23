@@ -7,6 +7,10 @@
     "Hinf_game": 0.052006944156754456,
     "reduction_pct": 26.61237450259565
   },
+  "time_domain_peak": {
+    "LQR": 0.026393227497401372,
+    "Hinf_game": 0.017447742530219003
+  },
   "K_lqr": [
     [
       9.67235629446073e-16,
@@ -46,10 +50,5 @@
   "peak_freq": {
     "LQR": 2.68072987499654,
     "Hinf_game": 2.9070099919498906
-  },
-  "gif": "/home/user/PyDiffGame/benchmarks/results/robust_PVTOL_aircraft.gif",
-  "time_domain_peak": {
-    "LQR": 0.026393227497401372,
-    "Hinf_game": 0.017447742530219003
   }
 }

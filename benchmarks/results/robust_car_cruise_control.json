@@ -7,6 +7,10 @@
     "Hinf_game": 0.009863224605822112,
     "reduction_pct": 7.594487534038879
   },
+  "time_domain_peak": {
+    "LQR": 0.00019673706074152663,
+    "Hinf_game": 0.00017523199739339607
+  },
   "K_lqr": [
     [
       60.31753823739806,
@@ -22,10 +26,5 @@
   "peak_freq": {
     "LQR": 0.0,
     "Hinf_game": 0.0
-  },
-  "gif": "/home/user/PyDiffGame/benchmarks/results/robust_car_cruise_control.gif",
-  "time_domain_peak": {
-    "LQR": 0.00019673706074152663,
-    "Hinf_game": 0.00017523199739339607
   }
 }
