@@ -306,7 +306,7 @@ disturbance gain on every system, **practically significantly on 10/13** — mos
 LQR leaves a sharp resonant peak — each at a documented nominal-cost price:
 
 <p align="center">
-    <img alt="H-infinity game vs LQR under worst-case disturbance (inverted pendulum)" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/master/benchmarks/results/robust_inverted_pendulum.gif" width="860"/>
+    <img alt="H-infinity game vs LQR under worst-case disturbance (inverted pendulum)" src="https://raw.githubusercontent.com/krichelj/PyDiffGame/bbd010f15ee13adc2bba5e7b99e1a3ecc0238583/benchmarks/results/robust_inverted_pendulum.gif" width="860"/>
 </p>
 
 Left: the pendulum-angle response to the worst-case disturbance (H∞ roughly halves
