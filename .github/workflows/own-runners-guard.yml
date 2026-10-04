@@ -11,7 +11,7 @@ on:
   schedule:
     - cron: '23 */6 * * *'
   workflow_run:
-    workflows: ["Upload Python Package", "Tests"]
+    workflows: ["Pages", "Upload Python Package", "Tests"]
     types: [requested, completed]
 
 permissions:
