@@ -1,0 +1,45 @@
+# Proves this repo's Actions run on Sanders or Godel and nowhere else
+# (own-ci-runners skill). Generated: keep `workflows:` naming every other
+# workflow here; the guard itself fails when one is missing.
+name: Own runners guard
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 */6 * * *'
+  workflow_run:
+    workflows: ["Upload Python Package", "Tests"]
+    types: [requested, completed]
+
+permissions:
+  contents: read
+  actions: write
+
+# One group per event and subject: a newer push to the same ref replaces a stale
+# check of it, while every other workflow's run keeps a group of its own.
+concurrency:
+  group: own-runners-guard-${{ github.event_name }}-${{ github.event.workflow_run.id || github.ref }}-${{ github.event.action }}
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    name: Own runners guard
+    runs-on: [self-hosted, linux]
+    timeout-minutes: 10
+    steps:
+      # Pinned to the commit behind tag v7.0.1 (gh api repos/actions/checkout/git/ref/tags/v7.0.1).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prove where this repo's Actions run
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        # The guard is the host's own tested copy (claude-code-skills, own-ci-runners),
+        # not a file vendored here: one source of truth for every repo, and a
+        # machine that is not Sanders or Godel has no such file and fails.
+        # Python 3.12 because the guard uses PEP 695 aliases (unpinned, uv once
+        # took an older interpreter and the guard died on a SyntaxError).
+        run: uv run --no-project --python 3.12 --with pyyaml==6.0.2 python "$HOME/.claude/skills/own-ci-runners/templates/guard.py"
