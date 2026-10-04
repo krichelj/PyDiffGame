@@ -1,0 +1,47 @@
+# GitHub Pages built on Sanders/Godel (own-ci-runners skill). The legacy
+# "Deploy from a branch" builder runs on GitHub's machines on every push to the
+# source branch; this builds the same site with the same github-pages gem on
+# the own pool (byte-identical for PyDiffGame, 2026-10-04) and deploys it.
+# Set the repo's Pages source to "GitHub Actions" (build_type: workflow).
+name: Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build with GitHub Pages' own Jekyll
+    runs-on: [self-hosted, linux]
+    steps:
+      # Pinned to the commit behind tag v7.0.1 (gh api repos/actions/checkout/git/ref/tags/v7.0.1).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build (the github-pages gem, as the legacy builder does)
+        env:
+          PAGES_REPO_NWO: ${{ github.repository }}
+          JEKYLL_GITHUB_TOKEN: ${{ github.token }}
+        run: '"$HOME/.claude/skills/own-ci-runners/bin/own-runners" pages-build docs _site'
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: [self-hosted, linux]
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
