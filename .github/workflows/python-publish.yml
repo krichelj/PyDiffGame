@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   bump-version:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     permissions:
       contents: write
     outputs:
@@ -47,7 +47,7 @@ jobs:
 
   release-build:
     needs: bump-version
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -68,7 +68,7 @@ jobs:
   pypi-publish:
     needs:
       - release-build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     permissions:
       # IMPORTANT: this permission is mandatory for trusted publishing
       id-token: write
@@ -87,18 +87,20 @@ jobs:
       # Authentication is via PyPI Trusted Publishing (OIDC) — no token needed.
       # Trusted publisher on PyPI: owner krichelj, repo PyDiffGame,
       # workflow python-publish.yml, environment pypi.
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
       - name: Publish release distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: dist/
-          # Don't fail if this version is already on PyPI (idempotent re-runs).
-          skip-existing: true
+        # pypa/gh-action-pypi-publish runs docker, which the Sanders/Godel runners
+        # cannot; uv uses the same Trusted Publishing (OIDC) and, with --check-url,
+        # skips files already on PyPI as skip-existing did.
+        run: uv publish --trusted-publishing always --check-url https://pypi.org/simple/ dist/*
 
   github-release:
     needs:
       - bump-version
       - pypi-publish
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     permissions:
       # Needed to create the release and its tag.
       contents: write
