@@ -1,4 +1,4 @@
-# GitHub Pages built on self-hosted runners (own-ci-runners skill). The legacy
+# GitHub Pages built on XXXXXXX/XXXXX (own-ci-runners skill). The legacy
 # "Deploy from a branch" builder runs on GitHub's machines on every push to the
 # source branch; this builds the same site with the same github-pages gem on
 # the own pool (byte-identical for PyDiffGame, 2026-10-04) and deploys it.

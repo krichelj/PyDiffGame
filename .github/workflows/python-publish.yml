@@ -132,7 +132,7 @@ jobs:
         uses: astral-sh/setup-uv@v6
 
       - name: Publish release distributions to PyPI
-        # pypa/gh-action-pypi-publish runs docker, which the self-hosted runners runners
+        # pypa/gh-action-pypi-publish runs docker, which the XXXXXXX/XXXXX runners
         # cannot; uv uses the same Trusted Publishing (OIDC) and, with --check-url,
         # skips files already on PyPI as skip-existing did.
         run: uv publish --trusted-publishing always --check-url https://pypi.org/simple/ dist/*

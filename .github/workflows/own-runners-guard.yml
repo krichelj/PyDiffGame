@@ -1,4 +1,4 @@
-# Proves this repo's Actions run on self-hosted runners and nowhere else
+# Proves this repo's Actions run on XXXXXXX or XXXXX and nowhere else
 # (own-ci-runners skill). Generated: keep `workflows:` naming every other
 # workflow here; the guard itself fails when one is missing.
 name: Own runners guard
@@ -39,7 +39,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         # The guard is the host's own tested copy (claude-code-skills, own-ci-runners),
         # not a file vendored here: one source of truth for every repo, and a
-        # machine that is not self-hosted runners has no such file and fails.
+        # machine that is not XXXXXXX or XXXXX has no such file and fails.
         # Python 3.12 because the guard uses PEP 695 aliases (unpinned, uv once
         # took an older interpreter and the guard died on a SyntaxError).
         run: uv run --no-project --python 3.12 --with pyyaml==6.0.2 python "$HOME/.claude/skills/own-ci-runners/templates/guard.py"
